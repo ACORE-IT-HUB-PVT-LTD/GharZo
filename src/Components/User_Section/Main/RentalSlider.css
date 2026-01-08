@@ -1,0 +1,33 @@
+/* Customize Swiper navigation arrows */
+.swiper-button-next,
+.swiper-button-prev {
+  color: #5C4EFF;
+  top: 45%;
+  width: 40px;
+  height: 40px;
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.swiper-button-next::after,
+.swiper-button-prev::after {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* Position the dots below */
+.swiper-pagination {
+  bottom: 0px !important;
+  text-align: center;
+}
+
+.swiper-pagination-bullet {
+  background-color: #5C4EFF;
+  opacity: 0.4;
+  transition: opacity 0.3s;
+}
+
+.swiper-pagination-bullet-active {
+  opacity: 1;
+}

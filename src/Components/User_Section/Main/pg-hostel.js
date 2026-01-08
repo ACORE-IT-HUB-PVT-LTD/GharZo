@@ -1,0 +1,135 @@
+const pg_hostelData = [
+  {
+    "id": 1,
+    "name": "Sunrise PG Retreat",
+    "image": "https://i.pinimg.com/1200x/da/2a/47/da2a47de9e45a211b525ec02c980ce8c.jpg",
+    "city": "Kolkata",
+    "location": "Salt Lake",
+    "price": 5200,
+    "bedrooms": "1",
+    "amenities": ["Wi-Fi", "Power Backup", "Food"],
+    "description": "Comfortable and peaceful accommodation in Salt Lake.",
+    "propertyType": "PG",
+    "status": "rent"
+  },
+  {
+    "id": 2,
+    "name": "Downtown Hostel Hub",
+    "image": "https://media.gettyimages.com/id/630032524/photo/hotel-dining-hall-interior.jpg?s=612x612&w=0&k=20&c=DbVPaZeKZcp-ifSoRBUcvgEWryUZqyyfFARLpXdjZBw=",
+    "city": "Bangalore",
+    "location": "Koramangala",
+    "price": 4300,
+    "bedrooms": "2",
+    "amenities": ["Wi-Fi", "Laundry", "CCTV"],
+    "description": "Modern hostel at the heart of Koramangala with vibrant student community.",
+    "propertyType": "Hostel",
+    "status": "rent"
+  },
+  {
+    "id": 3,
+    "name": "Heavenly Stay PG",
+    "image": "https://media.gettyimages.com/id/1487785665/photo/banquet-hall-for-weddings-with-decorative-elements-romania.jpg?s=612x612&w=0&k=20&c=gdG52cQW6w96t9g8CTz0RGzK2mwL78tX-a6Xbx-MH1w=",
+    "city": "Delhi",
+    "location": "Laxmi Nagar",
+    "price": 6000,
+    "bedrooms": "1",
+    "amenities": ["Air Conditioning", "Housekeeping", "Meals"],
+    "description": "Cozy PG with daily housekeeping and meal options.",
+    "propertyType": "PG",
+    "status": "rent"
+  },
+  {
+    "id": 4,
+    "name": "Zen Den Hostel",
+    "image": "https://media.gettyimages.com/id/1134353701/photo/empty-banquet-room-with-projection-screens.jpg?s=612x612&w=0&k=20&c=MX1ZwC8XUpDUde5fKvwj9k-RSw2JMtU2gJjntjRo01k=",
+    "city": "Pune",
+    "location": "Viman Nagar",
+    "price": 3800,
+    "bedrooms": "3",
+    "amenities": ["Wi-Fi", "Common Room", "Security"],
+    "description": "Safe hostel with community lounge and high-speed Wi-Fi.",
+    "propertyType": "Hostel",
+    "status": "rent"
+  },
+  {
+    "id": 5,
+    "name": "Peaceful PG Homestay",
+    "image": "https://media.gettyimages.com/id/1253278056/photo/luxury-dining-room-with-seascape.jpg?s=612x612&w=0&k=20&c=6vCJCDMSDbURK0oDTFa3wjdC_sMp60rk8SB9ijW-aVE=",
+    "city": "Chennai",
+    "location": "T. Nagar",
+    "price": 5400,
+    "bedrooms": "1",
+    "amenities": ["Meals", "Wi-Fi", "Water Purifier"],
+    "description": "Homely and peaceful PG in prime city area.",
+    "propertyType": "PG",
+    "status": "rent"
+  },
+  {
+    "id": 6,
+    "name": "Cityscape Hostel",
+    "image": "https://media.gettyimages.com/id/1387444320/photo/festive-tables-with-flowers-and-plates-with-napkins-in-amazing-restaurant-room.jpg?s=612x612&w=0&k=20&c=xKqTXs0y_P7LugIX_0PjcXSAQiLxrcLc2rALfk-ggZg=",
+    "city": "Hyderabad",
+    "location": "Madhapur",
+    "price": 4100,
+    "bedrooms": "4",
+    "amenities": ["Wi-Fi", "Bunk Beds", "Locker"],
+    "description": "Budget hostel for working professionals, close to IT parks.",
+    "propertyType": "Hostel",
+    "status": "rent"
+  },
+//   {
+//     "id": 7,
+//     "name": "Royal Residency PG",
+//     "image": "https://yavuzceliker.github.io/sample-images/image-7.jpg",
+//     "city": "Mumbai",
+//     "location": "Andheri",
+//     "price": 6800,
+//     "bedrooms": "2",
+//     "amenities": ["Storage", "Wi-Fi", "Hot Water"],
+//     "description": "Spacious PG rooms ideal for students and working women.",
+//     "propertyType": "PG",
+//     "status": "rent"
+//   },
+//   {
+//     "id": 8,
+//     "name": "GreenView Hostel",
+//     "image": "https://yavuzceliker.github.io/sample-images/image-8.jpg",
+//     "city": "Ahmedabad",
+//     "location": "Navrangpura",
+//     "price": 3900,
+//     "bedrooms": "3",
+//     "amenities": ["Wi-Fi", "Recreation Area", "Laundry"],
+//     "description": "Hostel with garden view and indoor sports facilities.",
+//     "propertyType": "Hostel",
+//     "status": "rent"
+//   },
+//   {
+//     "id": 9,
+//     "name": "Elite Living PG",
+//     "image": "https://yavuzceliker.github.io/sample-images/image-9.jpg",
+//     "city": "Gurgaon",
+//     "location": "Sector 44",
+//     "price": 7500,
+//     "bedrooms": "1",
+//     "amenities": ["Gym", "Meals", "Wi-Fi"],
+//     "description": "Premium PG with in-house gym and daily meals.",
+//     "propertyType": "PG",
+//     "status": "rent"
+//   },
+//   {
+//     "id": 10,
+//     "name": "Youth Vibe Hostel",
+//     "image": "https://yavuzceliker.github.io/sample-images/image-10.jpg",
+//     "city": "Indore",
+//     "location": "Vijay Nagar",
+//     "price": 3700,
+//     "bedrooms": "4",
+//     "amenities": ["Wi-Fi", "TV Lounge", "Games"],
+//     "description": "Affordable hostel with vibrant student crowd.",
+//     "propertyType": "Hostel",
+//     "status": "rent"
+//   }
+]
+
+export default pg_hostelData 
+ 

@@ -1,0 +1,53 @@
+/* 🌟 Fancy Rope-Inspired Scrollbar Styles */
+
+.scroll-container {
+  overflow-y: auto;
+  padding: 0;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background-color: #fcfcfc;
+  height: 100vh; /* Full screen height for demo */
+
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: #4937a4 #f9f9f9;
+}
+
+/* Chrome, Edge, Safari */
+.scroll-container::-webkit-scrollbar {
+  width: 10px;
+}
+
+.scroll-container::-webkit-scrollbar-track {
+  background: #f9f9f9;
+  border-radius: 10px;
+  box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.05);
+}
+
+.scroll-container::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #c1976b, #8b5e3c);
+  border-radius: 10px;
+  border: 2px solid #f9f9f9;
+  box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.scroll-container::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #a46e4a, #5a3c26);
+  box-shadow: 0 0 6px rgba(164, 110, 74, 0.6);
+  transform: scaleX(1.1);
+}
+
+/* Optional animation to simulate "rope motion" */
+@keyframes rope-pulse {
+  0%, 100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(1.05);
+  }
+}
+
+.scroll-container::-webkit-scrollbar-thumb:active {
+  animation: rope-pulse 0.3s ease-in-out;
+}

@@ -1,0 +1,25 @@
+/* Optional - create src/components/Navbar.css */
+
+.search-bar {
+  height: 45px;
+  max-width: 400px;
+  /*width: 100%;*/
+}
+/* Navbar.css */
+.navbar {
+  margin-left: 250px; /* Same as your Sidebar width */
+  width: calc(100% - 250px);
+}
+
+
+
+@media (max-width: 768px) {
+  .navbar form {
+    /*width: 100%;*/
+  }
+
+  .navbar .btn {
+   /* width: 100%;*/
+    justify-content: center;
+  }
+}

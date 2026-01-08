@@ -1,0 +1,878 @@
+import React, { useState, useEffect } from "react";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Pagination, Autoplay, Navigation } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/pagination";
+import "swiper/css/navigation";
+import CardCarousel from "../Card_Carousel/CardCarousel";
+import PGHostelSection from "./PGHostelSection";
+import {
+  FaQuoteLeft,
+  FaPhoneAlt,
+  FaEnvelope,
+  FaLinkedin,
+  FaHome,
+  FaBed,
+  FaRulerCombined,
+  FaUser,
+  FaRupeeSign,
+  FaCheckCircle,
+  FaTags,
+  FaHotel,
+  FaGlassCheers,
+  FaUserFriends,
+  FaSchool,
+} from "react-icons/fa";
+import AOS from "aos";
+import "aos/dist/aos.css";
+import "./RentalSlider.css";
+import { useNavigate, useLocation } from "react-router-dom";
+import "./Main.css";
+import pg_hostelData from "./pg-hostel";
+import home from "../../../assets/Images/home.jpg";
+import {
+  motion,
+  useMotionValue,
+  useTransform,
+  useAnimation,
+  AnimatePresence,
+} from "framer-motion";
+import { Link } from "react-router-dom";
+import axios from "axios";
+import SearchFilter from "./SearchFilter";
+import ExploreCities from "./ExploreCities";
+import { useAuth } from "../../User_Section/Context/AuthContext.jsx";
+
+function MainPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { isAuthenticated } = useAuth();
+  const [showLogin, setShowLogin] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [mouse, setMouse] = useState({ x: 0, y: 0 });
+  const [angle, setAngle] = useState(0);
+  const [properties, setProperties] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+
+  const BASE_URL = "http://api.gharzoreality.com/health";
+
+  // 🎬 Hero Background Images Array - Cinematic & Luxury Real Estate
+  const heroImages = [
+    "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1920&q=80",
+    "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1920&q=80",
+    "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1920&q=80",
+    "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=1920&q=80",
+    "https://images.unsplash.com/photo-1600573472550-8090b5e0745e?w=1920&q=80",
+  ];
+
+  // Mock data for fallback
+  const mockProperties = [
+    {
+      id: 1,
+      name: "Greenview PG",
+      title: "Modern 2BHK Apartment",
+      location: "Koramangala, Bangalore",
+      rent: 9500,
+      area: 450,
+      type: "PG",
+      image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c",
+      description: "Fully furnished PG with Wi-Fi, meals, and daily cleaning.",
+    },
+    {
+      id: 2,
+      name: "Urban Nest Flats",
+      title: "Luxury Studio Apartment",
+      location: "Andheri West, Mumbai",
+      rent: 23000,
+      area: 850,
+      type: "1BHK Apartment",
+      image: "https://images.unsplash.com/photo-1580587771525-78b9dba3b914",
+      description: "1BHK apartment with modular kitchen and security services.",
+    },
+    {
+      id: 3,
+      name: "Cozy Hostel",
+      title: "Family 3BHK Flat",
+      location: "Sector 62, Noida",
+      rent: 7000,
+      area: 300,
+      type: "Hostel",
+      image:
+        "https://images.unsplash.com/photo-1494526585095-c41746248156?w=600&auto=format&fit=crop&q=60",
+      description:
+        "Affordable hostel accommodation for students and professionals.",
+    },
+    {
+      id: 4,
+      name: "Lake View Rooms",
+      location: "Salt Lake, Kolkata",
+      title: "Cozy 1BHK in City Center",
+      rent: 12000,
+      area: 600,
+      type: "Room",
+      image:
+        "https://media.istockphoto.com/id/1438437647/photo/christmas-celebration-at-luxury-lake-house.webp?a=1&b=1&s=612x612&w=0&k=20&c=vBeyQjLc4DwX9qRa3SqtfdnxjH2Oj47buIRVGn3Xn38=",
+      description:
+        "Spacious room near lake with natural light and attached washroom.",
+    },
+    {
+      id: 5,
+      name: "Studio Stay",
+      location: "Gachibowli, Hyderabad",
+      title: "PG for Girls - AC Rooms",
+      rent: 18000,
+      area: 550,
+      type: "Studio Apartment",
+      image:
+        "https://images.unsplash.com/photo-1610224353475-f589ea4993f6?w=600&auto=format&fit=crop&q=60",
+      description:
+        "Modern studio apartment with fully equipped kitchen and AC.",
+    },
+    {
+      id: 6,
+      name: "Girls PG Heaven",
+      title: "Modern 2BHK Apartment",
+      location: "Viman Nagar, Pune",
+      rent: 8500,
+      area: 400,
+      type: "PG",
+      image: "https://images.unsplash.com/photo-1613490493576-7fde63acd811",
+      description: "Safe and hygienic girls PG with food and laundry services.",
+    },
+    {
+      id: 7,
+      name: "Greenview PG",
+      title: "Modern 2BHK Apartment",
+      location: "Koramangala, Bangalore",
+      rent: 9500,
+      area: 450,
+      type: "PG",
+      image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c",
+      description: "Fully furnished PG with Wi-Fi, meals, and daily cleaning.",
+    },
+    {
+      id: 8,
+      name: "Urban Nest Flats",
+      title: "Luxury Studio Apartment",
+      location: "Andheri West, Mumbai",
+      rent: 23000,
+      area: 850,
+      type: "1BHK Apartment",
+      image: "https://images.unsplash.com/photo-1580587771525-78b9dba3b914",
+      description: "1BHK apartment with modular kitchen and security services.",
+    },
+  ];
+
+  const getAuthData = () => {
+    const authData = localStorage.getItem("authData");
+    if (authData) {
+      try {
+        return JSON.parse(authData);
+      } catch (err) {
+        console.error("Error parsing authData:", err);
+        return null;
+      }
+    }
+    return null;
+  };
+
+  // Get token from auth data or use provided token
+  const getToken = () => {
+    const authData = getAuthData();
+    return authData ? authData.token : null;
+  };
+
+  // Fetch properties with authentication
+  const fetchProperties = async () => {
+    try {
+      const token = getToken();
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+      let response = await fetch(`${BASE_URL}/api/properties`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          ...headers,
+        },
+      });
+
+      if (!response.ok) {
+        console.warn(
+          "Primary properties API failed, trying property-districts..."
+        );
+        response = await fetch(PROPERTY_DISTRICTS_API, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            ...headers,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+      }
+
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Response is not JSON");
+      }
+
+      const data = await response.json();
+      setProperties(data?.data || data || mockProperties);
+    } catch (error) {
+      console.error("Error fetching properties:", error.message);
+      setProperties(mockProperties);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProperties();
+  }, []);
+
+  // 🎬 Auto-slide effect for hero background images (every 5 seconds)
+  useEffect(() => {
+    if (isPaused) return;
+
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prevIndex) => 
+        prevIndex === heroImages.length - 1 ? 0 : prevIndex + 1
+      );
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isPaused, heroImages.length]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setAngle((prev) => prev + 0.01);
+    }, 16);
+    return () => clearInterval(interval);
+  }, []);
+
+ // Mouse movement for interactivity
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      setMouse({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
+
+  const handleMouseMove = (e) => {
+    const { innerWidth, innerHeight } = window;
+    const x = (e.clientX / innerWidth - 0.5) * 40;
+    const y = (e.clientY / innerHeight - 0.5) * 40;
+    setMousePos({ x, y });
+  };
+
+  const testimonials = [
+    {
+      id: 1,
+      name: "Ravi Kumar",
+      role: "Tenant - PG",
+      avatar: "https://randomuser.me/api/portraits/men/32.jpg",
+      feedback:
+        "Great experience! I found a clean and affordable PG within 24 hours. Highly recommend this platform.",
+    },
+    {
+      id: 2,
+      name: "Meena Joshi",
+      role: "Landlord - Hostel",
+      avatar: "https://randomuser.me/api/portraits/women/58.jpg",
+      feedback:
+        "As a landlord, it was super easy to list my property. Got multiple inquiries within a day!",
+    },
+    {
+      id: 3,
+      name: "Amit Patel",
+      role: "Rental  Owner",
+      avatar: "https://randomuser.me/api/portraits/men/76.jpg",
+      feedback:
+        "The platform made it easy to promote my Rental Property. Bookings have significantly increased!",
+    },
+    {
+      id: 4,
+      name: "Neha Verma",
+      role: "Flat Renter",
+      avatar: "https://randomuser.me/api/portraits/women/44.jpg",
+      feedback:
+        "I loved the user interface and how fast I could schedule property visits. Kudos to the team!",
+    },
+    {
+      id: 5,
+      name: "Suraj Singh",
+      role: "Student - Hostel",
+      avatar: "https://randomuser.me/api/portraits/men/21.jpg",
+      feedback:
+        "I moved from a different city and found the perfect hostel within budget. Everything was transparent!",
+    },
+    {
+      id: 6,
+      name: "Pooja Thakur",
+      role: "Banquet Customer",
+      avatar: "https://randomuser.me/api/portraits/women/33.jpg",
+      feedback:
+        "Booking a banquet for my brother's wedding was so easy here. Got a great deal and quick support!",
+    },
+  ];
+
+  const agents = [
+    {
+      id: 1,
+      name: "Rahul Mehta",
+      role: "Senior Property Advisor",
+      image: "https://randomuser.me/api/portraits/men/65.jpg",
+      phone: "+91 9876543210",
+      email: "rahul@estatehub.com",
+      linkedin: "https://linkedin.com/in/rahulmehta",
+    },
+    {
+      id: 2,
+      name: "Priya Sharma",
+      role: "Hostel Specialist",
+      image: "https://randomuser.me/api/portraits/women/45.jpg",
+      phone: "+91 8123456789",
+      email: "priya@estatehub.com",
+      linkedin: "https://linkedin.com/in/priyasharma",
+    },
+    {
+      id: 3,
+      name: "Amit Chauhan",
+      role: "Rental Owner",
+      image: "https://randomuser.me/api/portraits/men/78.jpg",
+      phone: "+91 9988776655",
+      email: "amit@estatehub.com",
+      linkedin: "https://linkedin.com/in/amitchauhan",
+    },
+  ];
+
+  const images = [
+    "https://plus.unsplash.com/premium_photo-1682377521697-bc598b52b08a?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+    "https://media.istockphoto.com/id/2204602504/photo/luxurious-lakeside-residence-with-manicured-gardens-and-dock-view.webp?a=1&b=1&s=612x612&w=0&k=20&c=lXYF230RtZORap6gkZwcTsh1KPKeqIh1fKmNZfMzFZI=",
+    "https://plus.unsplash.com/premium_photo-1661883964999-c1bcb57a7357?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+    "https://media.istockphoto.com/id/187324934/photo/repetitive-neighborhood.jpg?s=612x612&w=0&k=20&c=EdV51hq5ynKvncQ8rEHFQjzrsU0rMx7T-CAcPo859B8=",
+  ];
+
+  const handleNavigation = (path) => {
+    if (isAuthenticated) {
+      navigate(path);
+    } else {
+      navigate("/login", { state: { from: path } });
+    }
+  };
+
+  return (
+    <div className="flex flex-col min-h-screen" style={{ marginTop: "-20px" }}>
+      {/* 🎬 HERO SECTION WITH CINEMATIC BACKGROUND SLIDER */}
+      <section 
+        className="pt-12 h-[90vh] flex items-center justify-center text-white text-center relative overflow-hidden"
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+      >
+        {/* Background Image Slider with Fade + Ken Burns Effect */}
+        <div className="absolute inset-0">
+          <AnimatePresence initial={false}>
+            <motion.img
+              key={currentImageIndex}
+              src={heroImages[currentImageIndex]}
+              alt={`Hero Background ${currentImageIndex + 1}`}
+              className="absolute inset-0 w-full h-full object-cover"
+              initial={{ opacity: 0, scale: 1 }}
+              animate={{ 
+                opacity: 1, 
+                scale: 1.1, // Ken Burns zoom effect
+              }}
+              exit={{ opacity: 0, scale: 1.15 }}
+              transition={{ 
+                opacity: { duration: 1.5 },
+                scale: { duration: 8, ease: "linear" }
+              }}
+            />
+          </AnimatePresence>
+        </div>
+        
+        {/* Enhanced gradient overlay using GharZo colors */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#1E3A5F]/90 via-[#1E3A5F]/70 to-orange-600/50 z-10" />
+
+        {/* Animated particles/shapes */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-20">
+          {[...Array(20)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-2 h-2 bg-orange-400/30 rounded-full"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+              }}
+              animate={{
+                y: [0, -30, 0],
+                opacity: [0.1, 0.5, 0.2],
+              }}
+              transition={{
+                duration: 3 + Math.random() * 2,
+                repeat: Infinity,
+                delay: Math.random() * 2,
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Slide Indicators */}
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex gap-2 z-30">
+          {heroImages.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentImageIndex(index)}
+              className={`transition-all duration-300 rounded-full ${
+                index === currentImageIndex
+                  ? 'w-8 h-2 bg-orange-500'
+                  : 'w-2 h-2 bg-white/50 hover:bg-white/70'
+              }`}
+              aria-label={`Go to slide ${index + 1}`}
+            />
+          ))}
+        </div>
+
+        {/* Content */}
+        <div className="relative z-30 px-6" data-aos="fade-up">
+          <motion.h1 
+            initial={{ opacity: 0, y: -30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="text-4xl md:text-6xl font-extrabold mb-6 bg-gradient-to-r from-white via-cyan-100 to-orange-200 bg-clip-text text-transparent drop-shadow-2xl"
+          >
+            Welcome to GharZo
+          </motion.h1>
+
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="text-lg md:text-2xl max-w-2xl mx-auto mb-8 text-gray-100 font-light"
+          >
+Discover homes that match your comfort          </motion.p>
+
+          {/* Enhanced Action Buttons */}
+          {/* <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="flex flex-wrap justify-center gap-4 sm:gap-6 mt-12"
+          >
+            <motion.button
+              whileHover={{ scale: 1.1, rotate: 2, boxShadow: "0 0 30px rgba(255,107,53,0.6)" }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => handleNavigation("/rent")}
+              className="group relative w-32 h-14 sm:w-40 sm:h-16 
+              flex items-center justify-center gap-2 
+              bg-gradient-to-r from-white to-gray-100 
+              text-[#1E3A5F] text-base sm:text-lg font-bold
+              rounded-2xl overflow-hidden
+              shadow-xl hover:shadow-2xl
+              border-2 border-orange-400
+              transition-all duration-300"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-orange-400/0 via-orange-400/20 to-orange-400/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+              <FaHome className="text-2xl sm:text-3xl text-blue-600 relative z-10" />
+              <span className="relative z-10">Rent</span>
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.1, rotate: -2, boxShadow: "0 0 30px rgba(34,197,94,0.6)" }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => handleNavigation("/sell")}
+              className="group relative w-32 h-14 sm:w-40 sm:h-16 
+              flex items-center justify-center gap-2 
+              bg-gradient-to-r from-white to-gray-100 
+              text-[#1E3A5F] text-base sm:text-lg font-bold
+              rounded-2xl overflow-hidden
+              shadow-xl hover:shadow-2xl
+              border-2 border-green-400
+              transition-all duration-300"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-green-400/0 via-green-400/20 to-green-400/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+              <FaTags className="text-2xl sm:text-3xl text-green-600 relative z-10" />
+              <span className="relative z-10">Sell</span>
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.1, rotate: 2, boxShadow: "0 0 30px rgba(234,179,8,0.6)" }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => handleNavigation("/pg")}
+              className="group relative w-32 h-14 sm:w-40 sm:h-16 
+              flex items-center justify-center gap-2 
+              bg-gradient-to-r from-white to-gray-100 
+              text-[#1E3A5F] text-base sm:text-lg font-bold
+              rounded-2xl overflow-hidden
+              shadow-xl hover:shadow-2xl
+              border-2 border-yellow-400
+              transition-all duration-300"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/0 via-yellow-400/20 to-yellow-400/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+              <FaUserFriends className="text-2xl sm:text-3xl text-yellow-600 relative z-10" />
+              <span className="relative z-10">PG</span>
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.1, rotate: -2, boxShadow: "0 0 30px rgba(168,85,247,0.6)" }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => handleNavigation("/hostel")}
+              className="group relative w-32 h-14 sm:w-40 sm:h-16 
+              flex items-center justify-center gap-2 
+              bg-gradient-to-r from-white to-gray-100 
+              text-[#1E3A5F] text-base sm:text-lg font-bold
+              rounded-2xl overflow-hidden
+              shadow-xl hover:shadow-2xl
+              border-2 border-purple-400
+              transition-all duration-300"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-400/0 via-purple-400/20 to-purple-400/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+              <FaSchool className="text-2xl sm:text-3xl text-purple-600 relative z-10" />
+              <span className="relative z-10">Hostel</span>
+            </motion.button>
+          </motion.div> */}
+        </div>
+      </section>
+
+      <PGHostelSection />
+
+      {/* Popular Properties Section */}
+  <section className="py-20 px-6 bg-gradient-to-b from-[#0c2344] to-[#0b4f91]  text-white overflow-hidden">
+  <div className="max-w-7xl mx-auto">
+    {/* Header - Refined for luxury */}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.6 }}
+      className="text-center mb-16"
+    >
+      <span className="text-orange-400 font-semibold text-sm uppercase tracking-wider">
+        Our Premium Projects
+      </span>
+      <h2 className="text-4xl md:text-5xl font-bold mt-4">
+        <span className="bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent">
+          Popular Rental Properties
+        </span>
+      </h2>
+      <div className="w-32 h-1 bg-gradient-to-r from-orange-400 to-orange-600 mx-auto mt-6 rounded-full" />
+      <p className="mt-6 text-gray-300 max-w-2xl mx-auto">
+        Explore exclusive societies and projects with world-class amenities.
+      </p>
+    </motion.div>
+
+    {/* Properties Display */}
+    <div className="max-w-6xl mx-auto">
+      {loading ? (
+        <div className="flex justify-center items-center py-32">
+          <div className="w-20 h-20 border-6 border-orange-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : properties.length === 0 ? (
+        <p className="text-center text-gray-400 py-32 text-xl">No properties available at the moment.</p>
+      ) : (
+        /* Remove CardCarousel if you want static grid, or keep it to wrap the map below */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {properties.map((property, index) => (
+            <motion.div
+              key={property.id}
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: index * 0.1, duration: 0.7 }}
+              className="group relative rounded-3xl overflow-hidden shadow-2xl cursor-pointer h-96 md:h-[500px] bg-cover bg-center"
+              style={{ backgroundImage: `url(${property.images?.[0] || '/placeholder-project.jpg'})` }}
+            >
+              {/* Dark gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+
+              {/* Content at bottom */}
+              <div className="absolute bottom-0 left-0 right-0 p-8 text-left">
+                <h3 className="text-2xl md:text-4xl font-bold text-white">
+                  {property.name || property.projectName}
+                </h3>
+                <p className="text-lg md:text-xl text-gray-200 mt-2">
+                  {property.location?.area} {property.location?.city}
+                </p>
+
+                <div className="flex items-center justify-between mt-8">
+                  <p className="text-gray-300 text-base md:text-lg">
+                    Interested in this project by <span className="font-semibold text-white">{property.builder || "Premium Developer"}</span>?
+                  </p>
+                  <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl shadow-lg flex items-center gap-3 transition-all hover:shadow-xl">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    View Number
+                  </button>
+                </div>
+              </div>
+
+              {/* Optional navigation arrow if not using carousel */}
+              {index < properties.length - 1 && (
+                <div className="absolute right-6 top-1/2 -translate-y-1/2 bg-white/20 backdrop-blur-sm rounded-full p-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+</section>
+
+      <ExploreCities />
+
+      <section className="py-16 px-6 bg-gradient-to-br from-gray-50 to-blue-50">
+      </section>
+
+      {/* Trusted Agents Section */}
+      <section className="py-16 px-4 bg-gradient-to-b from-white to-gray-100">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <span className="text-orange-500 font-semibold text-sm uppercase tracking-wider">
+              Our Team
+            </span>
+            <h2 className="text-4xl md:text-5xl font-bold mt-3 leading-tight pb-2 bg-gradient-to-r from-[#1E3A5F] to-[#2a4f7a] bg-clip-text text-transparent">
+              Meet Our Trusted Agents
+            </h2>
+
+            <p className="text-gray-600 max-w-2xl mx-auto mt-6">
+              Dedicated professionals ready to guide you in every step of your
+              property journey—whether you're looking to rent, buy, or celebrate.
+            </p>
+            <div className="w-24 h-1 bg-gradient-to-r from-orange-400 to-orange-600 mx-auto mt-4 rounded-full" />
+          </motion.div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 mt-2">
+            {agents.map((agent, index) => (
+              <motion.div
+                key={agent.id}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1, duration: 0.5 }}
+                whileHover={{ y: -10 }}
+                className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 pt-20 pb-8 px-8 text-center border-t-4 border-orange-500 relative overflow-hidden group"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-orange-50/0 to-orange-100/0 group-hover:from-orange-50/50 group-hover:to-orange-100/30 transition-all duration-300 rounded-2xl" />
+                
+                <div className="relative z-10">
+                  <img
+                    src={agent.image}
+                    alt={agent.name}
+                    className="w-28 h-28 mx-auto rounded-full object-cover border-4 border-white shadow-xl -mt-16 mb-4 bg-white ring-4 ring-orange-100"
+                  />
+                  <h4 className="text-xl font-bold text-[#1E3A5F]">
+                    {agent.name}
+                  </h4>
+                  <p className="text-sm text-orange-600 font-semibold mt-1">{agent.role}</p>
+                  <p className="text-gray-600 mt-3 italic text-sm">
+                    "Here to make your property experience seamless."
+                  </p>
+                  
+                  {/* <div className="flex justify-center gap-4 mt-6">
+                    <motion.a
+                      whileHover={{ scale: 1.2, rotate: 5 }}
+                      whileTap={{ scale: 0.9 }}
+                      href={`tel:${agent.phone}`}
+                      className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center hover:shadow-lg transition-all"
+                      title="Call"
+                    >
+                      <FaPhoneAlt size={16} />
+                    </motion.a>
+                    <motion.a
+                      whileHover={{ scale: 1.2, rotate: -5 }}
+                      whileTap={{ scale: 0.9 }}
+                      href={`mailto:${agent.email}`}
+                      className="w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-red-600 text-white flex items-center justify-center hover:shadow-lg transition-all"
+                      title="Email"
+                    >
+                      <FaEnvelope size={16} />
+                    </motion.a>
+                    <motion.a
+                      whileHover={{ scale: 1.2, rotate: 5 }}
+                      whileTap={{ scale: 0.9 }}
+                      href={agent.linkedin}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-700 to-blue-800 text-white flex items-center justify-center hover:shadow-lg transition-all"
+                      title="LinkedIn"
+                    >
+                      <FaLinkedin size={16} />
+                    </motion.a>
+                  </div> */}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials Section */}
+
+<section className="py-20 px-6 bg-gray-50 overflow-hidden relative">
+  <div className="max-w-7xl mx-auto">
+    {/* Header */}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      className="text-center mb-16"
+    >
+     <span className="bg-gradient-to-b from-[#0c2344] to-[#0b4f91] bg-clip-text text-transparent font-semibold text-sm uppercase tracking-wider">
+  Testimonials
+</span>
+
+<h2 className="bg-gradient-to-b from-[#0c2344] to-[#0b4f91] bg-clip-text text-transparent text-4xl md:text-5xl font-bold mt-4">
+  Hear from our satisfied buyers, tenants, owners and dealers
+</h2>
+
+      <div className="w-32 h-1.5 bg-gradient-to-b from-[#0c2344] to-[#0b4f91] mx-auto mt-8 rounded-full" />
+    </motion.div>
+
+    {/* Single Attractive Slider (Marquee) */}
+    <motion.div
+      className="flex gap-6"
+      animate={{ x: ["0%", "-100%"] }}
+      transition={{ repeat: Infinity, duration: 30, ease: "linear" }}
+      whileHover={{ animationPlayState: "paused" }}
+    >
+      {[...testimonials, ...testimonials].map((testimonial, i) => (
+        <div
+          key={i}
+          className="relative bg-white/90 backdrop-blur-xl rounded-3xl shadow-xl p-6 min-w-[300px] flex-shrink-0 transform hover:scale-105 hover:shadow-2xl transition-all duration-500 border border-gray-100"
+        >
+          {/* Glowing Starburst Background */}
+          <div className="absolute inset-0 -z-10 overflow-hidden rounded-3xl">
+            <div className="absolute -top-12 -left-12 w-48 h-48 bg-gradient-radial from-orange-300/40 to-transparent rounded-full animate-pulse" />
+            <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-gradient-radial from-pink-300/30 to-transparent rounded-full animate-ping delay-1000" />
+          </div>
+
+          {/* Company Logo / Initial */}
+          <div className="flex flex-col items-center mb-5">
+            {testimonial.logo ? (
+              <img
+                src={testimonial.logo}
+                alt={testimonial.name}
+                className="w-16 h-16 rounded-full object-contain mb-3 shadow-md"
+              />
+            ) : (
+              <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-pink-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-md">
+                {testimonial.name.charAt(0)}
+              </div>
+            )}
+            <h3 className="text-lg font-bold text-gray-900 text-center">
+              {testimonial.name}
+            </h3>
+            <p className="text-xs text-gray-600 mt-1">
+              {testimonial.location || testimonial.role}
+            </p>
+          </div>
+
+          {/* Feedback Quote */}
+          <div className="relative text-center">
+            <FaQuoteLeft className="text-orange-400 text-3xl absolute -top-3 left-1/2 -translate-x-1/2 opacity-30" />
+            <p className="text-gray-700 text-sm italic leading-relaxed mt-6">
+              "{testimonial.feedback}"
+            </p>
+          </div>
+        </div>
+      ))}
+    </motion.div>
+
+    {/* View All Link */}
+    {/* <div className="text-center mt-12">
+      <a
+        href="/testimonials"
+        className="text-orange-600 font-semibold text-lg hover:text-orange-700 transition flex items-center justify-center gap-2"
+      >
+        View all testimonials →
+      </a>
+    </div> */}
+  </div>
+</section>
+
+      {/* Final CTA Section */}
+      {/* <section
+        className="relative h-[500px] mx-6 my-16 rounded-3xl overflow-hidden shadow-2xl"
+        onMouseMove={handleMouseMove}
+      >
+        <motion.div
+          className="absolute inset-0"
+          animate={{
+            background: [
+              "linear-gradient(135deg, #1E3A5F, #2a4f7a)",
+              "linear-gradient(135deg, #FF6B35, #ff8555)",
+              "linear-gradient(135deg, #14B8A6, #06B6D4)",
+              "linear-gradient(135deg, #1E3A5F, #2a4f7a)",
+            ],
+          }}
+          transition={{ duration: 12, repeat: Infinity, repeatType: "reverse" }}
+        />
+
+        {images.map((img, i) => (
+          <motion.img
+            key={i}
+            src={img}
+            className="absolute w-40 h-40 object-cover rounded-2xl border-4 border-white shadow-2xl"
+            style={{
+              top: i < 2 ? "15%" : "60%",
+              left: i % 2 === 0 ? "10%" : "75%",
+              rotate: "45deg",
+            }}
+            animate={{
+              x: [0, i % 2 === 0 ? 15 : -15, 0],
+              y: [0, i < 2 ? -20 : 20, 0],
+              rotate: [45, 50, 45],
+            }}
+            transition={{ repeat: Infinity, duration: 4 + i }}
+            whileHover={{ scale: 1.15, zIndex: 10 }}
+          />
+        ))}
+
+        <motion.div
+          className="absolute inset-0 flex flex-col items-center justify-center text-center text-white px-6"
+          style={{
+            transform: `translate(${mousePos.x / 10}px, ${mousePos.y / 10}px)`,
+          }}
+        >
+          <motion.h2
+            className="text-4xl md:text-5xl font-extrabold drop-shadow-2xl"
+            initial={{ opacity: 0, y: -30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 1 }}
+          >
+            Start your journey with{" "}
+            <span className="text-orange-300">GharZo</span>
+          </motion.h2>
+          <motion.p
+            className="mt-5 text-xl drop-shadow-lg"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 1, delay: 0.3 }}
+          >
+            Find rentals, PGs & hostels like never before.
+          </motion.p>
+        </motion.div>
+      </section> */}
+    </div>
+  );
+}
+
+export default MainPage;
