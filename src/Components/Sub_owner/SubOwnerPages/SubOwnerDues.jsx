@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import baseurl from "../../../../BaseUrl";
 
 // Function to decode JWT token
 const decodeToken = (token) => {
@@ -42,7 +43,6 @@ const DuePackages = () => {
   const [subOwnerId, setSubOwnerId] = useState(null);
   const [propertyId, setPropertyId] = useState(null);
 
-  // Helper to get token and validate
   const getToken = () => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -56,7 +56,6 @@ const DuePackages = () => {
     return token;
   };
 
-  // Fetch SubOwner ID and Property ID
   const fetchSubOwnerId = async () => {
     setLoadingSubOwnerId(true);
     const token = getToken();
@@ -68,7 +67,7 @@ const DuePackages = () => {
 
     try {
       const response = await axios.get(
-        "https://api.gharzoreality.com/api/sub-owner/auth/profile",
+        `${baseurl}api/sub-owner/auth/profile`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -93,7 +92,7 @@ const DuePackages = () => {
       }
 
       await fetchCategories(fetchedSubOwnerId);
-      await fetchAllTenantsFromAllProperties(); // Fetch tenants from ALL properties
+      await fetchAllTenantsFromAllProperties();
     } catch (error) {
       const decoded = decodeToken(token);
       if (decoded && decoded.id) {
@@ -105,20 +104,11 @@ const DuePackages = () => {
         }
         await fetchCategories(decoded.id);
         await fetchAllTenantsFromAllProperties();
-        toast.warn("Failed to fetch profile, using token for sub-owner ID.", {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "colored",
-        });
+        toast.warn("Failed to fetch profile, using token for sub-owner ID.");
       } else {
         setError("Failed to fetch sub-owner profile. Please log in.");
         toast.error(
-          error.response?.data?.message || "Failed to fetch sub-owner profile.",
-          {
-            position: "top-right",
-            autoClose: 3000,
-            theme: "colored",
-          }
+          error.response?.data?.message || "Failed to fetch sub-owner profile."
         );
       }
     } finally {
@@ -126,21 +116,17 @@ const DuePackages = () => {
     }
   };
 
-  // Fetch Categories
   const fetchCategories = async (subOwnerId) => {
     const token = getToken();
     if (!token || !subOwnerId) return;
 
     try {
-      const response = await axios.get(
-        "https://api.gharzoreality.com/api/subowner/dues",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const response = await axios.get(`${baseurl}api/subowner/dues`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
       const categoryData = Array.isArray(response.data) ? response.data : [];
       const formattedCategories = categoryData.map((category) => ({
@@ -152,26 +138,14 @@ const DuePackages = () => {
       }));
       setCategories(formattedCategories);
       if (categoryData.length === 0) {
-        toast.info("No categories found.", {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "colored",
-        });
+        toast.info("No categories found.");
       }
     } catch (error) {
       setError("Failed to load categories.");
-      toast.error(
-        error.response?.data?.message || "Failed to fetch categories.",
-        {
-          position: "top-right",
-          autoClose: 5000,
-          theme: "colored",
-        }
-      );
+      toast.error(error.response?.data?.message || "Failed to fetch categories.");
     }
   };
 
-  // NEW: Fetch ALL properties and then tenants from each
   const fetchAllTenantsFromAllProperties = async () => {
     setLoadingTenants(true);
     const token = getToken();
@@ -181,9 +155,8 @@ const DuePackages = () => {
     }
 
     try {
-      // Step 1: Fetch all properties
       const propertiesResponse = await axios.get(
-        "https://api.gharzoreality.com/api/sub-owner/properties",
+        `${baseurl}api/sub-owner/properties`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -194,23 +167,17 @@ const DuePackages = () => {
 
       const properties = propertiesResponse.data.properties || [];
       if (properties.length === 0) {
-        toast.warn("No properties assigned to this sub-owner.", {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "colored",
-        });
+        toast.warn("No properties assigned to this sub-owner.");
         setTenants([]);
         setLoadingTenants(false);
         return;
       }
 
-      // Step 2: Extract all property IDs
       const propertyIds = properties.map((prop) => prop.id);
 
-      // Step 3: Fetch tenants for each property in parallel
       const tenantPromises = propertyIds.map((propId) =>
         axios.get(
-          `https://api.gharzoreality.com/api/sub-owner/properties/${propId}/tenants`,
+          `${baseurl}api/sub-owner/properties/${propId}/tenants`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -222,7 +189,6 @@ const DuePackages = () => {
 
       const tenantResponses = await Promise.all(tenantPromises);
 
-      // Step 4: Combine all tenants
       let allTenants = [];
       tenantResponses.forEach((res) => {
         const data = res.data.tenants || res.data.data || res.data || [];
@@ -231,7 +197,6 @@ const DuePackages = () => {
         }
       });
 
-      // Remove duplicates by tenantId or id
       const uniqueTenants = Array.from(
         new Map(
           allTenants.map((t) => [
@@ -244,50 +209,29 @@ const DuePackages = () => {
       setTenants(uniqueTenants);
 
       if (uniqueTenants.length === 0) {
-        toast.warn("No tenants found in any property.", {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "colored",
-        });
+        toast.warn("No tenants found in any property.");
       }
     } catch (error) {
-      console.error("Error fetching tenants from all properties:", error);
-      toast.error("Failed to load tenants from properties.", {
-        position: "top-right",
-        autoClose: 5000,
-        theme: "colored",
-      });
+      console.error("Error fetching tenants:", error);
+      toast.error("Failed to load tenants from properties.");
       setTenants([]);
     } finally {
       setLoadingTenants(false);
     }
   };
 
-  // Create or Update Category
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!categoryName) {
-      toast.error("Please enter a due type name.", {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "colored",
-      });
+      toast.error("Please enter a due type name.");
       return;
     }
     if (categoryType === "fixed" && (!fixedAmount || fixedAmount <= 0)) {
-      toast.error("Please enter a valid fixed amount.", {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "colored",
-      });
+      toast.error("Please enter a valid fixed amount.");
       return;
     }
     if (!subOwnerId) {
-      toast.error("Sub-owner ID is missing. Please log in.", {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "colored",
-      });
+      toast.error("Sub-owner ID is missing. Please log in.");
       return;
     }
 
@@ -297,13 +241,11 @@ const DuePackages = () => {
     try {
       if (selectedCategory) {
         await axios.put(
-          `https://api.gharzoreality.com/api/subowner/dues/${selectedCategory._id}`,
+          `${baseurl}api/subowner/dues/${selectedCategory._id}`,
           {
             name: categoryName,
             type: categoryType,
-            ...(categoryType === "fixed" && {
-              amount: parseFloat(fixedAmount),
-            }),
+            ...(categoryType === "fixed" && { amount: parseFloat(fixedAmount) }),
             subOwnerId,
           },
           {
@@ -313,21 +255,15 @@ const DuePackages = () => {
             },
           }
         );
-        toast.success("Category updated successfully!", {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "colored",
-        });
+        toast.success("Category updated successfully!");
       } else {
         await axios.post(
-          "https://api.gharzoreality.com/api/subowner/dues/create",
+          `${baseurl}api/subowner/dues/create`,
           {
             subOwnerId,
             name: categoryName,
             type: categoryType,
-            ...(categoryType === "fixed" && {
-              amount: parseFloat(fixedAmount),
-            }),
+            ...(categoryType === "fixed" && { amount: parseFloat(fixedAmount) }),
           },
           {
             headers: {
@@ -336,11 +272,7 @@ const DuePackages = () => {
             },
           }
         );
-        toast.success("Category created successfully!", {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "colored",
-        });
+        toast.success("Category created successfully!");
       }
       await fetchCategories(subOwnerId);
       setIsSidebarOpen(false);
@@ -351,17 +283,11 @@ const DuePackages = () => {
     } catch (error) {
       toast.error(
         error.response?.data?.message ||
-          `Failed to ${selectedCategory ? "update" : "create"} category.`,
-        {
-          position: "top-right",
-          autoClose: 5000,
-          theme: "colored",
-        }
+          `Failed to ${selectedCategory ? "update" : "create"} category.`
       );
     }
   };
 
-  // Toggle Category Status
   const handleToggle = async (categoryId) => {
     const token = getToken();
     if (!token) return;
@@ -373,7 +299,7 @@ const DuePackages = () => {
 
     try {
       await axios.put(
-        `https://api.gharzoreality.com/api/subowner/dues/${categoryId}`,
+        `${baseurl}api/subowner/dues/${categoryId}`,
         { status: newStatus, subOwnerId },
         {
           headers: {
@@ -382,25 +308,13 @@ const DuePackages = () => {
           },
         }
       );
-      toast.success("Category status updated!", {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "colored",
-      });
+      toast.success("Category status updated!");
       await fetchCategories(subOwnerId);
     } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Failed to update category status.",
-        {
-          position: "top-right",
-          autoClose: 5000,
-          theme: "colored",
-        }
-      );
+      toast.error(error.response?.data?.message || "Failed to update status.");
     }
   };
 
-  // Handle Delete
   const handleDelete = (categoryId) => {
     const category = categories.find((cat) => cat._id === categoryId);
     if (!category) return;
@@ -408,7 +322,6 @@ const DuePackages = () => {
     setIsDeleteModalOpen(true);
   };
 
-  // Confirm Delete
   const confirmDelete = async () => {
     if (!categoryToDelete) return;
 
@@ -420,7 +333,7 @@ const DuePackages = () => {
 
     try {
       await axios.delete(
-        `https://api.gharzoreality.com/api/subowner/dues/${categoryToDelete._id}`,
+        `${baseurl}api/subowner/dues/${categoryToDelete._id}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -429,52 +342,28 @@ const DuePackages = () => {
           data: { subOwnerId },
         }
       );
-      toast.success("Category deleted successfully!", {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "colored",
-      });
+      toast.success("Category deleted successfully!");
       await fetchCategories(subOwnerId);
     } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Failed to delete category.",
-        {
-          position: "top-right",
-          autoClose: 5000,
-          theme: "colored",
-        }
-      );
+      toast.error(error.response?.data?.message || "Failed to delete category.");
     } finally {
       setIsDeleteModalOpen(false);
       setCategoryToDelete(null);
     }
   };
 
-  // Assign Dues
   const handleDuesSubmit = async (e) => {
     e.preventDefault();
     if (!selectedTenant) {
-      toast.error("Please select a tenant.", {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "colored",
-      });
+      toast.error("Please select a tenant.");
       return;
     }
     if (!selectedCategory) {
-      toast.error("No category selected.", {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "colored",
-      });
+      toast.error("No category selected.");
       return;
     }
     if (!subOwnerId) {
-      toast.error("Sub-owner ID is missing. Please log in.", {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "colored",
-      });
+      toast.error("Sub-owner ID is missing. Please log in.");
       return;
     }
 
@@ -483,25 +372,17 @@ const DuePackages = () => {
 
     const amount = parseFloat(dueAmount);
     if (!amount || amount <= 0) {
-      toast.error("Please enter a valid amount greater than 0.", {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "colored",
-      });
+      toast.error("Please enter a valid amount greater than 0.");
       return;
     }
     if (!dueDate) {
-      toast.error("Please select a valid due date.", {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "colored",
-      });
+      toast.error("Please select a valid due date.");
       return;
     }
 
     try {
       const response = await axios.post(
-        "https://api.gharzoreality.com/api/subowner/dues/assign",
+        `${baseurl}api/subowner/dues/assign`,
         {
           tenantId: selectedTenant,
           dueId: selectedCategory._id,
@@ -532,26 +413,17 @@ const DuePackages = () => {
       const updatedDues = [...dues, newDue];
       setDues(updatedDues);
       localStorage.setItem("addedDues", JSON.stringify(updatedDues));
-      toast.success("Dues assigned successfully!", {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "colored",
-      });
+      toast.success("Dues assigned successfully!");
       setIsDuesSidebarOpen(false);
       setSelectedTenant("");
       setDueAmount("");
       setDueDate("");
     } catch (error) {
       console.error("Error assigning dues:", error.response || error);
-      toast.error(error.response?.data?.message || "Failed to assign dues.", {
-        position: "top-right",
-        autoClose: 5000,
-        theme: "colored",
-      });
+      toast.error(error.response?.data?.message || "Failed to assign dues.");
     }
   };
 
-  // Effect to initialize data
   useEffect(() => {
     const savedDues = localStorage.getItem("addedDues");
     if (savedDues) {
@@ -560,7 +432,6 @@ const DuePackages = () => {
     fetchSubOwnerId();
   }, []);
 
-  // Handlers for UI
   const handleAddCategoryClick = () => {
     setIsSidebarOpen(true);
     setCategoryName("");
@@ -587,7 +458,6 @@ const DuePackages = () => {
     setDueAmount(category.type === "fixed" ? category.amount : "");
     setDueDate(new Date().toISOString().split("T")[0]);
 
-    // Auto-select first tenant if available
     if (tenants.length > 0) {
       const firstTenantId = tenants[0].tenantId || tenants[0].id;
       setSelectedTenant(firstTenantId);
@@ -606,144 +476,91 @@ const DuePackages = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-blue-50 p-4 md:p-6 relative text-gray-800">
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-      />
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-orange-50 py-8 px-4 sm:px-6 lg:px-8">
+      <ToastContainer position="top-right" autoClose={3000} theme="light" />
+
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="text-center md:text-left mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold mb-3 bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600">
+        <div className="text-center mb-10">
+          <h1 className="text-4xl sm:text-5xl font-extrabold text-[#002856] mb-4">
             Dues Management
           </h1>
-          
+          <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto">
+            Manage and assign recurring dues for your tenants efficiently
+          </p>
         </div>
 
-        {/* Stats and Add Button */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-          <div className="textLg font-semibold text-indigo-700 bg-indigo-100 px-4 py-2 rounded-full">
-            Total Categories: {categories.length}
-          </div>
+        {/* Stats + Add Button */}
+        <div className="flex flex-col sm:flex-row justify-between items-center mb-12 gap-6">
+        <div className="bg-gradient-to-r from-[#002856] to-[#003366] text-white 
+     px-3 py-2 rounded-xl shadow-md text-base sm:text-lg font-semibold text-center">
+  Active Categories: {categories.length}
+</div>
+
           <button
             onClick={handleAddCategoryClick}
-            className="bg-gradient-to-r from-green-600 to-blue-600 text-white px-6 py-3 rounded-xl font-medium shadow-lg hover:shadow-xl hover:from-indigo-700 hover:to-blue-700 transition-all duration-300 transform hover:-translate-y-0.5 w-full sm:w-auto flex items-center justify-center gap-2"
             disabled={loadingSubOwnerId}
+            className="w-full sm:w-auto bg-gradient-to-r from-orange-500 to-orange-600 text-white px-8 py-5 rounded-2xl font-bold text-lg sm:text-xl shadow-2xl hover:shadow-orange-500/50 hover:scale-105 transition-all duration-300 flex items-center justify-center gap-3"
           >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
+            <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
             </svg>
             Add New Category
           </button>
         </div>
 
-        {/* Loading State */}
+        {/* Loading */}
         {loadingSubOwnerId && (
-          <div className="text-center py-8">
-            <svg
-              className="w-8 h-8 animate-spin mx-auto text-indigo-600"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              ></circle>
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
-            <p className="mt-2 text-gray-600">Loading profile...</p>
+          <div className="flex flex-col items-center py-20">
+            <div className="w-16 h-16 border-4 border-orange-200 border-t-orange-600 rounded-full animate-spin"></div>
+            <p className="mt-6 text-xl text-[#002856] font-medium">Loading dues dashboard...</p>
           </div>
         )}
 
-        {/* Error State */}
+        {/* Error */}
         {error && !loadingSubOwnerId && (
-          <div className="text-center py-8 text-red-600">{error}</div>
+          <div className="text-center py-16 text-2xl font-semibold text-red-600 bg-red-50 rounded-3xl p-8 shadow-lg">
+            {error}
+          </div>
         )}
 
-        {/* Categories Grid */}
-        {!loadingSubOwnerId && !error && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+        {/* Categories Grid - Fully Responsive */}
+        {!loadingSubOwnerId && !error && categories.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 mb-16">
             {categories.map((category) => (
               <div
                 key={category._id}
-                className="bg-white/80 backdrop-blur-sm p-5 rounded-2xl shadow-lg border border-white/20 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 group relative overflow-hidden"
+                className="w-full max-w-sm mx-auto bg-white rounded-3xl shadow-xl border border-gray-100 hover:shadow-2xl transition-all duration-300 overflow-hidden"
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
-                <div className="relative z-10">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-indigo-100 to-blue-100 rounded-2xl flex items-center justify-center shadow-md">
-                        <svg
-                          className="w-6 h-6 text-indigo-600"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-                          />
-                        </svg>
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-bold text-gray-800">
-                          {category.name}
-                        </h3>
-                        <p className="text-xs text-gray-500 capitalize">
-                          {category.type} Type
-                        </p>
-                      </div>
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#002856] to-orange-500"></div>
+                <div className="p-6 flex flex-col h-full">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-[#002856] to-[#003b73] rounded-2xl flex items-center justify-center shadow-xl">
+                      <svg className="w-8 h-8 sm:w-9 sm:h-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
                     </div>
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        category.status === "ACTIVE"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-700"
-                      }`}
-                    >
+                    <span className={`px-4 py-2 rounded-full text-sm font-bold shadow-md ${
+                      category.status === "ACTIVE"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-gray-100 text-gray-600"
+                    }`}>
                       {category.status}
                     </span>
                   </div>
-                  <div className="mb-4 p-3 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl">
-                    <p className="text-sm font-medium text-gray-600">Amount</p>
-                    <p className="text-lg font-bold text-indigo-700">
-                      {category.type === "fixed"
-                        ? `₹${category.amount}`
-                        : category.amount}
+
+                  <h3 className="text-2xl font-extrabold text-[#002856] mb-3">{category.name}</h3>
+                  <p className="text-sm text-gray-500 mb-6 capitalize">{category.type} Billing</p>
+
+                  <div className="bg-gradient-to-r from-orange-50 to-orange-100 rounded-2xl p-5 mb-6 shadow-inner">
+                    <p className="text-sm font-semibold text-gray-700">Amount</p>
+                    <p className="text-2xl sm:text-3xl font-extrabold text-orange-600">
+                      {category.type === "fixed" ? `₹${category.amount}` : "Variable"}
                     </p>
                   </div>
-                  <div className="flex justify-between items-center mb-4">
-                    <label className="text-sm font-medium text-gray-700">
-                      Active
-                    </label>
+
+                  <div className="flex items-center justify-between mb-6">
+                    <span className="text-base sm:text-lg font-semibold text-[#002856]">Active Status</span>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input
                         type="checkbox"
@@ -751,53 +568,29 @@ const DuePackages = () => {
                         onChange={() => handleToggle(category._id)}
                         className="sr-only peer"
                       />
-                      <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                      <div className="w-14 h-8 sm:w-16 sm:h-9 bg-gray-300 rounded-full peer peer-checked:bg-gradient-to-r peer-checked:from-orange-500 peer-checked:to-orange-600 after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:after:translate-x-6 sm:peer-checked:after:translate-x-7"></div>
                     </label>
                   </div>
+
                   <button
                     onClick={() => handleAddDues(category)}
-                    className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-3 rounded-xl font-medium shadow-lg hover:shadow-xl hover:from-green-600 hover:to-green-700 transition-all duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed mb-4"
                     disabled={tenants.length === 0}
+                    className="w-full mb-4 py-4 bg-gradient-to-r from-[#002856] to-[#003b73] text-white font-bold rounded-2xl shadow-xl hover:shadow-orange-500/30 hover:scale-105 transition-all duration-300 disabled:opacity-60 text-base"
                   >
-                    Assign Dues
+                    Assign to Tenant
                   </button>
-                  <div className="flex gap-2 justify-end">
+
+                  <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => handleEdit(category)}
-                      className="flex items-center gap-1 px-3 py-2 text-sm text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-all duration-200"
+                      className="py-3 bg-gradient-to-r from-gray-100 to-gray-200 text-[#002856] font-bold rounded-xl hover:from-gray-200 hover:to-gray-300 transition-all shadow-md text-base"
                     >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                        />
-                      </svg>
                       Edit
                     </button>
                     <button
                       onClick={() => handleDelete(category._id)}
-                      className="flex items-center gap-1 px-3 py-2 text-sm text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-all duration-200"
+                      className="py-3 bg-gradient-to-r from-red-100 to-red-200 text-red-700 font-bold rounded-xl hover:from-red-200 hover:to-red-300 transition-all shadow-md text-base"
                     >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                        />
-                      </svg>
                       Delete
                     </button>
                   </div>
@@ -807,80 +600,44 @@ const DuePackages = () => {
           </div>
         )}
 
-        {/* Dues Table */}
+        {/* Recent Dues Table - Responsive */}
         {dues.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-            <div className="px-6 py-4 bg-gradient-to-r from-green-600 to-cyan-600">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
+          <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
+            <div className="bg-gradient-to-r from-[#002856] to-orange-600 px-6 sm:px-10 py-6">
+              <h2 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-3">
+                <svg className="w-7 h-7 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 Recently Assigned Dues
               </h2>
             </div>
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="w-full min-w-full">
+                <thead className="bg-gradient-to-r from-gray-50 to-orange-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      S.No.
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Category
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tenant
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Amount
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Due Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
+                    {["S.No.", "Category", "Tenant", "Amount", "Due Date", "Status"].map((header) => (
+                      <th key={header} className="px-4 sm:px-10 py-5 text-left text-base sm:text-lg font-bold text-[#002856] uppercase tracking-wide">
+                        {header}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="divide-y divide-gray-200">
                   {dues.map((due, index) => (
-                    <tr
-                      key={due._id}
-                      className="hover:bg-gray-50 transition-colors"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {index + 1}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {due.category}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {due.tenantName}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-indigo-600">
-                        ₹{due.amount}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <tr key={due._id} className="hover:bg-orange-50 transition-colors">
+                      <td className="px-4 sm:px-10 py-6 text-gray-600 font-medium">{index + 1}</td>
+                      <td className="px-4 sm:px-10 py-6 font-bold text-[#002856]">{due.category}</td>
+                      <td className="px-4 sm:px-10 py-6 text-gray-700">{due.tenantName}</td>
+                      <td className="px-4 sm:px-10 py-6 text-2xl sm:text-3xl font-extrabold text-orange-600">₹{due.amount}</td>
+                      <td className="px-4 sm:px-10 py-6 text-gray-700">
                         {new Date(due.dueDate).toLocaleDateString("en-GB")}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            due.status === "PENDING"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-green-100 text-green-800"
-                          }`}
-                        >
+                      <td className="px-4 sm:px-10 py-6">
+                        <span className={`px-4 py-2 rounded-full text-sm font-bold shadow-md ${
+                          due.status === "PENDING"
+                            ? "bg-orange-100 text-orange-800"
+                            : "bg-green-100 text-green-800"
+                        }`}>
                           {due.status}
                         </span>
                       </td>
@@ -892,112 +649,92 @@ const DuePackages = () => {
           </div>
         )}
 
-        {/* Add/Edit Category Modal */}
+        {/* Add/Edit Category Modal - Responsive */}
         {isSidebarOpen && (
           <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4"
             onClick={() => setIsSidebarOpen(false)}
           >
             <div
-              className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden transform transition-all duration-300 scale-100 max-h-[90vh] overflow-y-auto"
+              className="w-full max-w-2xl bg-white rounded-3xl shadow-3xl overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="bg-gradient-to-r from-indigo-600 to-blue-600 p-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold text-white">
-                    {selectedCategory ? "Edit Category" : "Add New Category"}
-                  </h2>
-                  <button
-                    onClick={() => setIsSidebarOpen(false)}
-                    className="text-white hover:text-gray-200 text-3xl font-bold"
-                  >
-                    ×
-                  </button>
-                </div>
+              <div className="bg-gradient-to-r from-[#002856] to-orange-600 p-6 text-white">
+                <h2 className="text-2xl sm:text-3xl font-extrabold">
+                  {selectedCategory ? "Edit Category" : "Create New Category"}
+                </h2>
               </div>
-              <form onSubmit={handleSubmit} className="p-6 space-y-6">
+
+              <form onSubmit={handleSubmit} className="p-6 space-y-8">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Category Name *
-                  </label>
+                  <label className="text-lg font-bold text-[#002856]">Category Name *</label>
                   <input
                     type="text"
                     value={categoryName}
                     onChange={(e) => setCategoryName(e.target.value)}
-                    className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
-                    placeholder="e.g. Maintenance, Electricity"
+                    className="mt-3 w-full px-6 py-4 rounded-xl border-2 border-gray-200 focus:border-orange-500 focus:ring-4 focus:ring-orange-200 transition-all text-base"
+                    placeholder="e.g. Maintenance Charge"
                   />
                 </div>
+
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Billing Type *
-                  </label>
-                  <div className="space-y-3">
-                    <label className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-all border-2 border-transparent hover:border-indigo-200">
-                      <input
-                        type="radio"
-                        name="billingMode"
-                        value="variable"
-                        checked={categoryType === "variable"}
-                        onChange={() => handleTypeChange("variable")}
-                        className="text-indigo-600"
-                      />
-                      <div>
-                        <span className="font-semibold text-gray-800">
-                          Variable Amount
-                        </span>
-                        <p className="text-sm text-gray-600">
-                          Set different amounts for each tenant
-                        </p>
-                      </div>
-                    </label>
-                    <label className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-all border-2 border-transparent hover:border-indigo-200">
-                      <input
-                        type="radio"
-                        name="billingMode"
-                        value="fixed"
-                        checked={categoryType === "fixed"}
-                        onChange={() => handleTypeChange("fixed")}
-                        className="text-indigo-600"
-                      />
-                      <div>
-                        <span className="font-semibold text-gray-800">
-                          Fixed Amount
-                        </span>
-                        <p className="text-sm text-gray-600">
-                          Apply the same amount to all tenants
-                        </p>
-                      </div>
-                    </label>
+                  <label className="text-lg font-bold text-[#002856]">Billing Type *</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
+                    {["variable", "fixed"].map((type) => (
+                      <label
+                        key={type}
+                        className={`p-6 rounded-2xl border-4 cursor-pointer transition-all shadow-md ${
+                          categoryType === type
+                            ? "border-orange-500 bg-orange-50"
+                            : "border-gray-200 hover:border-orange-300 bg-gray-50"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="type"
+                          value={type}
+                          checked={categoryType === type}
+                          onChange={() => handleTypeChange(type)}
+                          className="sr-only"
+                        />
+                        <div className="text-center">
+                          <p className="text-2xl font-extrabold text-[#002856] capitalize">{type}</p>
+                          <p className="text-sm text-gray-600 mt-2">
+                            {type === "fixed"
+                              ? "Same fixed amount for all tenants"
+                              : "Custom amount per tenant"}
+                          </p>
+                        </div>
+                      </label>
+                    ))}
                   </div>
                 </div>
+
                 {categoryType === "fixed" && (
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Fixed Amount (₹) *
-                    </label>
+                    <label className="text-lg font-bold text-[#002856]">Fixed Amount (₹) *</label>
                     <input
                       type="number"
                       value={fixedAmount}
                       onChange={(e) => setFixedAmount(e.target.value)}
-                      className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
-                      placeholder="Enter amount"
-                      min="0"
-                      step="0.01"
+                      className="mt-3 w-full px-6 py-4 rounded-xl border-2 border-gray-200 focus:border-[#002856] focus:ring-4 focus:ring-blue-200 transition-all text-base"
+                      placeholder="Enter fixed amount"
+                      min="1"
                     />
                   </div>
                 )}
-                <div className="flex gap-3 pt-4">
+
+                <div className="flex flex-col sm:flex-row gap-4 pt-4">
                   <button
                     type="button"
                     onClick={() => setIsSidebarOpen(false)}
-                    className="flex-1 bg-gray-200 text-gray-800 py-4 rounded-xl hover:bg-gray-300 transition-all font-medium"
+                    className="flex-1 py-4 bg-gray-200 text-[#002856] rounded-xl font-bold text-lg hover:bg-gray-300 transition-all shadow-md"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 bg-gradient-to-r from-indigo-600 to-blue-600 text-white py-4 rounded-xl hover:from-indigo-700 hover:to-blue-700 transition-all font-medium shadow-lg"
+                    className="flex-1 py-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-orange-500/50 transition-all"
                   >
                     {selectedCategory ? "Update Category" : "Create Category"}
                   </button>
@@ -1007,133 +744,60 @@ const DuePackages = () => {
           </div>
         )}
 
-        {/* Assign Dues Modal */}
+        {/* Assign Dues Modal - Responsive */}
         {isDuesSidebarOpen && selectedCategory && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
-            onClick={handleCloseDuesSidebar}
-          >
-            <div
-              className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden transform transition-all duration-300 scale-100 max-h-[90vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
-                      />
-                    </svg>
-                    Assign {selectedCategory.name}
-                  </h2>
-                  <button
-                    onClick={handleCloseDuesSidebar}
-                    className="text-white hover:text-gray-200 text-3xl font-bold"
-                  >
-                    ×
-                  </button>
-                </div>
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4" onClick={handleCloseDuesSidebar}>
+            <div className="w-full max-w-2xl bg-white rounded-3xl shadow-3xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+              <div className="bg-gradient-to-r from-[#002856] to-orange-600 p-8 text-white">
+                <h2 className="text-2xl sm:text-4xl font-extrabold text-center">Assign: {selectedCategory.name}</h2>
               </div>
-              <form onSubmit={handleDuesSubmit} className="p-6 space-y-6">
+              <form onSubmit={handleDuesSubmit} className="p-6 sm:p-10 space-y-8">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Select Tenant *
-                  </label>
+                  <label className="text-lg sm:text-xl font-bold text-[#002856]">Select Tenant *</label>
                   <select
                     value={selectedTenant}
                     onChange={(e) => setSelectedTenant(e.target.value)}
-                    className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
                     disabled={loadingTenants || tenants.length === 0}
+                    className="mt-4 w-full px-6 py-4 rounded-2xl border-2 border-gray-200 focus:border-orange-500 focus:ring-4 focus:ring-orange-200 transition-all text-base"
                   >
-                    <option value="">Choose a tenant</option>
+                    <option value="">-- Select Tenant --</option>
                     {tenants.map((tenant) => (
-                      <option
-                        key={tenant.tenantId || tenant.id}
-                        value={tenant.tenantId || tenant.id}
-                      >
-                        {tenant.name || "Unknown Tenant"}
+                      <option key={tenant.tenantId || tenant.id} value={tenant.tenantId || tenant.id}>
+                        {tenant.name}
                       </option>
                     ))}
                   </select>
-                  {loadingTenants && (
-                    <p className="text-sm text-green-600 mt-2 flex items-center gap-1">
-                      <svg
-                        className="w-4 h-4 animate-spin"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
-                      Loading tenants...
-                    </p>
-                  )}
                 </div>
+
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Amount (₹) *
-                  </label>
+                  <label className="text-lg sm:text-xl font-bold text-[#002856]">Amount (₹) *</label>
                   <input
                     type="number"
                     value={dueAmount}
                     onChange={(e) => setDueAmount(e.target.value)}
-                    className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
-                    placeholder={
-                      selectedCategory.type === "fixed"
-                        ? `Fixed: ₹${selectedCategory.amount}`
-                        : "Enter custom amount"
-                    }
                     disabled={selectedCategory.type === "fixed"}
-                    min="0"
-                    step="0.01"
+                    className="mt-4 w-full px-6 py-4 rounded-2xl border-2 border-gray-200 focus:border-[#002856] focus:ring-4 focus:ring-blue-200 transition-all text-base"
+                    placeholder={selectedCategory.type === "fixed" ? `Fixed: ₹${selectedCategory.amount}` : "Enter custom amount"}
                   />
                 </div>
+
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Due Date *
-                  </label>
+                  <label className="text-lg sm:text-xl font-bold text-[#002856]">Due Date *</label>
                   <input
                     type="date"
                     value={dueDate}
                     onChange={(e) => setDueDate(e.target.value)}
-                    className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
                     min={new Date().toISOString().split("T")[0]}
+                    className="mt-4 w-full px-6 py-4 rounded-2xl border-2 border-gray-200 focus:border-orange-500 focus:ring-4 focus:ring-orange-200 transition-all text-base"
                   />
                 </div>
-                <div className="flex gap-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={handleCloseDuesSidebar}
-                    className="flex-1 bg-gray-200 text-gray-800 py-4 rounded-xl hover:bg-gray-300 transition-all font-medium"
-                  >
+
+                <div className="flex flex-col sm:flex-row gap-4 pt-6">
+                  <button type="button" onClick={handleCloseDuesSidebar} className="flex-1 py-4 bg-gray-200 text-[#002856] rounded-2xl font-bold text-lg hover:bg-gray-300 transition-all shadow-md">
                     Cancel
                   </button>
-                  <button
-                    type="submit"
-                    className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all font-medium shadow-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
-                    disabled={!selectedTenant || loadingTenants}
-                  >
-                    Assign Dues
+                  <button type="submit" disabled={!selectedTenant} className="flex-1 py-4 bg-gradient-to-r from-[#002856] to-orange-600 text-white rounded-2xl font-bold text-lg shadow-xl hover:shadow-orange-500/50 transition-all disabled:opacity-60">
+                    Assign Due
                   </button>
                 </div>
               </form>
@@ -1141,64 +805,29 @@ const DuePackages = () => {
           </div>
         )}
 
-        {/* Delete Confirmation Modal */}
+        {/* Delete Confirmation Modal - Responsive */}
         {isDeleteModalOpen && categoryToDelete && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
-            onClick={() => setIsDeleteModalOpen(false)}
-          >
-            <div
-              className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden transform transition-all duration-300 scale-100"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="bg-gradient-to-r from-red-600 to-red-700 p-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      />
-                    </svg>
-                    Delete Category
-                  </h2>
-                  <button
-                    onClick={() => setIsDeleteModalOpen(false)}
-                    className="text-white hover:text-gray-200 text-3xl font-bold"
-                  >
-                    ×
-                  </button>
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4" onClick={() => setIsDeleteModalOpen(false)}>
+            <div className="bg-white rounded-3xl shadow-3xl p-8 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+              <div className="text-center mb-8">
+                <div className="w-20 h-20 mx-auto bg-red-100 rounded-full flex items-center justify-center shadow-xl">
+                  <svg className="w-12 h-12 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6" />
+                  </svg>
                 </div>
-              </div>
-              <div className="p-6">
-                <p className="text-gray-700 text-lg mb-4">
-                  Are you sure you want to delete the category{" "}
-                  <span className="font-semibold">
-                    "{categoryToDelete.name}"
-                  </span>
-                  ? This action cannot be undone.
+                <h3 className="text-2xl sm:text-3xl font-extrabold text-[#002856] mt-6">Confirm Delete</h3>
+                <p className="text-base sm:text-lg text-gray-600 mt-4">
+                  Permanently delete <span className="font-bold text-red-600">"{categoryToDelete.name}"</span>?
+                  This cannot be undone.
                 </p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setIsDeleteModalOpen(false)}
-                    className="flex-1 bg-gray-200 text-gray-800 py-4 rounded-xl hover:bg-gray-300 transition-all font-medium"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={confirmDelete}
-                    className="flex-1 bg-gradient-to-r from-red-600 to-red-700 text-white py-4 rounded-xl hover:from-red-700 hover:to-red-800 transition-all font-medium shadow-lg"
-                  >
-                    Confirm Delete
-                  </button>
-                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 py-4 bg-gray-200 text-[#002856] rounded-2xl font-bold text-lg hover:bg-gray-300 shadow-md">
+                  Cancel
+                </button>
+                <button onClick={confirmDelete} className="flex-1 py-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-2xl font-bold text-lg shadow-xl hover:shadow-red-500/50">
+                  Delete Category
+                </button>
               </div>
             </div>
           </div>

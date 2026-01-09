@@ -9,16 +9,17 @@ import {
   FaMapMarkerAlt,
   FaEdit,
   FaSave,
+  FaTimes,
 } from "react-icons/fa";
 import axios from "axios";
-import profileBG from "../../../assets/Images/profileBG.jpg"; // Retain original background image
+import profileBG from "../../../assets/Images/profileBG.jpg";
 import baseurl from "../../../../BaseUrl";
 
 const ProfilePage = () => {
   const [profile, setProfile] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({});
-  const [loading, setLoading] = useState(true); // Added for skeleton loading
+  const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState({});
 
   const token = localStorage.getItem("usertoken");
@@ -143,7 +144,6 @@ const ProfilePage = () => {
 
   // Update Profile
   const handleUpdate = async () => {
-    // Since real-time validation is on, check current errors
     if (Object.keys(errors).length > 0) {
       alert("Please correct the errors in the form.");
       return;
@@ -172,18 +172,25 @@ const ProfilePage = () => {
   // Enter edit mode
   const handleEdit = () => {
     setEditMode(true);
-    setErrors({}); // Clear errors when entering edit mode
+    setErrors({});
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-indigo-950 to-blue-950">
-        <div className="w-full max-w-3xl p-8">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-6xl">
           <SkeletonHeader />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-            {Array.from({ length: 10 }).map((_, i) => (
-              <SkeletonField key={i} />
-            ))}
+          <div className="mt-8 bg-white rounded-3xl shadow-2xl p-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-1">
+                <div className="h-64 bg-gray-200 rounded-2xl animate-pulse" />
+              </div>
+              <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <SkeletonField key={i} />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -192,237 +199,315 @@ const ProfilePage = () => {
 
   if (!profile) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-indigo-950 to-blue-950">
-        <div className="text-center text-red-300 font-medium bg-red-900/20 border border-red-600/30 px-4 py-3 rounded-xl">
-          Failed to load profile.
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white border-l-4 border-red-500 rounded-xl px-8 py-6 shadow-xl"
+        >
+          <p className="text-red-600 font-semibold text-center">Failed to load profile.</p>
+        </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen py-2 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-orange-50 py-12 px-4 sm:px-6 lg:px-8">
+      
       <motion.div
-        initial={{ opacity: 0, y: 40 }}
+        initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="relative mx-auto w-full max-w-6xl"
+        className="max-w-6xl mx-auto"
       >
-        {/* Glow backdrop */}
-        <div className="absolute inset-0 -z-10 blur-3xl opacity-50 pointer-events-none">
-          <div className="mx-auto h-64 w-64 bg-indigo-600/40 rounded-full translate-y-10" />
+        {/* Header with Edit Toggle */}
+        <div className="flex justify-between items-center mb-8 mt-9 ml-4">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-800">My Profile</h1>
+            <p className="text-gray-500 mt-1">Manage your personal information</p>
+          </div>
+          
+          {!editMode ? (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleEdit}
+              className="flex items-center gap-2 px-6 py-3 bg-[#3B9DF8] text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-all"
+            >
+              <FaEdit />
+              Edit Profile
+            </motion.button>
+          ) : (
+            <div className="flex gap-3">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleUpdate}
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-all"
+              >
+                <FaSave />
+                Save
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setEditMode(false)}
+                className="flex items-center gap-2 px-6 py-3 bg-gray-200 text-gray-700 rounded-full font-semibold hover:bg-gray-300 transition-all"
+              >
+                <FaTimes />
+                Cancel
+              </motion.button>
+            </div>
+          )}
         </div>
 
-        {/* Card with margin-top for mobile */}
-        <div className="relative bg-gradient-to-br from-slate-950 via-indigo-950 to-blue-950 border border-white/10 rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.7)] backdrop-blur-xl mt-6">
-          {/* Top Title */}
-          <div className="flex items-center justify-center px-6 sm:px-10 pt-6">
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white/90">
-              User Profile
-            </h1>
-          </div>
+        {/* Main Content Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-white rounded-3xl shadow-2xl overflow-hidden"
+        >
+          <div className="grid grid-cols-1 lg:grid-cols-3">
+            
+            {/* Left Sidebar - Avatar & Basic Info */}
+            <div className="lg:col-span-1 bg-gradient-to-br from-[#002B5C] to-[#004080] p-8 text-white">
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="text-center"
+              >
+                {/* Avatar */}
+                <div className="relative inline-block mb-6">
+                  <div className="w-40 h-40 rounded-full bg-gradient-to-br from-[#FF6B00] to-[#FF8C3A] p-1">
+                    <div className="w-full h-full rounded-full bg-[#002B5C] flex items-center justify-center">
+                      <FaUser className="text-6xl text-[#FF6B00]" />
+                    </div>
+                  </div>
+                  {/* Status Indicator */}
+                  <div className="absolute bottom-2 right-2 w-6 h-6 bg-emerald-400 rounded-full border-4 border-[#002B5C]" />
+                </div>
 
-          {/* Avatar */}
-          <div className="px-6 sm:px-10 mt-8 flex justify-center">
-            <motion.div
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 180, damping: 15 }}
-              className="relative"
-            >
-              <div className="absolute inset-0 rounded-full bg-indigo-500/30 blur-2xl -z-10" />
-            </motion.div>
-          </div>
+                {/* Name */}
+                <h2 className="text-2xl font-bold mb-2">{formData?.fullName || "User Name"}</h2>
+                <p className="text-blue-200 text-sm mb-6">{formData?.email || "email@example.com"}</p>
 
-          {/* Fields */}
-          <div className="px-6 sm:px-10 py-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field
-                label="Full Name"
-                icon={<FaUser />}
-                value={formData?.fullName}
-                name="fullName"
-                onChange={(e) =>
-                  setFormData({ ...formData, fullName: e.target.value })
-                }
-                editMode={editMode}
-                error={errors.fullName}
-              />
-              <Field
-                label="Email"
-                icon={<FaEnvelope />}
-                value={formData?.email}
-                name="email"
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-                editMode={editMode}
-                type="email"
-                error={errors.email}
-              />
-              <Field
-                label="Phone"
-                icon={<FaPhone />}
-                value={formData?.phone}
-                name="phone"
-                onChange={(e) =>
-                  setFormData({ ...formData, phone: e.target.value })
-                }
-                editMode={editMode}
-                type="tel"
-                error={errors.phone}
-              />
-              <Field
-                label="Age"
-                icon={<FaBirthdayCake />}
-                value={formData?.age}
-                name="age"
-                onChange={(e) =>
-                  setFormData({ ...formData, age: e.target.value })
-                }
-                editMode={editMode}
-                type="number"
-                error={errors.age}
-              />
-              <Field
-                label="Gender"
-                icon={<FaVenusMars />}
-                value={formData?.gender}
-                name="gender"
-                onChange={(e) =>
-                  setFormData({ ...formData, gender: e.target.value })
-                }
-                editMode={editMode}
-                dropdown
-                error={errors.gender}
-              />
-              <Field
-                label="Street"
-                icon={<FaMapMarkerAlt />}
-                value={formData?.address?.street || ''}
-                name="street"
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    address: { ...(formData.address || {}), street: e.target.value },
-                  })
-                }
-                editMode={editMode}
-                error={errors.street}
-              />
-              <Field
-                label="City"
-                icon={<FaMapMarkerAlt />}
-                value={formData?.address?.city || ''}
-                name="city"
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    address: { ...(formData.address || {}), city: e.target.value },
-                  })
-                }
-                editMode={editMode}
-                error={errors.city}
-              />
-              <Field
-                label="State"
-                icon={<FaMapMarkerAlt />}
-                value={formData?.address?.state || ''}
-                name="state"
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    address: { ...(formData.address || {}), state: e.target.value },
-                  })
-                }
-                editMode={editMode}
-                error={errors.state}
-              />
-              <Field
-                label="Postal Code"
-                icon={<FaMapMarkerAlt />}
-                value={formData?.address?.postalCode || ''}
-                name="postalCode"
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    address: {
-                      ...(formData.address || {}),
-                      postalCode: e.target.value,
-                    },
-                  })
-                }
-                editMode={editMode}
-                error={errors.postalCode}
-              />
-              <Field
-                label="Country"
-                icon={<FaMapMarkerAlt />}
-                value={formData?.address?.country || ''}
-                name="country"
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    address: { ...(formData.address || {}), country: e.target.value },
-                  })
-                }
-                editMode={editMode}
-                error={errors.country}
-              />
+                {/* Stats Cards */}
+                <div className="space-y-4 mt-8">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-[#FF6B00]/20 rounded-lg flex items-center justify-center">
+                        <FaPhone className="text-[#FF6B00] text-xl" />
+                      </div>
+                      <div className="text-left flex-1">
+                        <p className="text-xs text-blue-200">Phone</p>
+                        <p className="font-semibold">{formData?.phone || "Not provided"}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-[#FF6B00]/20 rounded-lg flex items-center justify-center">
+                        <FaBirthdayCake className="text-[#FF6B00] text-xl" />
+                      </div>
+                      <div className="text-left flex-1">
+                        <p className="text-xs text-blue-200">Age</p>
+                        <p className="font-semibold">{formData?.age || "Not provided"} years</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-[#FF6B00]/20 rounded-lg flex items-center justify-center">
+                        <FaVenusMars className="text-[#FF6B00] text-xl" />
+                      </div>
+                      <div className="text-left flex-1">
+                        <p className="text-xs text-blue-200">Gender</p>
+                        <p className="font-semibold">{formData?.gender || "Not provided"}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+
+            {/* Right Content - Form Fields */}
+            <div className="lg:col-span-2 p-8">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+              >
+                {/* Personal Information Section */}
+                <div className="mb-8">
+                  <h3 className="text-xl font-bold text-gray-800 mb-1 flex items-center gap-2">
+                    <span className="w-1 h-6 bg-gradient-to-b from-[#FF6B00] to-[#FF8C3A] rounded-full" />
+                    Personal Information
+                  </h3>
+                  <p className="text-gray-500 text-sm mb-6">Update your personal details</p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Field
+                      label="Full Name"
+                      icon={<FaUser />}
+                      value={formData?.fullName}
+                      name="fullName"
+                      onChange={(e) =>
+                        setFormData({ ...formData, fullName: e.target.value })
+                      }
+                      editMode={editMode}
+                      error={errors.fullName}
+                    />
+                    <Field
+                      label="Email Address"
+                      icon={<FaEnvelope />}
+                      value={formData?.email}
+                      name="email"
+                      onChange={(e) =>
+                        setFormData({ ...formData, email: e.target.value })
+                      }
+                      editMode={editMode}
+                      type="email"
+                      error={errors.email}
+                    />
+                    <Field
+                      label="Phone Number"
+                      icon={<FaPhone />}
+                      value={formData?.phone}
+                      name="phone"
+                      onChange={(e) =>
+                        setFormData({ ...formData, phone: e.target.value })
+                      }
+                      editMode={editMode}
+                      type="tel"
+                      error={errors.phone}
+                    />
+                    <Field
+                      label="Age"
+                      icon={<FaBirthdayCake />}
+                      value={formData?.age}
+                      name="age"
+                      onChange={(e) =>
+                        setFormData({ ...formData, age: e.target.value })
+                      }
+                      editMode={editMode}
+                      type="number"
+                      error={errors.age}
+                    />
+                    <Field
+                      label="Gender"
+                      icon={<FaVenusMars />}
+                      value={formData?.gender}
+                      name="gender"
+                      onChange={(e) =>
+                        setFormData({ ...formData, gender: e.target.value })
+                      }
+                      editMode={editMode}
+                      dropdown
+                      error={errors.gender}
+                    />
+                  </div>
+                </div>
+
+                {/* Address Section */}
+                <div>
+                  <h3 className="text-xl font-bold text-gray-800 mb-1 flex items-center gap-2">
+                    <span className="w-1 h-6 bg-gradient-to-b from-[#FF6B00] to-[#FF8C3A] rounded-full" />
+                    Address Details
+                  </h3>
+                  <p className="text-gray-500 text-sm mb-6">Manage your location information</p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Field
+                      label="Street Address"
+                      icon={<FaMapMarkerAlt />}
+                      value={formData?.address?.street || ''}
+                      name="street"
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          address: { ...(formData.address || {}), street: e.target.value },
+                        })
+                      }
+                      editMode={editMode}
+                      error={errors.street}
+                    />
+                    <Field
+                      label="City"
+                      icon={<FaMapMarkerAlt />}
+                      value={formData?.address?.city || ''}
+                      name="city"
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          address: { ...(formData.address || {}), city: e.target.value },
+                        })
+                      }
+                      editMode={editMode}
+                      error={errors.city}
+                    />
+                    <Field
+                      label="State"
+                      icon={<FaMapMarkerAlt />}
+                      value={formData?.address?.state || ''}
+                      name="state"
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          address: { ...(formData.address || {}), state: e.target.value },
+                        })
+                      }
+                      editMode={editMode}
+                      error={errors.state}
+                    />
+                    <Field
+                      label="Postal Code"
+                      icon={<FaMapMarkerAlt />}
+                      value={formData?.address?.postalCode || ''}
+                      name="postalCode"
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          address: {
+                            ...(formData.address || {}),
+                            postalCode: e.target.value,
+                          },
+                        })
+                      }
+                      editMode={editMode}
+                      error={errors.postalCode}
+                    />
+                    <div className="md:col-span-2">
+                      <Field
+                        label="Country"
+                        icon={<FaMapMarkerAlt />}
+                        value={formData?.address?.country || ''}
+                        name="country"
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            address: { ...(formData.address || {}), country: e.target.value },
+                          })
+                        }
+                        editMode={editMode}
+                        error={errors.country}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
             </div>
           </div>
-
-          {/* Bottom Buttons */}
-          <div className="flex justify-between px-6 sm:px-10 pb-6">
-            {editMode ? (
-              <NeonButton
-                onClick={handleUpdate}
-                variant="success"
-                icon={FaSave}
-              >
-                Save
-              </NeonButton>
-            ) : (
-              <NeonButton
-                onClick={handleEdit}
-                variant="primary"
-                icon={FaEdit}
-              >
-                Edit
-              </NeonButton>
-            )}
-          </div>
-        </div>
+        </motion.div>
       </motion.div>
     </div>
   );
 };
 
-// Neon Button Component
-function NeonButton({ children, icon: Icon, onClick, variant = "primary" }) {
-  const variants = {
-    primary:
-      "bg-gradient-to-b from-indigo-500 to-indigo-700 hover:from-indigo-400 hover:to-indigo-600 text-white shadow-[0_8px_20px_rgba(79,70,229,0.45)]",
-    success:
-      "bg-gradient-to-b from-emerald-500 to-emerald-700 hover:from-emerald-400 hover:to-emerald-600 text-white shadow-[0_8px_20px_rgba(16,185,129,0.45)]",
-    danger:
-      "bg-gradient-to-b from-rose-500 to-rose-700 hover:from-rose-400 hover:to-rose-600 text-white shadow-[0_8px_20px_rgba(244,63,94,0.45)]",
-  }[variant];
-
-  return (
-    <motion.button
-      whileTap={{ scale: 0.96 }}
-      whileHover={{ y: -2 }}
-      onClick={onClick}
-      className={`${variants} flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl border border-white/10`}
-    >
-      {Icon && <Icon className="text-lg drop-shadow" />}
-      {children}
-    </motion.button>
-  );
-}
-
-// Field Component
+// Modern Field Component
 function Field({
   label,
   icon,
@@ -435,94 +520,81 @@ function Field({
   error,
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="group relative flex items-center gap-3 rounded-2xl p-3 md:p-4 bg-white text-indigo-600 border border-white/10 hover:border-indigo-400/30 transition-all"
-    >
-      <IconBadge>{icon}</IconBadge>
-
+    <div className="space-y-2 ">
+      <label className="block text-sm font-semibold text-gray-700 mb-2">
+        {label}
+      </label>
+      
       {editMode ? (
-        <div className="flex flex-col w-full">
-          <label className="text-xs md:text-sm text-indigo-200/70 mb-1">
-            {label}
-          </label>
-          {dropdown ? (
-            <select
-              name={name}
-              value={value || ""}
-              onChange={onChange}
-              className="w-full rounded-xl px-3 py-2 bg-slate-800/80 text-indigo-50 placeholder-indigo-200/40 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400/60 focus:border-transparent"
+        <div className="space-y-1">
+          <div className="relative">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+              {icon}
+            </div>
+            {dropdown ? (
+              <select
+                name={name}
+                value={value || ""}
+                onChange={onChange}
+                className="w-full pl-12 pr-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-800 focus:border-[#FF6B00] focus:bg-white focus:outline-none transition-all"
+              >
+                <option value="">Select Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
+            ) : (
+              <input
+                type={type}
+                name={name}
+                value={value || ""}
+                onChange={onChange}
+                placeholder={`Enter ${label.toLowerCase()}`}
+                className="w-full pl-12 pr-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:border-[#FF6B00] focus:bg-white focus:outline-none transition-all"
+              />
+            )}
+          </div>
+          {error && (
+            <motion.p
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-red-500 text-xs font-medium ml-1"
             >
-              <option value="">Select Gender</option>
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-            </select>
-          ) : (
-            <input
-              type={type}
-              name={name}
-              value={value || ""}
-              onChange={onChange}
-              className="w-full rounded-xl px-3 py-2 bg-slate-800/80 text-indigo-50 placeholder-indigo-200/40 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400/60 focus:border-transparent"
-              placeholder={label}
-            />
+              {error}
+            </motion.p>
           )}
-          {error && <div className="text-red-500 text-xs mt-1">{error}</div>}
         </div>
       ) : (
-        <div className="flex flex-col w-full">
-          <span className="text-xs md:text-sm text-indigo-600">{label}</span>
-          <span className="text-indigo-600 font-medium break-words">
-            {value || <span className="opacity-40">—</span>}
-          </span>
+        <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+          <div className="text-[#FF6B00] text-lg">
+            {icon}
+          </div>
+          <p className="text-gray-800 font-medium flex-1">
+            {value || <span className="text-gray-400 italic">Not provided</span>}
+          </p>
         </div>
       )}
-    </motion.div>
+    </div>
   );
 }
 
-// Icon Badge Component
-function IconBadge({ children }) {
-  return (
-    <motion.div
-      whileHover={{ rotateX: 8, rotateY: -8 }}
-      transition={{ type: "spring", stiffness: 180, damping: 12 }}
-      className="relative shrink-0 w-12 h-12 md:w-14 md:h-14 grid place-items-center
-                 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-700
-                 shadow-[inset_0_1px_8px_rgba(255,255,255,0.35),0_15px_30px_rgba(0,0,0,0.45)]
-                 border border-white/10"
-    >
-      {/* top glossy streak */}
-      <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-16 h-6 bg-white/15 blur-lg rounded-full pointer-events-none" />
-      {/* side glow */}
-      <div className="absolute -inset-1 rounded-2xl bg-indigo-400/0 group-hover:bg-indigo-400/10 transition-colors" />
-      <div className="text-white text-2xl drop-shadow-[0_6px_10px_rgba(0,0,0,0.35)]">
-        {children}
-      </div>
-    </motion.div>
-  );
-}
-
-// Skeleton Components for Loading
+// Loading Skeleton Components
 function SkeletonHeader() {
   return (
-    <div className="animate-pulse">
-      <div className="h-8 w-48 rounded-lg bg-indigo-400/20" />
-      <div className="mt-6 h-36 w-36 rounded-full bg-indigo-400/20 mx-auto" />
+    <div className="flex justify-between items-center mb-8 animate-pulse">
+      <div>
+        <div className="h-10 w-48 bg-gray-300 rounded-lg mb-2" />
+        <div className="h-4 w-64 bg-gray-200 rounded" />
+      </div>
+      <div className="h-12 w-32 bg-gray-300 rounded-full" />
     </div>
   );
 }
 
 function SkeletonField() {
   return (
-    <div className="flex items-center gap-3 p-4 rounded-2xl bg-slate-900/60 border border-white/10 animate-pulse">
-      <div className="w-14 h-14 rounded-2xl bg-indigo-400/20" />
-      <div className="flex-1">
-        <div className="h-3 w-24 bg-indigo-400/20 rounded mb-2" />
-        <div className="h-4 w-40 bg-indigo-400/20 rounded" />
-      </div>
+    <div className="space-y-2 animate-pulse">
+      <div className="h-4 w-24 bg-gray-300 rounded" />
+      <div className="h-12 bg-gray-200 rounded-xl" />
     </div>
   );
 }

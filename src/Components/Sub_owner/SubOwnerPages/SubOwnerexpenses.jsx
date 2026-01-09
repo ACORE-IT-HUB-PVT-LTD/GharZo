@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
+import baseurl from "../../../../BaseUrl";
 
 const Expenses = () => {
   const [totalExpensesAmount, setTotalExpensesAmount] = useState(0);
@@ -59,7 +60,7 @@ useEffect(() => {
 
     try {
       const response = await fetch(
-        "https://api.gharzoreality.com/api/subowner/expenses",
+        `${baseurl}api/subowner/expenses`,
         {
           method: "GET",
           headers: {
@@ -122,7 +123,7 @@ useEffect(() => {
       }
       try {
         const response = await fetch(
-          "https://api.gharzoreality.com/api/sub-owner/auth/profile",
+          `${baseurl}api/sub-owner/auth/profile`,
           {
             method: "GET",
             headers: {
@@ -174,7 +175,7 @@ useEffect(() => {
     const fetchCategories = async () => {
       try {
         const response = await fetch(
-          "https://api.gharzoreality.com/api/subowner/expense/categories",
+          `${baseurl}api/subowner/expense/categories`,
           {
             method: "GET",
             headers: {
@@ -206,7 +207,7 @@ useEffect(() => {
 
     const fetchExpenses = async () => {
       try {
-        let url = "https://api.gharzoreality.com/api/subowner/expenses";
+        let url = `${baseurl}api/subowner/expenses`;
         const hasFilters =
           filters.category ||
           filters.startDate ||
@@ -223,7 +224,7 @@ useEffect(() => {
             ...(filters.paidBy && { paidBy: filters.paidBy }),
             ...(filters.paidTo && { paidTo: filters.paidTo }),
           });
-          url = `https://api.gharzoreality.com/api/subowner/expenses?${queryParams}`;
+          url = `${baseurl}api/subowner/expenses?${queryParams}`;
         }
         const response = await fetch(url, {
           method: "GET",
@@ -250,7 +251,7 @@ useEffect(() => {
     const fetchMonthlyExpenses = async () => {
       try {
         const response = await fetch(
-          `https://api.gharzoreality.com/api/subowner/expenses/trend/monthly?year=${year}`,
+          `${baseurl}api/subowner/expenses/trend/monthly?year=${year}`,
           {
             method: "GET",
             headers: {
@@ -281,7 +282,7 @@ useEffect(() => {
     const fetchYearlyExpenses = async () => {
       try {
         const response = await fetch(
-          "https://api.gharzoreality.com/api/subowner/expenses/trend/yearly",
+          `${baseurl}api/subowner/expenses/trend/yearly`,
           {
             method: "GET",
             headers: {
@@ -321,7 +322,7 @@ useEffect(() => {
     }
     const fetchCategorySummary = async () => {
       try {
-        const url = `https://api.gharzoreality.com/api/subowner/expenses/summary?year=${categorySummaryYear}&month=${categorySummaryMonth}`;
+        const url = `${baseurl}api/subowner/expenses/summary?year=${categorySummaryYear}&month=${categorySummaryMonth}`;
         const response = await fetch(url, {
           method: "GET",
           headers: {
@@ -350,7 +351,7 @@ useEffect(() => {
     }
     try {
       const response = await fetch(
-        `https://api.gharzoreality.com/api/subowner/expense/categories/${categoryId}`,
+        `${baseurl}api/subowner/expense/categories/${categoryId}`,
         {
           method: "GET",
           headers: {
@@ -385,7 +386,7 @@ useEffect(() => {
     }
     try {
       const response = await fetch(
-        `https://api.gharzoreality.com/api/subowner/expenses/${expenseId}`,
+        `${baseurl}api/subowner/expenses/${expenseId}`,
         {
           method: "GET",
           headers: {
@@ -418,7 +419,7 @@ useEffect(() => {
     }
     try {
       const response = await fetch(
-        `https://api.gharzoreality.com/api/subowner/expense/categories/${editCategoryId}`,
+        `${baseurl}api/subowner/expense/categories/${editCategoryId}`,
         {
           method: "PUT",
           headers: {
@@ -471,7 +472,7 @@ useEffect(() => {
     }
     try {
       const response = await fetch(
-        "https://api.gharzoreality.com/api/subowner/expense/categories/create",
+        `${baseurl}api/subowner/expense/categories/create`,
         {
           method: "POST",
           headers: {
@@ -513,7 +514,7 @@ useEffect(() => {
     }
     try {
       const response = await fetch(
-        `https://api.gharzoreality.com/api/subowner/expense/categories/${categoryId}`,
+        `${baseurl}api/subowner/expense/categories/${categoryId}`,
         {
           method: "DELETE",
           headers: {
@@ -575,7 +576,7 @@ useEffect(() => {
         formData.append("billImage", expenseData.billImage);
       }
       const response = await fetch(
-        "https://api.gharzoreality.com/api/subowner/expenses/create",
+        `${baseurl}api/subowner/expenses/create`,
         {
           method: "POST",
           headers: {
@@ -648,7 +649,7 @@ useEffect(() => {
         formData.append("billImage", expenseData.billImage);
       }
       const response = await fetch(
-        `https://api.gharzoreality.com/api/subowner/expenses/${editExpenseId}`,
+        `${baseurl}api/subowner/expenses/${editExpenseId}`,
         {
           method: "PUT",
           headers: {
@@ -700,7 +701,7 @@ useEffect(() => {
     }
     try {
       const response = await fetch(
-        `https://api.gharzoreality.com/api/subowner/expenses/${expenseId}`,
+        `${baseurl}api/subowner/expenses/${expenseId}`,
         {
           method: "DELETE",
           headers: {

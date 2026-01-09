@@ -701,7 +701,7 @@ function UserSignup() {
                     </div>
 
                     {/* UI UPDATED: Email Verification - Step Indicator */}
-                    <div className="mt-5 p-5 bg-gradient-to-br from-cyan-50 to-blue-50 border-2 border-cyan-200 rounded-2xl">
+                    {/* <div className="mt-5 p-5 bg-gradient-to-br from-cyan-50 to-blue-50 border-2 border-cyan-200 rounded-2xl">
                       <div className="flex items-center justify-between mb-4">
                         <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
                           <span className="w-6 h-6 bg-cyan-500 text-white rounded-full flex items-center justify-center text-xs">
@@ -794,7 +794,7 @@ function UserSignup() {
                           {fieldErrors.emailVerification}
                         </motion.p>
                       )}
-                    </div>
+                    </div> */}
                   </motion.div>
 
                   {/* UI UPDATED: Section 3 - Address Information */}

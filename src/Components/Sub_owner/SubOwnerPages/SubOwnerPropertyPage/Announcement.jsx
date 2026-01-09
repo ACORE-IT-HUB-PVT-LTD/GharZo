@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import baseurl from "../../../../../BaseUrl";
 
 const Announcements = () => {
   const [formData, setFormData] = useState({
@@ -37,7 +38,7 @@ const Announcements = () => {
 
     try {
       const res = await axios.get(
-        "https://api.gharzoreality.com/api/subowner/announcements",
+        `${baseurl}api/subowner/announcements`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -68,7 +69,7 @@ const Announcements = () => {
 
     try {
       const res = await axios.delete(
-        `https://api.gharzoreality.com/api/subowner/announcements/${announcement._id}`,
+        `${baseurl}api/subowner/announcements/${announcement._id}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -128,7 +129,7 @@ const Announcements = () => {
 
     try {
       const res = await axios.post(
-        "https://api.gharzoreality.com/api/subowner/announcements/create",
+        `${baseurl}api/subowner/announcements/create`,
         formData,
         {
           headers: {
@@ -192,7 +193,7 @@ const Announcements = () => {
 
     try {
       const res = await axios.put(
-        `https://api.gharzoreality.com/api/subowner/announcements/${editData._id}`,
+        `${baseurl}api/subowner/announcements/${editData._id}`,
         {
           title: editData.title,
           message: editData.message,

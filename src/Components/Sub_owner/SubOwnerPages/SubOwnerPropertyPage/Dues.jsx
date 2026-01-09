@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import baseurl from "../../../../../BaseUrl";
 
 const Dues = () => {
   const [data, setData] = useState({ subOwner: {}, tenants: [] });
@@ -41,7 +42,7 @@ const Dues = () => {
       }
       try {
         const response = await axios.get(
-          "https://api.gharzoreality.com/api/sub-owner/auth/profile",
+          `${baseurl}api/sub-owner/auth/profile`,
           {
             headers: {
               "Content-Type": "application/json",
@@ -108,7 +109,7 @@ const Dues = () => {
 
       try {
         const response = await axios.get(
-          "https://api.gharzoreality.com/api/subowner/dues/summary",
+          `${baseurl}api/subowner/dues/summary`,
           {
             headers: {
               "Content-Type": "application/json",

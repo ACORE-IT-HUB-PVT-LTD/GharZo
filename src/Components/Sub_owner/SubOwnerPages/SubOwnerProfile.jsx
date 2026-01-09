@@ -15,6 +15,7 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import user from "../../../assets/images/user.jpg";
 import axios from "axios"; // Added axios import
+import baseurl from "../../../../BaseUrl";
 
 /* ---------- Main Component ---------- */
 function SubOwnerProfile() {
@@ -48,7 +49,7 @@ function SubOwnerProfile() {
 
       setLoading(true);
       const response = await fetch(
-        "https://api.gharzoreality.com/api/sub-owner/auth/profile",
+        `${baseurl}api/sub-owner/auth/profile`,
         {
           method: "GET",
           headers: {
@@ -115,7 +116,7 @@ function SubOwnerProfile() {
       }
 
       const response = await fetch(
-        "https://api.gharzoreality.com/api/sub-owner/auth/profile",
+        `${baseurl}api/sub-owner/auth/profile`,
         {
           method: "PUT",
           headers: {
@@ -153,7 +154,7 @@ function SubOwnerProfile() {
 
       setLoading(true);
       const response = await axios.put(
-        "https://api.gharzoreality.com/api/sub-owner/auth/change-password",
+        "https://api.drazeapp.com/api/sub-owner/auth/change-password",
         {
           currentPassword: passwordData.currentPassword,
           newPassword: passwordData.newPassword,
@@ -262,9 +263,9 @@ function SubOwnerProfile() {
                     ? previewImage
                     : subOwnerData.profilePhoto &&
                       subOwnerData.profilePhoto.startsWith("http")
-                    ? `https://api.gharzoreality.com${subOwnerData.profilePhoto}`
+                    ? `https://api.drazeapp.com${subOwnerData.profilePhoto}`
                     : subOwnerData.profilePhoto
-                    ? `https://api.gharzoreality.com${subOwnerData.profilePhoto}`
+                    ? `https://api.drazeapp.com${subOwnerData.profilePhoto}`
                     : user
                 }
                 alt="Profile"

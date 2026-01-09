@@ -10,6 +10,7 @@ import {
 } from "react-icons/fa";
 import AOS from "aos";
 import "aos/dist/aos.css";
+import baseurl from "../../../../BaseUrl";
 
 const RentProperty = () => {
   const navigate = useNavigate();
@@ -30,7 +31,7 @@ const RentProperty = () => {
 
     const fetchData = async () => {
       try {
-        const res = await axios.get("https://api.gharzoreality.com/api/public/all-properties");
+        const res = await axios.get(`${baseurl}api/all-properties`);
         console.log("API Response:", res.data); // Debug log
         const raw = res.data;
 

@@ -12,6 +12,7 @@ import {
 } from "react-icons/fa";
 import { motion } from "framer-motion";
 import axios from "axios";
+import baseurl from "../../../../BaseUrl";
 
 const ForecastSummary = () => {
   const [data, setData] = useState({
@@ -42,7 +43,7 @@ const ForecastSummary = () => {
 
         // Fetch forecast data with token in Authorization header
         const response = await axios.get(
-          "https://api.gharzoreality.com/api/subowner/collections/forecast",
+          `${baseurl}api/subowner/collections/forecast`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }

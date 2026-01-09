@@ -128,84 +128,113 @@ function Navbar() {
 
   return (
     <>
-      <nav className="backdrop-blur-md shadow-md fixed top-0 left-0 w-full z-50 bg-gray-900">
-        <div className="container mx-auto flex items-center justify-between p-4">
-          {/* Logo */}
-          <img ref={logoRef} src={logo} alt="Draze" className="w-28" />
+ <nav className="fixed top-0 left-0 w-full z-50 bg-white/95 backdrop-blur-xl shadow-lg border-b border-gray-100">
+  <div className="container mx-auto flex items-center justify-between px-4 py-2">
+    {/* Logo Section */}
+    <motion.div
+      ref={logoRef}
+      whileHover={{ scale: 1.05 }}
+      className="ml-12"
+    >
+      <img 
+        src={logo} 
+        alt="GharZo" 
+        className="h-17 w-[150px] object-contain" 
+      />
+    </motion.div>
 
-          {/* Desktop Nav Links */}
-          <div className="hidden md:flex gap-8 text-gray-300 font-medium">
-            {navItems.map((item, i) => {
-              const isActive = currentPath === item.to;
-              return (
-                <NavLink
-                  key={item.text}
-                  ref={(el) => (iconRefs.current[i] = el)}
-                  to={item.to}
-                  className={`relative group flex items-center gap-2 hover:scale-110 transition-all duration-300 ${
-                    isActive ? "text-sky-600 font-semibold" : ""
-                  }`}
-                >
-                  <span className="text-sky-500 group-hover:drop-shadow-md">
-                    {item.icon}
-                  </span>
-                  <span className="group-hover:text-sky-600">{item.text}</span>
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-sky-400 group-hover:w-full transition-all duration-300"></span>
-                </NavLink>
-              );
-            })}
-          </div>
+    {/* Desktop Navigation */}
+    <div className="hidden md:flex items-center gap-2">
+      {navItems.map((item, i) => {
+        const isActive = currentPath === item.to;
+        return (
+          <NavLink
+            key={item.text}
+            ref={(el) => (iconRefs.current[i] = el)}
+            to={item.to}
+            className={`relative group flex items-center gap-2 px-5 py-2.5 rounded-full transition-all duration-300 ${
+              isActive 
+                ? "bg-[#3B9DF8] text-white shadow-md" 
+                : "text-gray-600 hover:bg-gray-100"
+            }`}
+          >
+            <span className={`${isActive ? 'text-white' : 'text-gray-600'} transition-colors text-lg`}>
+              {item.icon}
+            </span>
+            <span className="font-medium text-sm">{item.text}</span>
+          </NavLink>
+        );
+      })}
+    </div>
 
-          {/* Right Section */}
-          <div className="flex items-center gap-2">
-            {/* Only Logout Button */}
-            <div ref={buttonRef} className="relative">
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 px-4 py-1 rounded bg-red-500 text-white hover:bg-red-600 transition-all duration-300"
-              >
-                <LogOut className="drop-shadow-lg" />
-                Logout
-              </button>
-            </div>
+    {/* Right Section */}
+    <div className="flex items-center gap-3">
+      <div ref={buttonRef} className="relative">
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={handleLogout}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#3B9DF8] text-white shadow-md hover:shadow-lg hover:bg-[#2B8DE8] transition-all duration-300 font-medium text-sm"
+        >
+          <LogOut size={18} className="drop-shadow-lg" />
+          <span className="hidden sm:inline">Logout</span>
+        </motion.button>
+      </div>
 
-            {/* Mobile Menu Toggle */}
-            <div className="md:hidden">
-              <button
-                onClick={() => setIsOpen(!isOpen)}
-                className="p-2 rounded-full bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400 text-white shadow-lg hover:scale-110 transition-all duration-300"
-              >
-                {isOpen ? <X /> : <Menu />}
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Mobile Menu Button */}
+      <div className="md:hidden">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="p-2.5 rounded-full bg-[#3B9DF8] text-white shadow-md hover:shadow-lg transition-all duration-300"
+          aria-label={isOpen ? "Close menu" : "Open menu"}
+        >
+          {isOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+      </div>
+    </div>
+  </div>
 
-        {/* Mobile Menu */}
-        {isOpen && (
-          <div className="md:hidden bg-gray-800 text-white flex flex-col gap-4 p-4">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.text}
-                to={item.to}
-                className="flex items-center gap-2 hover:text-sky-300 transition-colors duration-200"
-                onClick={() => setIsOpen(false)}
-              >
-                {item.icon}
-                {item.text}
-              </NavLink>
-            ))}
-
-            {/* Mobile Logout */}
-            <button
-              onClick={handleLogout}
-              className="bg-red-500 text-white px-4 py-1 rounded hover:bg-red-600"
+  {/* Mobile Menu */}
+  {isOpen && (
+    <motion.div
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: "auto" }}
+      exit={{ opacity: 0, height: 0 }}
+      className="md:hidden bg-white border-t border-gray-100"
+    >
+      <div className="container mx-auto px-6 py-4 flex flex-col gap-2">
+        {navItems.map((item) => {
+          const isActive = currentPath === item.to;
+          return (
+            <NavLink
+              key={item.text}
+              to={item.to}
+              onClick={() => setIsOpen(false)}
+              className={`flex items-center gap-3 px-4 py-3 rounded-full transition-all duration-300 ${
+                isActive 
+                  ? "bg-[#3B9DF8] text-white shadow-md" 
+                  : "text-gray-600 hover:bg-gray-100"
+              }`}
             >
-              <LogOut />
-            </button>
-          </div>
-        )}
-      </nav>
+              <span className={`${isActive ? 'text-white' : 'text-gray-600'} text-lg`}>{item.icon}</span>
+              <span className="font-medium">{item.text}</span>
+            </NavLink>
+          );
+        })}
+        
+        <div className="h-px bg-gray-200 my-2"></div>
+        
+        <button
+          className="flex items-center gap-3 px-4 py-3 rounded-full bg-[#3B9DF8] text-white shadow-md font-medium"
+          onClick={handleLogout}
+        >
+          <LogOut size={18} />
+          <span>Logout</span>
+        </button>
+      </div>
+    </motion.div>
+  )}
+</nav>
     </>
   );
 }

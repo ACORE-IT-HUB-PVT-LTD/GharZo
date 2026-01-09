@@ -8,6 +8,7 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import signupbg from "../../../assets/Images/signupbg.jpg";
 import logo from "../../../assets/logo/logo.png";
+import baseurl from "../../../../BaseUrl";
 
 function SubOwnerLogin() {
   const navigate = useNavigate();
@@ -25,7 +26,7 @@ function SubOwnerLogin() {
     e.preventDefault();
     try {
       const response = await fetch(
-        "https://api.gharzoreality.com/api/sub-owner/auth/login",
+        `${baseurl}api/sub-owner/auth/login`,
         {
           method: "POST",
           headers: {

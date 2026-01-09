@@ -17,15 +17,14 @@ import {
   FaTrash,
   FaReply
 } from "react-icons/fa";
-import { Heart, Star, MapPin, Share2, CheckCircle2 } from "lucide-react";
+import { Heart, Star, MapPin, Share2, CheckCircle2, Home, Users } from "lucide-react";
+import { motion } from "framer-motion";
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
 import ScheduleTourBox from "../ScheduleTour/ScheduleTourBox";
 import user from "../../../assets/images/user.jpg";
 import baseurl from "../../../../BaseUrl";
-
-
 
 // Facility key mapping for display
 const facilityKeyMapping = {
@@ -135,7 +134,6 @@ function PropertyDetails() {
   const [selectedImages, setSelectedImages] = useState([]);
   const [initialSlide, setInitialSlide] = useState(0);
 
-  // Reset states on unmount to ensure clean reload when navigating away and back
   useEffect(() => {
     return () => {
       setProperty(null);
@@ -175,12 +173,10 @@ function PropertyDetails() {
           return;
         }
 
-        // Calculate posted days
         const calculatedPostedDays = Math.floor(
           (new Date() - new Date(found.createdAt)) / (1000 * 60 * 60 * 24)
         );
 
-        // Add a dynamic description based on fetched data
         const updatedProperty = {
           ...found,
           description:
@@ -240,12 +236,10 @@ function PropertyDetails() {
       fetchProperty();
       fetchReels();
     } else {
-      // If no id, navigate back to list to prevent staying on invalid page
       navigate("/", { replace: true });
     }
   }, [id, navigate]);
 
-  // Fetch room-specific images after property is loaded
   useEffect(() => {
     if (property && property.rooms) {
       const fetchRoomImages = async (roomId) => {
@@ -283,7 +277,6 @@ function PropertyDetails() {
     }
   }, [property, id]);
 
-  // Fetch bed-specific images after property is loaded
   useEffect(() => {
     if (property && property.rooms) {
       const fetchBedImages = async (roomId, bedId) => {
@@ -339,21 +332,20 @@ function PropertyDetails() {
 
   if (loading || reelsLoading) {
     return (
-      <div className="flex justify-center items-center min-h-[200px]">
-        <div className="w-12 h-12 border-4 border-blue-500 border-dashed rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-orange-50 flex flex-col items-center justify-center">
+        <div className="w-20 h-20 border-4 border-[#FF6B00] border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-gray-600 font-medium">Loading property details...</p>
       </div>
     );
   }
 
   if (!property) {
-    // Instead of showing error, navigate back to list
     useEffect(() => {
       navigate("/", { replace: true });
     }, [navigate]);
-    return null; // Or a brief loading/error message
+    return null;
   }
 
-  // Map facilities to a readable format
   const features = [];
   const facilityCategories = [
     "roomEssentials",
@@ -367,7 +359,6 @@ function PropertyDetails() {
     "nearbyFacilities",
   ];
 
-  // Check commonFacilities array
   property.commonFacilities?.forEach((facility) => {
     facilityCategories.forEach((category) => {
       if (facilityKeyMapping[category][facility]) {
@@ -376,7 +367,6 @@ function PropertyDetails() {
     });
   });
 
-  // Check facilitiesDetail for property-wide facilities
   facilityCategories.forEach((category) => {
     const facilities = property.facilitiesDetail?.[category];
     if (facilities && Object.keys(facilities).length > 0) {
@@ -394,7 +384,6 @@ function PropertyDetails() {
     }
   });
 
-  // Toggle facility view for a specific room
   const toggleRoomFacilities = (roomId) => {
     setExpandedRooms((prev) => ({
       ...prev,
@@ -405,7 +394,7 @@ function PropertyDetails() {
   const placeholderImage = "https://via.placeholder.com/400x250?text=No+Image";
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50 px-4 py-10 max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-orange-50">
       <style>
         {`
           .animate-3d-check {
@@ -420,7 +409,7 @@ function PropertyDetails() {
           .modal-swiper .swiper-button-next,
           .modal-swiper .swiper-button-prev {
             color: white !important;
-            background: rgba(59, 130, 246, 0.8) !important;
+            background: rgba(255, 107, 0, 0.8) !important;
             border-radius: 50% !important;
             width: 48px !important;
             height: 48px !important;
@@ -432,7 +421,7 @@ function PropertyDetails() {
           }
           .modal-swiper .swiper-button-next:hover,
           .modal-swiper .swiper-button-prev:hover {
-            background: rgba(59, 130, 246, 1) !important;
+            background: rgba(255, 107, 0, 1) !important;
           }
           .modal-swiper .swiper-button-next::after,
           .modal-swiper .swiper-button-prev::after {
@@ -440,7 +429,7 @@ function PropertyDetails() {
             font-weight: bold !important;
           }
           .modal-swiper .swiper-pagination-bullet {
-            background: rgba(147, 51, 234, 0.5) !important;
+            background: rgba(255, 107, 0, 0.5) !important;
             opacity: 1 !important;
             width: 12px !important;
             height: 12px !important;
@@ -448,71 +437,91 @@ function PropertyDetails() {
             border-radius: 50% !important;
           }
           .modal-swiper .swiper-pagination-bullet-active {
-            background: rgba(147, 51, 234, 1) !important;
+            background: rgba(255, 107, 0, 1) !important;
           }
           .modal-swiper .swiper-slide img {
             border-radius: 12px !important;
           }
         `}
       </style>
-      {/* Main Content: Image Carousel and Schedule Tour */}
-      <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Image Carousel */}
-        <div className="lg:col-span-2 relative">
+
+      {/* Hero Section with Image Carousel */}
+      <div className="relative">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+          className="relative h-[60vh] lg:h-[70vh] overflow-hidden"
+        >
           <Swiper
             modules={[Navigation, Pagination]}
             navigation
             pagination={{ clickable: true }}
-            className="w-full h-56 sm:h-64 md:h-80 lg:h-96"
+            className="w-full h-full"
           >
             {property.images && property.images.length > 0 ? (
               property.images.map((img, i) => (
                 <SwiperSlide key={i}>
-                  <img
-                    src={img}
-                    alt={`Property ${i}`}
-                    className="w-full h-56 sm:h-64 md:h-80 lg:h-96 object-cover rounded-xl cursor-pointer"
-                    onClick={() => openImageModal(property.images, i)}
-                  />
+                  <div className="relative w-full h-full">
+                    <img
+                      src={img}
+                      alt={`Property ${i}`}
+                      className="w-full h-full object-cover cursor-pointer"
+                      onClick={() => openImageModal(property.images, i)}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                  </div>
                 </SwiperSlide>
               ))
             ) : (
               <SwiperSlide>
-                <img
-                  src={placeholderImage}
-                  alt="No Image"
-                  className="w-full h-56 sm:h-64 md:h-80 lg:h-96 object-cover rounded-xl cursor-pointer"
-                  onClick={() => openImageModal([placeholderImage], 0)}
-                />
+                <div className="relative w-full h-full">
+                  <img
+                    src={placeholderImage}
+                    alt="No Image"
+                    className="w-full h-full object-cover cursor-pointer"
+                    onClick={() => openImageModal([placeholderImage], 0)}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                </div>
               </SwiperSlide>
             )}
           </Swiper>
 
-          {/* Back Button */}
-          <button
+          {/* Floating Action Buttons */}
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
             onClick={() => navigate(-1)}
-            className="absolute top-2 left-2 bg-white rounded-full p-2 shadow hover:scale-110 transition"
+            className="absolute top-6 left-6 z-20 bg-white/90 backdrop-blur-sm rounded-full p-3 shadow-lg hover:shadow-xl transition-all"
           >
-            <FaArrowLeft size={18} />
-          </button>
+            <FaArrowLeft size={20} className="text-gray-700" />
+          </motion.button>
 
-          {/* Right Side Icons */}
-          <div className="absolute top-2 right-2 flex gap-2">
-            <button
+          <div className="absolute top-6 right-6 z-20 flex gap-3">
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
               onClick={() => setLiked(!liked)}
-              className="bg-white rounded-full p-2 shadow hover:scale-110 transition"
+              className="bg-white/90 backdrop-blur-sm rounded-full p-3 shadow-lg hover:shadow-xl transition-all"
             >
               <Heart
-                size={18}
-                className={liked ? "text-red-500" : "text-gray-400"}
+                size={20}
+                className={liked ? "text-red-500" : "text-gray-700"}
                 fill={liked ? "red" : "none"}
               />
-            </button>
-            <button className="bg-white rounded-full p-2 shadow hover:scale-110 transition">
-              <Share2 size={18} className="text-gray-600" />
-            </button>
-            <button
-              className="bg-white rounded-full p-2 shadow hover:scale-110 transition"
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              className="bg-white/90 backdrop-blur-sm rounded-full p-3 shadow-lg hover:shadow-xl transition-all"
+            >
+              <Share2 size={20} className="text-gray-700" />
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              className="bg-white/90 backdrop-blur-sm rounded-full p-3 shadow-lg hover:shadow-xl transition-all"
               onClick={() => {
                 if (property.location?.address) {
                   window.open(
@@ -526,418 +535,472 @@ function PropertyDetails() {
               disabled={!property.location?.address}
             >
               <MapPin
-                size={18}
+                size={20}
                 className={
                   property.location?.address
                     ? "text-green-600"
                     : "text-gray-400"
                 }
               />
-            </button>
+            </motion.button>
           </div>
 
-          {/* Available Badge */}
+          {/* Availability Badge */}
           {property.availability?.hasAvailableRooms && (
-            <span className="absolute top-2 left-2 bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded">
-              AVAILABLE ({property.availability.availableRoomCount} rooms,{" "}
-              {property.availability.availableBedCount} beds)
-            </span>
-          )}
-
-          {/* Property Details Below Carousel */}
-          <div className="mt-4">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
-              {property.name}
-            </h2>
-            <div className="flex items-center text-sm text-gray-500 mt-1">
-              <FaMapMarkerAlt className="mr-1 text-red-500" />
-              <span className="bg-green-500 text-white text-xs sm:text-sm px-3 py-1 rounded-full mr-6">
-                 {property.location?.city}
-              </span>
-              {property.location?.address}, {property.location?.city},
-              {property.location?.state}
+            <div className="absolute bottom-6 left-6 z-20 bg-emerald-500 text-white px-4 py-2 rounded-full font-semibold text-sm shadow-lg flex items-center gap-2">
+              <CheckCircle2 size={18} />
+              {property.availability.availableRoomCount} Rooms, {property.availability.availableBedCount} Beds Available
             </div>
-          </div>
-        </div>
-
-        {/* Schedule Tour */}
-        <div className="w-full">
-          <ScheduleTourBox />
-        </div>
+          )}
+        </motion.div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-4 sm:gap-6 border-b mt-6 text-gray-600 overflow-x-auto">
-        <button
-          className={`pb-2 whitespace-nowrap ${
-            activeTab === "description"
-              ? "border-b-2 border-orange-500 font-medium text-orange-600"
-              : ""
-          }`}
-          onClick={() => setActiveTab("description")}
-        >
-          Description
-        </button>
-        <button
-          className={`pb-2 whitespace-nowrap ${
-            activeTab === "gallery"
-              ? "border-b-2 border-orange-500 font-medium text-orange-600"
-              : ""
-          }`}
-          onClick={() => setActiveTab("gallery")}
-        >
-          Gallery
-        </button>
-        <button
-          className={`pb-2 whitespace-nowrap ${
-            activeTab === "rooms"
-              ? "border-b-2 border-orange-500 font-medium text-orange-600"
-              : ""
-          }`}
-          onClick={() => setActiveTab("rooms")}
-        >
-          Rooms
-        </button>
-        <button
-          className={`pb-2 whitespace-nowrap ${
-            activeTab === "review"
-              ? "border-b-2 border-orange-500 font-medium text-orange-600"
-              : ""
-          }`}
-          onClick={() => setActiveTab("review")}
-        >
-          Reviews
-        </button>
-        <button
-          className={`pb-2 whitespace-nowrap ${
-            activeTab === "reels"
-              ? "border-b-2 border-orange-500 font-medium text-orange-600"
-              : ""
-          }`}
-          onClick={() => setActiveTab("reels")}
-        >
-          Reels
-        </button>
-      </div>
-
-      {/* Tab Content */}
-      {activeTab === "description" && (
-        <div className="mt-4">
-          <p className="text-gray-700 leading-relaxed text-sm sm:text-base">
-            {property.description}
-          </p>
-          {features.length > 0 ? (
-            <div className="mt-4">
-              <h3 className="font-semibold text-lg">Facilities</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-2">
-                {features.map((feat, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center text-gray-700 text-sm"
-                  >
-                    <CheckCircle2 className="text-green-500 mr-2 animate-3d-check" />
-                    {feat}
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column - Property Details */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Property Header Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100"
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex-1">
+                  <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                    {property.name}
+                  </h1>
+                  <div className="flex items-center gap-2 text-gray-600 mb-4">
+                    <FaMapMarkerAlt className="text-[#FF6B00]" />
+                    <span className="text-sm">
+                      {property.location?.address}, {property.location?.city}, {property.location?.state}
+                    </span>
                   </div>
+                </div>
+                <div className="bg-gradient-to-r from-[#FF6B00] to-[#FF8C3A] text-white px-4 py-2 rounded-full text-sm font-bold">
+                  {property.location?.city}
+                </div>
+              </div>
+
+              {/* Quick Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-blue-50 rounded-xl p-4 text-center">
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <Home size={24} className="text-blue-600" />
+                  </div>
+                  <p className="text-2xl font-bold text-gray-900">{property.totalRooms || 0}</p>
+                  <p className="text-xs text-gray-600">Total Rooms</p>
+                </div>
+                
+                <div className="bg-orange-50 rounded-xl p-4 text-center">
+                  <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <FaBed size={24} className="text-orange-600" />
+                  </div>
+                  <p className="text-2xl font-bold text-gray-900">{property.totalBeds || 0}</p>
+                  <p className="text-xs text-gray-600">Total Beds</p>
+                </div>
+
+                <div className="bg-green-50 rounded-xl p-4 text-center">
+                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <FaBuilding size={24} className="text-green-600" />
+                  </div>
+                  <p className="text-2xl font-bold text-gray-900">{property.type}</p>
+                  <p className="text-xs text-gray-600">Property Type</p>
+                </div>
+
+                <div className="bg-purple-50 rounded-xl p-4 text-center">
+                  <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <FaCalendarAlt size={24} className="text-purple-600" />
+                  </div>
+                  <p className="text-2xl font-bold text-gray-900">{postedDays}</p>
+                  <p className="text-xs text-gray-600">Days Listed</p>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Tabs */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden"
+            >
+              <div className="flex overflow-x-auto border-b border-gray-200">
+                {["description", "gallery", "rooms", "review", "reels"].map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`px-6 py-4 font-semibold text-sm whitespace-nowrap transition-all ${
+                      activeTab === tab
+                        ? "bg-gradient-to-r from-[#FF6B00] to-[#FF8C3A] text-white"
+                        : "text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  </button>
                 ))}
               </div>
-            </div>
-          ) : (
-            <p className="text-gray-500 text-sm mt-4">
-              No facilities available.
-            </p>
-          )}
-        </div>
-      )}
 
-      {activeTab === "gallery" && (
-        <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-          {property.images && property.images.length > 0 ? (
-            property.images.map((img, i) => (
-              <img
-                key={i}
-                src={img}
-                alt={`Gallery ${i}`}
-                className="w-full h-32 sm:h-40 md:h-48 object-cover rounded-lg cursor-pointer"
-                onClick={() => openImageModal(property.images, i)}
-              />
-            ))
-          ) : (
-            <img
-              src={placeholderImage}
-              alt="No Image"
-              className="w-full h-32 sm:h-40 md:h-48 object-cover rounded-lg col-span-full cursor-pointer"
-              onClick={() => openImageModal([placeholderImage], 0)}
-            />
-          )}
-        </div>
-      )}
-
-      {activeTab === "rooms" && (
-        <div className="mt-4 space-y-4">
-          {property.rooms && property.rooms.length > 0 ? (
-            property.rooms.map((room) => {
-              // Map room facilities to a readable format
-              const roomFeatures = [];
-              // First, check the facilities array
-              room.facilities?.forEach((facility) => {
-                facilityCategories.forEach((category) => {
-                  if (facilityKeyMapping[category][facility]) {
-                    roomFeatures.push(facilityKeyMapping[category][facility]);
-                  }
-                });
-              });
-              // Then, check allFacilities object
-              facilityCategories.forEach((category) => {
-                const facilities = room.allFacilities?.[category];
-                if (facilities && Object.keys(facilities).length > 0) {
-                  Object.entries(facilities).forEach(([key, value]) => {
-                    if (
-                      value === true &&
-                      !roomFeatures.includes(facilityKeyMapping[category][key])
-                    ) {
-                      roomFeatures.push(facilityKeyMapping[category][key]);
-                    }
-                  });
-                }
-              });
-
-              // Use room-specific images with fallback to property images
-              const roomImages = roomImagesMap[room.roomId] || (property.images && property.images.length > 0 ? property.images : [placeholderImage]);
-
-              return (
-                <div
-                  key={room.roomId}
-                  className={`bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition flex flex-col ${
-                    expandedRooms[room.roomId] ? "scale-105" : ""
-                  }`}
-                >
-                  {/* Room Images Carousel */}
-                  {roomImages.length > 0 && (
-                    <div className="mb-3 self-start">
-                      <Swiper
-                        modules={[Navigation, Pagination]}
-                        navigation
-                        pagination={{ clickable: true }}
-                        spaceBetween={10}
-                        slidesPerView={1}
-                        className="w-64 h-48"
-                      >
-                        {roomImages.map((img, i) => (
-                          <SwiperSlide key={i}>
-                            <img
-                              src={img}
-                              alt={`${room.name} ${i}`}
-                              className="w-full h-48 object-cover rounded-lg cursor-pointer"
-                              onClick={() => openImageModal(roomImages, i)}
-                            />
-                          </SwiperSlide>
-                        ))}
-                      </Swiper>
-                    </div>
-                  )}
-
-                  <h3 className="font-semibold text-lg">
-                    {room.name} ({room.type})
-                  </h3>
-                 
-                  <p className="text-gray-600 text-sm">
-                    Capacity: {room.capacity || "N/A"}
-                  </p>
-                  <p className="text-gray-600 text-sm">
-                    Beds: {room.availableBeds || 0} available out of{" "}
-                    {room.totalBeds || 0}
-                  </p>
-                  <p className="text-gray-600 text-sm">
-                    Status: {room.status || "N/A"}
-                  </p>
-                  <button
-                    onClick={() => toggleRoomFacilities(room.roomId)}
-                    className="mt-2 bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400 text-white px-4 py-1 rounded-full text-sm hover:scale-105 transition"
+              <div className="p-6">
+                {activeTab === "description" && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="space-y-6"
                   >
-                    {expandedRooms[room.roomId]
-                      ? "Hide Facilities"
-                      : "View Facilities"}
-                  </button>
-
-                  {expandedRooms[room.roomId] && roomFeatures.length > 0 && (
-                    <div className="mt-4">
-                      <p className="font-medium text-sm">Facilities:</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-                        {roomFeatures.map((feat, i) => (
-                          <div
-                            key={i}
-                            className="flex items-center text-gray-700 text-sm"
-                          >
-                            <CheckCircle2 className="text-green-500 mr-2 animate-3d-check" />
-                            {feat}
-                          </div>
-                        ))}
-                      </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-900 mb-3 flex items-center gap-2">
+                        <span className="w-1 h-6 bg-gradient-to-b from-[#FF6B00] to-[#FF8C3A] rounded-full" />
+                        About This Property
+                      </h3>
+                      <p className="text-gray-700 leading-relaxed">
+                        {property.description}
+                      </p>
                     </div>
-                  )}
 
-                  {expandedRooms[room.roomId] && roomFeatures.length === 0 && (
-                    <p className="text-gray-500 text-sm mt-2">
-                      No facilities available for this room.
-                    </p>
-                  )}
+                    {features.length > 0 && (
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                          <span className="w-1 h-6 bg-gradient-to-b from-[#FF6B00] to-[#FF8C3A] rounded-full" />
+                          Amenities & Facilities
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {features.map((feat, i) => (
+                            <div
+                              key={i}
+                              className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                            >
+                              <CheckCircle2 className="text-green-500 animate-3d-check flex-shrink-0" size={20} />
+                              <span className="text-sm text-gray-700">{feat}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
 
-                  {room.beds && room.beds.length > 0 && (
-                    <div className="mt-4">
-                      <p className="font-medium text-sm">Beds:</p>
-                      <ul className="list-none pl-0 text-gray-600 text-sm space-y-2">
-                        {room.beds.map((bed) => {
-                          const bedImages = bedImagesMap[`${room.roomId}-${bed.bedId}`] || [];
-                          const modalImages = bedImages.length > 0 ? bedImages : (roomImages.length > 0 ? roomImages : [placeholderImage]);
-                          const bedPlaceholder = "https://via.placeholder.com/96x96?text=No+Image";
-                          return (
-                            <li key={bed.bedId} className="flex items-center gap-3 p-2 bg-gray-50 rounded">
-                              {/* Bed Images Carousel */}
-                              {bedImages.length > 0 ? (
-                                <div className="flex-shrink-0">
+                {activeTab === "gallery" && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="grid grid-cols-2 md:grid-cols-3 gap-4"
+                  >
+                    {property.images && property.images.length > 0 ? (
+                      property.images.map((img, i) => (
+                        <motion.div
+                          key={i}
+                          whileHover={{ scale: 1.05 }}
+                          className="relative group overflow-hidden rounded-xl shadow-md cursor-pointer"
+                          onClick={() => openImageModal(property.images, i)}
+                        >
+                          <img
+                            src={img}
+                            alt={`Gallery ${i}`}
+                            className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                        </motion.div>
+                      ))
+                    ) : (
+                      <img
+                        src={placeholderImage}
+                        alt="No Image"
+                        className="w-full h-48 object-cover rounded-xl col-span-full cursor-pointer"
+                        onClick={() => openImageModal([placeholderImage], 0)}
+                      />
+                    )}
+                  </motion.div>
+                )}
+
+                {activeTab === "rooms" && (
+                  <div className="space-y-4">
+                    {property.rooms && property.rooms.length > 0 ? (
+                      property.rooms.map((room, index) => {
+                        const roomFeatures = [];
+                        room.facilities?.forEach((facility) => {
+                          facilityCategories.forEach((category) => {
+                            if (facilityKeyMapping[category][facility]) {
+                              roomFeatures.push(facilityKeyMapping[category][facility]);
+                            }
+                          });
+                        });
+                        facilityCategories.forEach((category) => {
+                          const facilities = room.allFacilities?.[category];
+                          if (facilities && Object.keys(facilities).length > 0) {
+                            Object.entries(facilities).forEach(([key, value]) => {
+                              if (
+                                value === true &&
+                                !roomFeatures.includes(facilityKeyMapping[category][key])
+                              ) {
+                                roomFeatures.push(facilityKeyMapping[category][key]);
+                              }
+                            });
+                          }
+                        });
+
+                        const roomImages = roomImagesMap[room.roomId] || (property.images && property.images.length > 0 ? property.images : [placeholderImage]);
+
+                        return (
+                          <motion.div
+                            key={room.roomId}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.1 }}
+                            className="bg-gray-50 rounded-2xl overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow"
+                          >
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6">
+                              {/* Room Images */}
+                              {roomImages.length > 0 && (
+                                <div className="md:col-span-1">
                                   <Swiper
                                     modules={[Navigation, Pagination]}
-                                    navigation={false} // Disable navigation for small size
-                                    pagination={false} // Disable pagination to rely on swipe
-                                    spaceBetween={2}
+                                    navigation
+                                    pagination={{ clickable: true }}
+                                    spaceBetween={10}
                                     slidesPerView={1}
-                                    className="w-24 h-24 touch-swipe-enabled"
-                                    touchEventsTarget="container"
+                                    className="rounded-xl overflow-hidden"
                                   >
-                                    {bedImages.map((img, i) => (
+                                    {roomImages.map((img, i) => (
                                       <SwiperSlide key={i}>
                                         <img
                                           src={img}
-                                          alt={`${bed.name} ${i}`}
-                                          className="w-full h-24 object-cover rounded cursor-pointer"
-                                          onClick={() => openImageModal(modalImages, bedImages.indexOf(img))}
+                                          alt={`${room.name} ${i}`}
+                                          className="w-full h-48 object-cover cursor-pointer"
+                                          onClick={() => openImageModal(roomImages, i)}
                                         />
                                       </SwiperSlide>
                                     ))}
                                   </Swiper>
                                 </div>
-                              ) : (
-                                <img
-                                  src={bedPlaceholder}
-                                  alt={bed.name}
-                                  className="w-24 h-24 object-cover rounded cursor-pointer"
-                                  onClick={() => openImageModal(modalImages, 0)}
-                                />
                               )}
-                              <div className="flex-1">
-                                <span className="font-medium">{bed.name}</span> 
+
+                              {/* Room Details */}
+                              <div className="md:col-span-2">
+                                <div className="flex items-center justify-between mb-3">
+                                  <h3 className="text-xl font-bold text-gray-900">
+                                    {room.name}
+                                  </h3>
+                                  <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
+                                    {room.type}
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3 mb-4">
+                                  <div className="flex items-center gap-2">
+                                    <Users size={18} className="text-[#FF6B00]" />
+                                    <span className="text-sm text-gray-700">Capacity: {room.capacity || "N/A"}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <FaBed size={18} className="text-[#FF6B00]" />
+                                    <span className="text-sm text-gray-700">
+                                      {room.availableBeds || 0}/{room.totalBeds || 0} Beds
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <button
+                                  onClick={() => toggleRoomFacilities(room.roomId)}
+                                  className="w-full md:w-auto px-6 py-2 bg-gradient-to-r from-[#FF6B00] to-[#FF8C3A] text-white rounded-full font-semibold hover:shadow-lg transition-all"
+                                >
+                                  {expandedRooms[room.roomId] ? "Hide Facilities" : "View Facilities"}
+                                </button>
+
+                                {expandedRooms[room.roomId] && roomFeatures.length > 0 && (
+                                  <div className="mt-4 grid grid-cols-2 gap-2">
+                                    {roomFeatures.map((feat, i) => (
+                                      <div
+                                        key={i}
+                                        className="flex items-center gap-2 text-sm text-gray-700"
+                                      >
+                                        <CheckCircle2 className="text-green-500 flex-shrink-0" size={16} />
+                                        {feat}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {room.beds && room.beds.length > 0 && (
+                                  <div className="mt-4">
+                                    <p className="font-semibold text-sm mb-2">Available Beds:</p>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                      {room.beds.map((bed) => {
+                                        const bedImages = bedImagesMap[`${room.roomId}-${bed.bedId}`] || [];
+                                        const modalImages = bedImages.length > 0 ? bedImages : (roomImages.length > 0 ? roomImages : [placeholderImage]);
+                                        const bedPlaceholder = "https://via.placeholder.com/96x96?text=No+Image";
+                                        
+                                        return (
+                                          <div key={bed.bedId} className="bg-white rounded-lg p-3 border border-gray-200">
+                                            {bedImages.length > 0 ? (
+                                              <Swiper
+                                                modules={[Navigation, Pagination]}
+                                                navigation={false}
+                                                pagination={false}
+                                                spaceBetween={2}
+                                                slidesPerView={1}
+                                                className="mb-2 rounded-lg overflow-hidden"
+                                              >
+                                                {bedImages.map((img, i) => (
+                                                  <SwiperSlide key={i}>
+                                                    <img
+                                                      src={img}
+                                                      alt={`${bed.name} ${i}`}
+                                                      className="w-full h-20 object-cover cursor-pointer"
+                                                      onClick={() => openImageModal(modalImages, bedImages.indexOf(img))}
+                                                    />
+                                                  </SwiperSlide>
+                                                ))}
+                                              </Swiper>
+                                            ) : (
+                                              <img
+                                                src={bedPlaceholder}
+                                                alt={bed.name}
+                                                className="w-full h-20 object-cover rounded-lg cursor-pointer mb-2"
+                                                onClick={() => openImageModal(modalImages, 0)}
+                                              />
+                                            )}
+                                            <p className="text-xs font-medium text-gray-900 text-center">{bed.name}</p>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          ) : (
-            <p className="text-gray-500 text-center">
-              No room details available.
-            </p>
-          )}
-        </div>
-      )}
+                            </div>
+                          </motion.div>
+                        );
+                      })
+                    ) : (
+                      <p className="text-gray-500 text-center py-8">No room details available.</p>
+                    )}
+                  </div>
+                )}
 
-      {activeTab === "review" && (
-        <div className="mt-4 space-y-4">
-          <RatingAndComments propertyId={id} />
-        </div>
-      )}
+                {activeTab === "review" && (
+                  <div>
+                    <RatingAndComments propertyId={id} />
+                  </div>
+                )}
 
-      {activeTab === "reels" && (
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {reels.length > 0 ? (
-            reels.map((reel, i) => (
-              <div
-                key={i}
-                className="video-container rounded-lg overflow-hidden"
-              >
-                <video
-                  src={reel.videoUrl}
-                  controls
-                  muted
-                  playsInline
-                  className="w-full h-64 object-cover rounded-lg bg-black"
-                />
+                {activeTab === "reels" && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {reels.length > 0 ? (
+                      reels.map((reel, i) => (
+                        <motion.div
+                          key={i}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: i * 0.1 }}
+                          className="rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow"
+                        >
+                          <video
+                            src={reel.videoUrl}
+                            controls
+                            muted
+                            playsInline
+                            className="w-full h-64 object-cover bg-black"
+                          />
+                        </motion.div>
+                      ))
+                    ) : (
+                      <p className="text-gray-500 text-center col-span-full py-8">
+                        No reels available for this property.
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
-            ))
-          ) : (
-            <p className="text-gray-500 text-center col-span-full">
-              No reels available for this property.
-            </p>
-          )}
-        </div>
-      )}
+            </motion.div>
 
-      {/* Manager Info */}
-      <div className="mt-6 bg-gray-100 p-4 rounded-xl shadow-md">
-        <h2 className="font-semibold mb-2">Area Manager</h2>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <p className="font-medium">{property.landlord?.name}</p>
-            <p className="text-sm text-gray-600">
-              {property.location?.city}, {property.location?.state}
-            </p>
-            <p className="text-sm text-gray-600">{property.landlord?.email}</p>
+            {/* Manager Info Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="bg-gradient-to-br from-[#002B5C] to-[#003A75] rounded-2xl shadow-lg p-6 text-white"
+            >
+              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <div className="w-8 h-8 bg-[#FF6B00] rounded-full flex items-center justify-center">
+                  <Users size={18} />
+                </div>
+                Area Manager
+              </h2>
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div>
+                  <p className="text-lg font-semibold">{property.landlord?.name}</p>
+                  <p className="text-blue-200 text-sm">{property.location?.city}, {property.location?.state}</p>
+                  <p className="text-blue-200 text-sm">{property.landlord?.email}</p>
+                </div>
+                <div className="flex gap-3">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-white text-[#002B5C] rounded-full font-semibold hover:shadow-lg transition-all"
+                    onClick={() =>
+                      (window.location.href = `tel:${property.landlord?.contactNumber}`)
+                    }
+                  >
+                    <FaPhone size={16} /> Call
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-[#FF6B00] text-white rounded-full font-semibold hover:shadow-lg transition-all"
+                    onClick={() =>
+                      (window.location.href = `mailto:${property.landlord?.email}`)
+                    }
+                  >
+                    <FaEnvelope size={16} /> Email
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
           </div>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <button
-              className="bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400 text-white px-4 py-2 rounded-full flex items-center gap-1 transition flex-1 sm:flex-none"
-              onClick={() =>
-                (window.location.href = `tel:${property.landlord?.contactNumber}`)
-              }
+
+          {/* Right Column - Schedule Tour */}
+          <div className="lg:col-span-1">
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 }}
+              className="sticky top-24"
             >
-              <FaPhone size={16} /> Call
-            </button>
-            <button
-              className="bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400 text-white px-4 py-2 rounded-full flex items-center gap-1 transition flex-1 sm:flex-none"
-              onClick={() =>
-                (window.location.href = `mailto:${property.landlord?.email}`)
-              }
-            >
-              <FaEnvelope size={16} /> Email
-            </button>
+              <ScheduleTourBox />
+            </motion.div>
           </div>
         </div>
       </div>
 
       {/* Full Screen Image Modal */}
       {showModal && selectedImages.length > 0 && (
-        <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="relative w-full h-full max-w-6xl max-h-screen flex items-center justify-center">
-            <button
-              onClick={closeImageModal}
-              className="absolute top-4 right-4 text-white text-3xl z-10 bg-gray-800 bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition"
-            >
-              &times;
-            </button>
-            <Swiper
-              initialSlide={initialSlide}
-              modules={[Navigation, Pagination]}
-              navigation={true}
-              pagination={{ clickable: true }}
-              className="modal-swiper w-full h-[90vh] max-h-[90vh]"
-              style={{ height: '90vh' }}
-            >
-              {selectedImages.map((img, i) => (
-                <SwiperSlide key={i}>
-                  <div className="flex items-center justify-center h-full">
-                    <img
-                      src={img}
-                      alt={`Full view ${i}`}
-                      className="max-w-full max-h-full object-contain cursor-zoom-in"
-                    />
-                  </div>
-                </SwiperSlide>
-              ))}
-            </Swiper>
-          </div>
+        <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4">
+          <button
+            onClick={closeImageModal}
+            className="absolute top-6 right-6 text-white text-4xl z-10 w-12 h-12 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/20 transition-all"
+          >
+            &times;
+          </button>
+          <Swiper
+            initialSlide={initialSlide}
+            modules={[Navigation, Pagination]}
+            navigation={true}
+            pagination={{ clickable: true }}
+            className="modal-swiper w-full h-[90vh]"
+          >
+            {selectedImages.map((img, i) => (
+              <SwiperSlide key={i}>
+                <div className="flex items-center justify-center h-full">
+                  <img
+                    src={img}
+                    alt={`Full view ${i}`}
+                    className="max-w-full max-h-full object-contain"
+                  />
+                </div>
+              </SwiperSlide>
+            ))}
+          </Swiper>
         </div>
       )}
     </div>
@@ -954,14 +1017,11 @@ function RatingAndComments({ propertyId }) {
   const [showTokenInput, setShowTokenInput] = useState(false);
   const [newToken, setNewToken] = useState("");
   const [currentUser, setCurrentUser] = useState(null);
-  const [replyingTo, setReplyingTo] = useState(null);     // kis comment par reply kar rahe ho
-const [replyText, setReplyText] = useState("");         // reply ka text
-  
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [replyText, setReplyText] = useState("");
 
-  // Always get token from localStorage
   const getToken = () => localStorage.getItem("usertoken");
 
-  // Create axios instance with dynamic token
   const createAxiosInstance = () => {
     const token = getToken();
     return axios.create({
@@ -973,13 +1033,11 @@ const [replyText, setReplyText] = useState("");         // reply ka text
     });
   };
 
-  // Fetch ratings, comments, and stats
   const fetchData = async () => {
     try {
       setError(null);
       const axiosInstance = createAxiosInstance();
 
-      // Fetch stats (public, no auth required)
       const timestamp = new Date().getTime();
       const statsResponse = await axios.get(
         `${baseurl}api/public/ratings/property/${propertyId}/rating-stats?_=${timestamp}`
@@ -990,9 +1048,7 @@ const [replyText, setReplyText] = useState("");         // reply ka text
         setError("Failed to fetch rating stats.");
       }
 
-      // Fetch ratings and comments only if token exists
       if (getToken()) {
-        // Fetch ratings
         try {
           const ratingsResponse = await axiosInstance.get(
             `/property/${propertyId}/ratings`
@@ -1009,7 +1065,6 @@ const [replyText, setReplyText] = useState("");         // reply ka text
               }))
             : [];
 
-          // Fetch comments
           const commentsResponse = await axiosInstance.get(
             `/property/${propertyId}/comments?page=1&limit=10`
           );
@@ -1021,16 +1076,15 @@ const [replyText, setReplyText] = useState("");         // reply ka text
                 text: c.comment,
                 createdAt: c.createdAt,
                 type: "comment",
+                replies: c.replies || [],
               }))
             : [];
 
-          // Combine and sort by createdAt descending
           const combinedList = [...ratingList, ...commentList].sort(
             (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
           );
           setComments(combinedList);
 
-          // Set current user from token
           const token = getToken();
           if (token) {
             try {
@@ -1084,7 +1138,6 @@ const [replyText, setReplyText] = useState("");         // reply ka text
 
       let newItem;
       if (rating > 0) {
-        // Post to ratings API
         const response = await axiosInstance.post(
           `/property/${propertyId}/ratings`,
           {
@@ -1110,7 +1163,6 @@ const [replyText, setReplyText] = useState("");         // reply ka text
           throw new Error(response.data.message || "Failed to submit rating.");
         }
       } else {
-        // Post to comments API
         const response = await axiosInstance.post(
           `/property/${propertyId}/comments`,
           {
@@ -1129,16 +1181,15 @@ const [replyText, setReplyText] = useState("");         // reply ka text
             text: response.data.comment.comment,
             createdAt: response.data.comment.createdAt,
             type: "comment",
+            replies: [],
           };
         } else {
           throw new Error(response.data.message || "Failed to submit comment.");
         }
       }
 
-      // Update comments state with the new item
       setComments((prev) => [newItem, ...prev]);
 
-      // Refetch stats
       const timestamp = new Date().getTime();
       const statsResponse = await axios.get(
         `${baseurl}api/public/ratings/property/${propertyId}/rating-stats?_=${timestamp}`
@@ -1147,7 +1198,6 @@ const [replyText, setReplyText] = useState("");         // reply ka text
         setStats(statsResponse.data.stats);
       }
 
-      // Clear inputs
       setComment("");
       setRating(0);
     } catch (err) {
@@ -1177,14 +1227,11 @@ const [replyText, setReplyText] = useState("");         // reply ka text
       setError(null);
       const axiosInstance = createAxiosInstance();
 
-      // Delete rating or comment
       const endpoint = type === "rating" ? `/ratings/${id}` : `/comments/${id}`;
       const response = await axiosInstance.delete(endpoint);
 
       if (response.data.success) {
-        // Remove deleted item from comments
         setComments((prev) => prev.filter((item) => item.id !== id));
-        // Refetch stats
         const timestamp = new Date().getTime();
         const statsResponse = await axios.get(
           `${baseurl}api/public/ratings/property/${propertyId}/rating-stats?_=${timestamp}`
@@ -1221,48 +1268,47 @@ const [replyText, setReplyText] = useState("");         // reply ka text
   };
 
   const handleReply = async (commentId) => {
-  if (!replyText.trim()) {
-    setError("Reply cannot be empty.");
-    return;
-  }
-
-  try {
-    setError(null);
-    const axiosInstance = createAxiosInstance();
-
-    const response = await axiosInstance.post(
-      `/comments/${commentId}/replies`,
-      { text: replyText }
-    );
-
-    if (response.data.success) {
-      // Update the specific comment with new reply
-      setComments(prev => prev.map(c => 
-        c.id === commentId 
-          ? { ...c, replies: [...(c.replies || []), response.data.comment.replies.slice(-1)[0]] }
-          : c
-      ));
-
-      setReplyText("");
-      setReplyingTo(null);
+    if (!replyText.trim()) {
+      setError("Reply cannot be empty.");
+      return;
     }
-  } catch (err) {
-    console.error("Error adding reply:", err);
-    if (err.response?.status === 401) {
-      setError("Token expired. Please enter a new token.");
-      setShowTokenInput(true);
-    } else {
-      setError(err.response?.data?.message || "Failed to send reply");
+
+    try {
+      setError(null);
+      const axiosInstance = createAxiosInstance();
+
+      const response = await axiosInstance.post(
+        `/comments/${commentId}/replies`,
+        { text: replyText }
+      );
+
+      if (response.data.success) {
+        setComments(prev => prev.map(c => 
+          c.id === commentId 
+            ? { ...c, replies: [...(c.replies || []), response.data.comment.replies.slice(-1)[0]] }
+            : c
+        ));
+
+        setReplyText("");
+        setReplyingTo(null);
+      }
+    } catch (err) {
+      console.error("Error adding reply:", err);
+      if (err.response?.status === 401) {
+        setError("Token expired. Please enter a new token.");
+        setShowTokenInput(true);
+      } else {
+        setError(err.response?.data?.message || "Failed to send reply");
+      }
     }
-  }
-};
+  };
+
   const handleTokenSubmit = () => {
     if (newToken.trim()) {
       localStorage.setItem("usertoken", newToken);
       setShowTokenInput(false);
       setNewToken("");
       setError(null);
-      // Refetch data after token update
       fetchData();
     } else {
       setError("Token cannot be empty.");
@@ -1270,190 +1316,230 @@ const [replyText, setReplyText] = useState("");         // reply ka text
   };
 
   return (
-    <div className="bg-white p-6 border rounded-lg shadow">
-      <h4 className="text-xl font-semibold mb-4">Rate & Comment</h4>
+    <div className="space-y-6">
+      <div>
+        <h4 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <span className="w-1 h-6 bg-gradient-to-b from-[#FF6B00] to-[#FF8C3A] rounded-full" />
+          Reviews & Ratings
+        </h4>
 
-      {error && <div className="mb-4 text-red-500 text-sm">{error}</div>}
-
-      {showTokenInput && (
-        <div className="mb-4">
-          <input
-            type="text"
-            placeholder="Enter new token"
-            value={newToken}
-            onChange={(e) => setNewToken(e.target.value)}
-            className="border px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
-          <button
-            onClick={handleTokenSubmit}
-            className="ml-2 bg-blue-500 text-white px-4 py-2 rounded-lg text-sm"
-          >
-            Submit Token
-          </button>
-        </div>
-      )}
-
-      {stats && (
-        <div className="mb-4">
-          <p className="text-gray-600 text-sm sm:text-base">
-            Average Rating: {stats.averageRating.toFixed(1)} (
-            {stats.totalRatings} reviews)
-          </p>
-        </div>
-      )}
-
-      {/* Star Rating */}
-      <div className="flex space-x-1 mb-4">
-        {[...Array(5)].map((_, i) => {
-          const starValue = i + 1;
-          return (
-            <span
-              key={i}
-              onClick={() => setRating(starValue)}
-              className={`cursor-pointer text-2xl ${
-                starValue <= rating ? "text-yellow-400" : "text-gray-300"
-              }`}
-            >
-              ★
-            </span>
-          );
-        })}
-      </div>
-
-      {/* Comment Input */}
-      <div className="flex gap-2 mb-4">
-        <input
-          type="text"
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          placeholder="Add a comment..."
-          className="flex-1 border px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-        />
-        <button
-          onClick={handleAddComment}
-          className="bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400 text-white px-4 py-2 rounded-lg text-sm"
-          disabled={!getToken()}
-        >
-          Post
-        </button>
-      </div>
-
-     {comments.length > 0 ? (
-  comments.map((c) => (
-    <div key={c.id} className="flex items-start gap-3 mb-6 p-4 bg-gray-50 rounded-lg">
-      <img
-        src={c.profilePic}
-        alt={c.username}
-        className="w-10 h-10 rounded-full border border-black p-0.5 object-cover flex-shrink-0"
-      />
-      <div className="flex-1">
-        <div className="flex justify-between items-center">
-          <p className="font-semibold text-sm">{c.username || "Unknown User"}</p>
-          <div className="flex items-center gap-3">
-            {/* Delete button - sirf apna hi delete kar sake */}
-            {currentUser && c.username === currentUser && (
-              <button
-                onClick={() => handleDelete(c.id, c.type)}
-                className="text-red-500 hover:text-red-700"
-              >
-                <FaTrash size={14} />
-              </button>
-            )}
-
-            {/* Reply button - har comment par dikhega (sirf logged in user) */}
-            {getToken() && (
-              <button
-                onClick={() => setReplyingTo(replyingTo === c.id ? null : c.id)}
-                className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1"
-              >
-                <FaReply size={14} />
-                Reply
-              </button>
-            )}
-          </div>
-        </div>
-
-        <p className="text-gray-700 text-sm mt-1">{c.text}</p>
-
-        {c.rating > 0 && (
-          <div className="flex space-x-1 mt-1">
-            {[...Array(c.rating)].map((_, i) => (
-              <span key={i} className="text-yellow-400 text-sm">★</span>
-            ))}
+        {error && (
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4 rounded-lg">
+            <p className="text-red-700 text-sm">{error}</p>
           </div>
         )}
 
-        <p className="text-gray-500 text-xs mt-1">
-          {new Date(c.createdAt).toLocaleDateString()} at{" "}
-          {new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </p>
-
-        {/* Reply Input Box */}
-        {replyingTo === c.id && (
-          <div className="mt-4 flex gap-2">
+        {showTokenInput && (
+          <div className="flex gap-2 mb-4">
             <input
               type="text"
-              value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
-              placeholder="Write a reply..."
-              className="flex-1 border px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-              onKeyPress={(e) => e.key === 'Enter' && handleReply(c.id)}
+              placeholder="Enter authentication token"
+              value={newToken}
+              onChange={(e) => setNewToken(e.target.value)}
+              className="flex-1 px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-[#FF6B00] transition-colors"
             />
             <button
-              onClick={() => handleReply(c.id)}
-              className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-600"
+              onClick={handleTokenSubmit}
+              className="px-6 py-2 bg-gradient-to-r from-[#FF6B00] to-[#FF8C3A] text-white rounded-xl font-semibold hover:shadow-lg transition-all"
             >
-              Send
-            </button>
-            <button
-              onClick={() => {
-                setReplyingTo(null);
-                setReplyText("");
-              }}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              Cancel
+              Submit
             </button>
           </div>
         )}
 
-        {/* Display Existing Replies */}
-        {c.replies && c.replies.length > 0 && (
-          <div className="mt-4 ml-8 space-y-3 border-l-2 border-gray-300 pl-4">
-            {c.replies.map((reply, idx) => (
-              <div key={idx} className="bg-white p-3 rounded-lg shadow-sm">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm text-blue-600">
-                    {reply.userName}
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    ({reply.userType === "landlord" ? "Landlord" : "User"})
-                  </span>
+        {stats && (
+          <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl p-4 mb-6 border border-yellow-200">
+            <div className="flex items-center gap-3">
+              <div className="text-4xl font-bold text-[#FF6B00]">{stats.averageRating.toFixed(1)}</div>
+              <div>
+                <div className="flex text-yellow-400 mb-1">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} size={18} fill={i < Math.round(stats.averageRating) ? "currentColor" : "none"} />
+                  ))}
                 </div>
-                <p className="text-gray-700 text-sm mt-1">{reply.text}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {new Date(reply.createdAt).toLocaleDateString()} at{" "}
-                  {new Date(reply.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </p>
+                <p className="text-sm text-gray-600">{stats.totalRatings} reviews</p>
               </div>
-            ))}
+            </div>
+          </div>
+        )}
+
+        {/* Star Rating Input */}
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-sm font-medium text-gray-700">Your Rating:</span>
+          <div className="flex gap-1">
+            {[...Array(5)].map((_, i) => {
+              const starValue = i + 1;
+              return (
+                <motion.span
+                  key={i}
+                  whileHover={{ scale: 1.2 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setRating(starValue)}
+                  className={`cursor-pointer text-3xl ${
+                    starValue <= rating ? "text-yellow-400" : "text-gray-300"
+                  }`}
+                >
+                  ★
+                </motion.span>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Comment Input */}
+        <div className="flex gap-2 mb-6">
+          <input
+            type="text"
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Share your experience..."
+            className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-[#FF6B00] transition-colors"
+            onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
+          />
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleAddComment}
+            disabled={!getToken()}
+            className="px-6 py-3 bg-gradient-to-r from-[#FF6B00] to-[#FF8C3A] text-white rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Post
+          </motion.button>
+        </div>
+      </div>
+
+      {/* Comments List */}
+      <div className="space-y-4">
+        {comments.length > 0 ? (
+          comments.map((c, index) => (
+            <motion.div
+              key={c.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+              className="bg-white rounded-xl p-5 border border-gray-200 hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-start gap-4">
+                <img
+                  src={c.profilePic}
+                  alt={c.username}
+                  className="w-12 h-12 rounded-full border-2 border-gray-200 object-cover flex-shrink-0"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <p className="font-semibold text-gray-900">{c.username || "Unknown User"}</p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(c.createdAt).toLocaleDateString()} at{" "}
+                        {new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {currentUser && c.username === currentUser && (
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => handleDelete(c.id, c.type)}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <FaTrash size={14} />
+                        </motion.button>
+                      )}
+                      {getToken() && (
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => setReplyingTo(replyingTo === c.id ? null : c.id)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-1"
+                        >
+                          <FaReply size={14} />
+                        </motion.button>
+                      )}
+                    </div>
+                  </div>
+
+                  <p className="text-gray-700 mb-2">{c.text}</p>
+
+                  {c.rating > 0 && (
+                    <div className="flex text-yellow-400 mb-2">
+                      {[...Array(c.rating)].map((_, i) => (
+                        <span key={i} className="text-lg">★</span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Reply Input */}
+                  {replyingTo === c.id && (
+                    <div className="mt-3 flex gap-2">
+                      <input
+                        type="text"
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        placeholder="Write a reply..."
+                        className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#FF6B00] text-sm"
+                        onKeyPress={(e) => e.key === 'Enter' && handleReply(c.id)}
+                      />
+                      <button
+                        onClick={() => handleReply(c.id)}
+                        className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-semibold hover:bg-blue-600 transition-colors"
+                      >
+                        Send
+                      </button>
+                      <button
+                        onClick={() => {
+                          setReplyingTo(null);
+                          setReplyText("");
+                        }}
+                        className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Display Replies */}
+                  {c.replies && c.replies.length > 0 && (
+                    <div className="mt-4 ml-4 space-y-3 border-l-2 border-gray-200 pl-4">
+                      {c.replies.map((reply, idx) => (
+                        <div key={idx} className="bg-gray-50 rounded-lg p-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold text-sm text-blue-600">
+                              {reply.userName}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              ({reply.userType === "landlord" ? "Landlord" : "User"})
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-700 mb-1">{reply.text}</p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(reply.createdAt).toLocaleDateString()} at{" "}
+                            {new Date(reply.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          ))
+        ) : (
+          <div className="text-center py-12">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Star size={32} className="text-gray-400" />
+            </div>
+            <p className="text-gray-500">No reviews or comments yet. Be the first to share your thoughts!</p>
           </div>
         )}
       </div>
-    </div>
-  ))
-) : (
-  <p className="text-gray-500 text-center">No reviews or comments yet.</p>
-)}
     </div>
   );
 }
 
-/* ====================== Info Item Component ====================== */
 function InfoItem({ icon, label, value }) {
   return (
     <div className="flex items-center gap-3 text-gray-600">
-      <div className="text-lg sm:text-xl text-blue-500">{icon}</div>
+      <div className="text-lg sm:text-xl text-[#FF6B00]">{icon}</div>
       <div>
         <div className="text-base sm:text-lg font-medium">{value}</div>
         <div className="text-xs sm:text-sm">{label}</div>

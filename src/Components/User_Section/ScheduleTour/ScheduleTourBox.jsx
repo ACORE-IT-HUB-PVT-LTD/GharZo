@@ -5,77 +5,33 @@ import {
   FaCalendarAlt,
   FaFacebookMessenger,
   FaExclamationTriangle,
+  FaUser,
 } from "react-icons/fa";
 import { motion } from "framer-motion";
 import { useParams } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import baseurl from "../../../../BaseUrl";
 
 const ScheduleTourBox = () => {
   const [visitDate, setVisitDate] = useState("");
   const [notes, setNotes] = useState("");
   const [contactNumber, setContactNumber] = useState("");
   const [error, setError] = useState(null);
-  const [dateTimeError, setDateTimeError] = useState(""); // NEW: Only for date/time
+  const [dateTimeError, setDateTimeError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false); // NEW: Success state to show message
-  const [landlordNumber, setLandlordNumber] = useState(""); // NEW: Landlord contact number
-  const [fetchingProperty, setFetchingProperty] = useState(true); // NEW: Loading state for property fetch
+  const [success, setSuccess] = useState(false);
+  const [landlordNumber, setLandlordNumber] = useState("");
+  const [fetchingProperty, setFetchingProperty] = useState(true);
   const { id } = useParams();
-  console.log("Property ID from URL:", id);
 
-  // Get token from localStorage (usertoken is a plain string)
   const getToken = () => {
     return localStorage.getItem("usertoken") || null;
   };
 
-  // NEW: Handle call directly without confirmation
   const handleCall = () => {
     window.location.href = `tel:+91${landlordNumber}`;
   };
-
-  // NEW: Fetch property details to get landlord number
-  // useEffect(() => {
-  //   const fetchPropertyDetails = async () => {
-  //     if (!id) return;
-
-  //     try {
-  //       setFetchingProperty(true);
-  //       const response = await fetch(`https://api.gharzoreality.com/api/public/property/${id}?_=${Date.now()}`);
-  //       const data = await response.json();
-
-  //       if (data.success && data.property && data.property.landlord) {
-  //         const number = data.property.landlord.contactNumber;
-  //         if (number && number.length === 10) {
-  //           setLandlordNumber(number);
-  //         } else {
-  //           console.warn("Invalid landlord number:", number);
-  //           setError("Landlord contact number not available.");
-  //           toast.error("Landlord contact number not available.", {
-  //             position: "top-right",
-  //             autoClose: 5000,
-  //           });
-  //         }
-  //       } else {
-  //         setError("Property details not found.");
-  //         toast.error("Property details not found.", {
-  //           position: "top-right",
-  //           autoClose: 5000,
-  //         });
-  //       }
-  //     } catch (err) {
-  //       console.error("Error fetching property:", err);
-  //       setError("Failed to fetch property details.");
-  //       toast.error("Failed to fetch property details.", {
-  //         position: "top-right",
-  //         autoClose: 5000,
-  //       });
-  //     } finally {
-  //       setFetchingProperty(false);
-  //     }
-  //   };
-  //   fetchPropertyDetails();
-  // }, [id]);
 
   useEffect(() => {
     const fetchPropertyDetails = async () => {
@@ -84,29 +40,27 @@ const ScheduleTourBox = () => {
       try {
         setFetchingProperty(true);
         const response = await fetch(
-          `https://api.gharzoreality.com/api/public/property/${id}?_=${Date.now()}`
+          `${baseurl}api/public/property/${id}?_=${Date.now()}`
         );
         const data = await response.json();
+        console.log(data);
+        
 
-        // If property is received but landlord contact is missing, do NOT show any error.
         if (data.success && data.property) {
           const number = data.property?.landlord?.contactNumber;
 
           if (number && number.length === 10) {
             setLandlordNumber(number);
           } else {
-            // Just silently ignore and keep landlordNumber empty
             console.warn("Landlord number missing or invalid.");
             setLandlordNumber("");
           }
         } else {
-          // No error toast should be shown even if property not found
           console.warn("Property details not found");
           setLandlordNumber("");
         }
       } catch (err) {
         console.error("Error fetching property:", err);
-        // No error toast, no error UI
         setLandlordNumber("");
       } finally {
         setFetchingProperty(false);
@@ -116,14 +70,13 @@ const ScheduleTourBox = () => {
     fetchPropertyDetails();
   }, [id]);
 
-  // NEW: Validate date/time only
   const validateDateTime = (dateTimeValue) => {
     if (!dateTimeValue) {
       return "Please select a date and time";
     }
     const selectedDateTime = new Date(dateTimeValue);
     const now = new Date();
-    const bufferTime = new Date(now.getTime() + 30 * 60 * 1000); // 30 min buffer
+    const bufferTime = new Date(now.getTime() + 30 * 60 * 1000);
 
     if (selectedDateTime <= bufferTime) {
       return "Please select a future time (at least 30 minutes from now)";
@@ -131,27 +84,22 @@ const ScheduleTourBox = () => {
     return null;
   };
 
-  // NEW: Handle date/time change with validation
   const handleDateTimeChange = (e) => {
     const value = e.target.value;
     setVisitDate(value);
     setError(null);
-    setSuccess(false); // Reset success on change
+    setSuccess(false);
 
-    // Clear previous error
     setDateTimeError("");
 
-    // Validate immediately
     const validationError = validateDateTime(value);
     if (validationError) {
       setDateTimeError(validationError);
     }
   };
 
-  // UPDATED: Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // NEW: Validate date/time before submission
     const dateValidationError = validateDateTime(visitDate);
     if (dateValidationError) {
       setDateTimeError(dateValidationError);
@@ -173,10 +121,10 @@ const ScheduleTourBox = () => {
     }
     setLoading(true);
     setError(null);
-    setDateTimeError(""); // Clear date error
+    setDateTimeError("");
     setSuccess(false);
     try {
-      const response = await fetch("https://api.gharzoreality.com/api/visits", {
+      const response = await fetch(`${baseurl}api/visits`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -190,7 +138,8 @@ const ScheduleTourBox = () => {
         }),
       });
       const data = await response.json();
-      console.log("API Response for booking:", data);
+      console.log(data);
+      
       if (response.ok) {
         const successMessage = data.message || "Visit successfully scheduled!";
         toast.success(successMessage, {
@@ -198,8 +147,7 @@ const ScheduleTourBox = () => {
           autoClose: 5000,
           pauseOnHover: true,
         });
-        setSuccess(true); // Set success state
-        // Reset fields after a short delay to allow toast to show
+        setSuccess(true);
         setTimeout(() => {
           setVisitDate("");
           setNotes("");
@@ -240,7 +188,6 @@ const ScheduleTourBox = () => {
     }
   };
 
-  // Validate propertyId
   if (!id) {
     return (
       <div className="text-red-500 text-sm">
@@ -249,32 +196,28 @@ const ScheduleTourBox = () => {
     );
   }
 
-  // NEW: Show loading while fetching property
   if (fetchingProperty) {
     return (
-      <div className="w-full max-w-md mx-auto bg-white shadow-lg rounded-xl p-6">
-        <div className="text-center py-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-2"></div>
-          <p className="text-sm text-gray-600">Loading property details...</p>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="w-full bg-white rounded-2xl shadow-2xl p-8 border border-gray-100"
+      >
+        <div className="text-center py-8">
+          <div className="w-16 h-16 border-4 border-[#FF6B00] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-sm text-gray-600 font-medium">Loading property details...</p>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
-  // NEW: If no landlord number, show error
-  // if (!landlordNumber ) {
-  //   return (
-  //     <div className="w-full max-w-md mx-auto bg-white shadow-lg rounded-xl p-6">
-  //       <div className="text-center py-4">
-  //         <FaExclamationTriangle className="text-red-500 text-2xl mx-auto mb-2" />
-  //         <p className="text-sm text-red-600">Unable to load landlord contact. Please try again later.</p>
-  //       </div>
-  //     </div>
-  //   );
-  // }
-
   return (
-    <div className="w-full max-w-md mx-auto bg-white shadow-lg rounded-xl p-6">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="w-full bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-2xl overflow-hidden border border-gray-100"
+    >
       <ToastContainer
         position="top-right"
         autoClose={5000}
@@ -287,152 +230,208 @@ const ScheduleTourBox = () => {
         pauseOnHover
         theme="light"
       />
-      {error && (
-        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
-          {error}
-        </div>
-      )}
-      {success && (
-        <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-lg flex items-center">
-          <FaExclamationTriangle className="mr-2 text-green-500" />
-          Visit booked successfully! You can now schedule another one.
-        </div>
-      )}
-      <div className="mb-5">
-        <h2 className="text-lg font-semibold text-gray-800">Schedule Tour</h2>
+
+      {/* Header Section */}
+      <div className="bg-gradient-to-r from-[#002B5C] to-[#003A75] p-6">
+        <h2 className="text-2xl font-bold text-white mb-1 flex items-center gap-2">
+          <FaCalendarAlt className="text-[#FF6B00]" />
+          Schedule Your Visit
+        </h2>
+        <p className="text-blue-200 text-sm">Book a tour to explore this property</p>
       </div>
-      <motion.form onSubmit={handleSubmit} className="space-y-4">
-        {/* UPDATED: Date/Time field with validation */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Select Date & Time
-          </label>
-          <div className="flex items-center gap-2">
-            <FaCalendarAlt className="text-green-600" />
-            <input
-              type="datetime-local"
-              value={visitDate}
-              onChange={handleDateTimeChange}
-              // NEW: Set minimum time to 30 minutes from now
-              min={new Date(new Date().getTime() + 30 * 60 * 1000)
-                .toISOString()
-                .slice(0, 16)}
-              className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                dateTimeError
-                  ? "border-red-500 focus:ring-red-500 bg-red-50"
-                  : "border-gray-300"
-              }`}
-              required
-            />
-          </div>
-          {/* NEW: Show date/time error */}
-          {dateTimeError && (
-            <p className="text-red-500 text-xs mt-1 flex items-center">
-              <FaExclamationTriangle className="mr-1" />
-              {dateTimeError}
-            </p>
-          )}
-        </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Contact Number
-          </label>
-          <div className="flex items-center gap-2">
-            <FaPhone className="text-green-600" />
-            <input
-              type="number"
-              value={contactNumber}
-              onChange={(e) => setContactNumber(e.target.value)}
-              placeholder="Enter your contact number"
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              required
-              pattern="[0-9]{10}"
-              title="Please enter a valid 10-digit phone number"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Add Notes
-          </label>
-          <div className="flex items-center gap-2">
-            <FaFacebookMessenger className="text-green-600" />
-            <textarea
-              rows="3"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Your message..."
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-        </div>
-
-        {/* <div className="flex justify-between items-center gap-3">
-          <button
-            onClick={handleCall}
-            className="flex-1 bg-red-600 text-white py-2 px-3 rounded-lg flex items-center justify-center gap-2 hover:bg-red-700 transition-all duration-300"
+      <div className="p-6 space-y-4">
+        {/* Error Alert */}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg flex items-start gap-3"
           >
-            <FaPhone /> Call
-          </button>
-          <a
-            href={`https://wa.me/+91${landlordNumber}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 bg-green-600 text-white py-2 px-3 rounded-lg flex items-center justify-center gap-2 hover:bg-green-700 transition-all duration-300"
-          >
-            <FaWhatsapp /> WhatsApp
-          </a>
-        </div> */}
+            <FaExclamationTriangle className="text-red-500 mt-0.5 flex-shrink-0" />
+            <p className="text-red-700 text-sm">{error}</p>
+          </motion.div>
+        )}
 
-        <div className="flex justify-between items-center gap-3">
-          <button
-            onClick={landlordNumber ? handleCall : undefined}
-            disabled={!landlordNumber}
-            className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center gap-2 transition-all duration-300 ${
-              landlordNumber
-                ? "bg-red-600 text-white hover:bg-red-700"
-                : "bg-gray-300 text-gray-600 cursor-not-allowed"
+        {/* Success Alert */}
+        {success && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-green-50 border-l-4 border-green-500 p-4 rounded-lg flex items-start gap-3"
+          >
+            <FaExclamationTriangle className="text-green-500 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-green-700 text-sm font-semibold">Visit booked successfully!</p>
+              <p className="text-green-600 text-xs mt-1">You can schedule another visit anytime.</p>
+            </div>
+          </motion.div>
+        )}
+
+        <motion.form onSubmit={handleSubmit} className="space-y-5">
+          {/* Date & Time Field */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Select Date & Time
+            </label>
+            <div className="relative">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#FF6B00]">
+                <FaCalendarAlt size={18} />
+              </div>
+              <input
+                type="datetime-local"
+                value={visitDate}
+                onChange={handleDateTimeChange}
+                min={new Date(new Date().getTime() + 30 * 60 * 1000)
+                  .toISOString()
+                  .slice(0, 16)}
+                className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl text-sm focus:outline-none transition-all ${
+                  dateTimeError
+                    ? "border-red-500 focus:ring-2 focus:ring-red-200 bg-red-50"
+                    : "border-gray-200 focus:border-[#FF6B00] focus:ring-2 focus:ring-orange-100"
+                }`}
+                required
+              />
+            </div>
+            {dateTimeError && (
+              <motion.p
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-red-500 text-xs mt-2 flex items-center gap-1"
+              >
+                <FaExclamationTriangle size={12} />
+                {dateTimeError}
+              </motion.p>
+            )}
+          </div>
+
+          {/* Contact Number Field */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Contact Number
+            </label>
+            <div className="relative">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#FF6B00]">
+                <FaPhone size={18} />
+              </div>
+              <input
+                type="number"
+                value={contactNumber}
+                onChange={(e) => setContactNumber(e.target.value)}
+                placeholder="Enter 10-digit mobile number"
+                className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#FF6B00] focus:ring-2 focus:ring-orange-100 transition-all"
+                required
+                pattern="[0-9]{10}"
+                title="Please enter a valid 10-digit phone number"
+              />
+            </div>
+          </div>
+
+          {/* Notes Field */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Additional Notes (Optional)
+            </label>
+            <div className="relative">
+              <div className="absolute left-4 top-4 text-[#FF6B00]">
+                <FaFacebookMessenger size={18} />
+              </div>
+              <textarea
+                rows="3"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Any specific requirements or questions..."
+                className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#FF6B00] focus:ring-2 focus:ring-orange-100 transition-all resize-none"
+              />
+            </div>
+          </div>
+
+          {/* Quick Contact Buttons */}
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Quick Contact</p>
+            <div className="grid grid-cols-2 gap-3">
+              <motion.button
+                type="button"
+                whileHover={{ scale: landlordNumber ? 1.05 : 1 }}
+                whileTap={{ scale: landlordNumber ? 0.95 : 1 }}
+                onClick={landlordNumber ? handleCall : undefined}
+                disabled={!landlordNumber}
+                className={`py-3 px-4 rounded-xl flex items-center justify-center gap-2 font-semibold transition-all ${
+                  landlordNumber
+                    ? "bg-gradient-to-r from-red-500 to-red-600 text-white hover:shadow-lg"
+                    : "bg-gray-200 text-gray-500 cursor-not-allowed"
+                }`}
+              >
+                <FaPhone size={16} />
+                <span className="text-sm">Call Now</span>
+              </motion.button>
+
+              <motion.a
+                whileHover={{ scale: landlordNumber ? 1.05 : 1 }}
+                whileTap={{ scale: landlordNumber ? 0.95 : 1 }}
+                href={
+                  landlordNumber ? `https://wa.me/+91${landlordNumber}` : undefined
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`py-3 px-4 rounded-xl flex items-center justify-center gap-2 font-semibold transition-all ${
+                  landlordNumber
+                    ? "bg-gradient-to-r from-green-500 to-green-600 text-white hover:shadow-lg"
+                    : "bg-gray-200 text-gray-500 cursor-not-allowed pointer-events-none"
+                }`}
+              >
+                <FaWhatsapp size={16} />
+                <span className="text-sm">WhatsApp</span>
+              </motion.a>
+            </div>
+          </div>
+
+          {/* Submit Button */}
+          <motion.button
+            type="submit"
+            whileHover={{ scale: loading || dateTimeError ? 1 : 1.02 }}
+            whileTap={{ scale: loading || dateTimeError ? 1 : 0.98 }}
+            disabled={loading || !!dateTimeError}
+            className={`w-full py-4 rounded-xl font-bold text-base transition-all shadow-lg ${
+              loading || dateTimeError
+                ? "bg-gray-300 cursor-not-allowed text-gray-500"
+                : "bg-gradient-to-r from-[#FF6B00] via-[#FF8C3A] to-[#FFB347] text-white hover:shadow-xl hover:shadow-orange-500/50"
             }`}
           >
-            <FaPhone /> Call
-          </button>
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+                Booking Your Visit...
+              </span>
+            ) : dateTimeError ? (
+              "Please Select Valid Date"
+            ) : (
+              <span className="flex items-center justify-center gap-2">
+                <FaCalendarAlt />
+                Schedule Tour
+              </span>
+            )}
+          </motion.button>
+        </motion.form>
 
-          <a
-            href={
-              landlordNumber ? `https://wa.me/+91${landlordNumber}` : undefined
-            }
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center gap-2 transition-all duration-300 ${
-              landlordNumber
-                ? "bg-green-600 text-white hover:bg-green-700"
-                : "bg-gray-300 text-gray-600 cursor-not-allowed pointer-events-none"
-            }`}
-          >
-            <FaWhatsapp /> WhatsApp
-          </a>
+        {/* Info Footer */}
+        <div className="mt-6 pt-5 border-t border-gray-200">
+          <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <FaExclamationTriangle className="text-blue-600" size={14} />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-blue-800 mb-1">Important Note</p>
+                <p className="text-xs text-blue-700 leading-relaxed">
+                  Please arrive on time for your scheduled visit. Our property manager will contact you 30 minutes before your tour.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
-
-        {/* UPDATED: Disable button if date error exists */}
-        <button
-          type="submit"
-          disabled={loading || !!dateTimeError}
-          className={`w-full py-2 rounded-lg font-medium transition-all duration-300 ${
-            loading || dateTimeError
-              ? "bg-gray-400 cursor-not-allowed text-gray-200"
-              : " bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400 text-black hover:from-blue-600 hover:via-cyan-500 hover:to-green-500 hover:text-white shadow-md"
-          }`}
-        >
-          {loading
-            ? "Booking..."
-            : dateTimeError
-            ? "Fix date first"
-            : "Submit Tour Request"}
-        </button>
-      </motion.form>
-    </div>
+      </div>
+    </motion.div>
   );
 };
 

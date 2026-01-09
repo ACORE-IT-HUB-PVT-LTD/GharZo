@@ -16,6 +16,7 @@ import { motion } from "framer-motion";
 import axios from "axios";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import baseurl from "../../../../BaseUrl";
 
 const ComplaintsSummary = () => {
   const [data, setData] = useState({
@@ -47,7 +48,7 @@ const ComplaintsSummary = () => {
 
         // Fetch summary
         const summaryResponse = await axios.get(
-          "https://api.gharzoreality.com/api/sub-owner/properties/complaints/summary",
+          `${baseurl}api/sub-owner/properties/complaints/summary`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -62,7 +63,7 @@ const ComplaintsSummary = () => {
 
         // Fetch workers
         const workersResponse = await axios.get(
-          "https://api.gharzoreality.com/api/sub-owner/workers",
+          `${baseurl}api/sub-owner/workers`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -87,7 +88,7 @@ const ComplaintsSummary = () => {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.get(
-        `https://api.gharzoreality.com/api/sub-owner/properties/${propertyId}/complaints`,
+        `${baseurl}api/sub-owner/properties/${propertyId}/complaints`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -110,7 +111,7 @@ const ComplaintsSummary = () => {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.patch(
-        `https://api.gharzoreality.com/api/sub-owner/properties/${propertyId}/complaints/${complaintId}/status`,
+        `${baseurl}api/sub-owner/properties/${propertyId}/complaints/${complaintId}/status`,
         { status },
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -138,7 +139,7 @@ const ComplaintsSummary = () => {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.patch(
-        `https://api.gharzoreality.com/api/sub-owner/properties/${propertyId}/complaints/${complaintId}/assign`,
+        `${baseurl}api/sub-owner/properties/${propertyId}/complaints/${complaintId}/assign`,
         { 
           workerId, 
           estimatedResolutionTime: new Date(estimatedTime).toISOString(), 
@@ -166,7 +167,7 @@ const ComplaintsSummary = () => {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.patch(
-        `https://api.gharzoreality.com/api/sub-owner/properties/${propertyId}/complaints/${complaintId}/feedback`,
+        `${baseurl}api/sub-owner/properties/${propertyId}/complaints/${complaintId}/feedback`,
         { rating, feedback },
         {
           headers: { Authorization: `Bearer ${token}` },

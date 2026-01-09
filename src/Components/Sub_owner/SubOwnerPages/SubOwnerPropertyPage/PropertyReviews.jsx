@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom"; // Added for URL params
 import { FaStar, FaTrash } from "react-icons/fa";
 import axios from "axios";
+import baseurl from "../../../../../BaseUrl";
 
 const PropertyFeedback = () => {
   const { propertyId: paramPropertyId } = useParams(); // Get from URL (e.g., /property/:propertyId/feedback)
@@ -30,7 +31,7 @@ const PropertyFeedback = () => {
 
       // Fetch ratings
       const ratingsResponse = await axios.get(
-        `https://api.gharzoreality.com/api/subowner/ratings`,
+        `${baseurl}api/subowner/ratings`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -64,7 +65,7 @@ const PropertyFeedback = () => {
 
       // Fetch comments
       const commentsResponse = await axios.get(
-        `https://api.gharzoreality.com/api/subowner/comments/${propertyId}`,
+        `${baseurl}api/subowner/comments/${propertyId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -124,7 +125,7 @@ const PropertyFeedback = () => {
   const handleDelete = async (itemId, type) => {
     try {
       await axios.delete(
-        `https://api.gharzoreality.com/api/subowner/${type === 'rating' ? 'ratings' : 'comments'}/${itemId}`,
+        `https://api.drazeapp.com/api/subowner/${type === 'rating' ? 'ratings' : 'comments'}/${itemId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

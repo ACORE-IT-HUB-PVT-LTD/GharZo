@@ -20,6 +20,7 @@ import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import instaUser from "../../../../assets/Images/instaUser.jpg";
+import baseurl from "../../../../../BaseUrl";
 
 const TenantList = () => {
   const { propertyId } = useParams();
@@ -50,7 +51,7 @@ const TenantList = () => {
         return;
       }
       const response = await axios.get(
-        `https://api.gharzoreality.com/api/sub-owner/properties/${propertyId}/tenants`,
+        `${baseurl}api/sub-owner/properties/${propertyId}/tenants`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -137,7 +138,7 @@ const TenantList = () => {
       const payload = preparePayload(formData);
       console.log("Update payload:", payload); // Debug: Log update payload
       const response = await axios.put(
-        `https://api.gharzoreality.com/api/sub-owner/updateTenant/${formData.tenantId}`,
+        `${baseurl}api/sub-owner/updateTenant/${formData.tenantId}`,
         payload,
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -170,7 +171,7 @@ const TenantList = () => {
       }
       console.log("Deleting tenant with tenantId:", selectedTenant.tenantId); // Debug: Log tenantId
       const response = await axios.delete(
-        `https://api.gharzoreality.com/api/sub-owner/deleteTenant/${selectedTenant.tenantId}`,
+        `${baseurl}api/sub-owner/deleteTenant/${selectedTenant.tenantId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }

@@ -5,6 +5,7 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Pagination } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/pagination";
+import baseurl from "../../../../../BaseUrl";
 
 const PropertyList = () => {
   const navigate = useNavigate();
@@ -32,7 +33,7 @@ const PropertyList = () => {
       setLoading(true);
       try {
         const res = await fetch(
-          "https://api.gharzoreality.com/api/public/all-properties",
+          `${baseurl}api/all-properties`,
           {
             cache: "no-cache",
           }

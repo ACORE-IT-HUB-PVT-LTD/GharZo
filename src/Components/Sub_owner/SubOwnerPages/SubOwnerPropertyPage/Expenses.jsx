@@ -14,6 +14,7 @@ import {
   FaEye,
 } from "react-icons/fa";
 import { motion } from "framer-motion";
+import baseurl from "../../../../../BaseUrl";
 
 const PropertyExpenses = ({ propertyId }) => {
   const [data, setData] = useState({
@@ -60,7 +61,7 @@ const PropertyExpenses = ({ propertyId }) => {
         }
 
         const response = await fetch(
-          `https://api.gharzoreality.com/api/subowner/expenses/property/${propertyId}`,
+          `${baseurl}api/subowner/expenses/property/${propertyId}`,
           {
             method: "GET",
             headers: {
@@ -106,7 +107,7 @@ const PropertyExpenses = ({ propertyId }) => {
   // Handle image view click
   const handleViewImage = (billImage) => {
     if (billImage) {
-      setSelectedImage(`https://api.gharzoreality.com${billImage}`);
+      setSelectedImage(`https://api.drazeapp.com${billImage}`);
       setIsImageModalOpen(true);
     }
   };

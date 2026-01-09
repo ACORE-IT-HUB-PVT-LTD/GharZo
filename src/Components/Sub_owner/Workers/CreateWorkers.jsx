@@ -15,8 +15,10 @@ import {
   Camera,
   Lock,
   Eye,
-  EyeOff, // Added for password visibility toggle
+  EyeOff,
+  X,
 } from "lucide-react";
+import baseurl from "../../../../BaseUrl";
 
 const AddWorkerForm = () => {
   const [formData, setFormData] = useState({
@@ -42,7 +44,7 @@ const AddWorkerForm = () => {
   const [errors, setErrors] = useState({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
-  const [showPassword, setShowPassword] = useState(false); // Password visibility state
+  const [showPassword, setShowPassword] = useState(false);
 
   const days = [
     "Monday",
@@ -80,23 +82,17 @@ const AddWorkerForm = () => {
         setError("Authentication token not found");
         return;
       }
-      const propRes = await fetch(
-        "https://api.gharzoreality.com/api/sub-owner/properties",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const propRes = await fetch(`${baseurl}api/sub-owner/properties`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const propData = await propRes.json();
       if (!propData.success) {
         setError("Failed to fetch properties");
         return;
       }
-      const workerRes = await fetch(
-        "https://api.gharzoreality.com/api/sub-owner/workers",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const workerRes = await fetch(`${baseurl}api/sub-owner/workers`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const workerData = await workerRes.json();
       if (!workerData.success) {
         setError("Failed to fetch workers");
@@ -113,7 +109,6 @@ const AddWorkerForm = () => {
     fetchPropertiesAndWorkers();
   }, []);
 
-  // Fix: Ensure properties are properly filtered and shown
   const unassignedProperties = properties.filter((property) => {
     return !allWorkers.some((worker) =>
       worker.assignedProperties?.some((prop) => prop.id === property.id)
@@ -124,14 +119,11 @@ const AddWorkerForm = () => {
     const newErrors = {};
     if (!formData.name.trim()) newErrors.name = "Name is required";
     if (!formData.role.trim()) newErrors.role = "Role is required";
-
-    // Mobile number validation: exactly 10 digits, no spaces or special chars
     if (!formData.contactNumber.trim()) {
       newErrors.contactNumber = "Mobile number is required";
     } else if (!/^\d{10}$/.test(formData.contactNumber)) {
       newErrors.contactNumber = "Enter a valid 10-digit mobile number";
     }
-
     if (!formData.email.trim() || !/\S+@\S+\.\S+/.test(formData.email))
       newErrors.email = "Valid email is required";
     if (!formData.address.trim()) newErrors.address = "Address is required";
@@ -160,8 +152,6 @@ const AddWorkerForm = () => {
     }
     if (formData.assignedProperties.length === 0)
       newErrors.assignedProperties = "At least one property must be selected";
-
-    // Password Validation
     if (!formData.password.trim()) {
       newErrors.password = "Password is required";
     } else if (formData.password.length < 6) {
@@ -183,7 +173,6 @@ const AddWorkerForm = () => {
       }
       setFormData((prev) => ({ ...prev, [name]: formatted }));
     } else if (name === "contactNumber") {
-      // Allow only digits for mobile
       const cleaned = value.replace(/\D/g, "").slice(0, 10);
       setFormData((prev) => ({ ...prev, [name]: cleaned }));
     } else {
@@ -252,7 +241,13 @@ const AddWorkerForm = () => {
     }
 
     const formDataToSend = new FormData();
-    const { profileImage, assignedProperties, chargePerService, password, ...rest } = formData;
+    const {
+      profileImage,
+      assignedProperties,
+      chargePerService,
+      password,
+      ...rest
+    } = formData;
 
     Object.keys(rest).forEach((key) => {
       if (Array.isArray(rest[key])) {
@@ -279,16 +274,11 @@ const AddWorkerForm = () => {
     }
 
     try {
-      const res = await fetch(
-        "https://api.gharzoreality.com/api/sub-owner/workers",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: formDataToSend,
-        }
-      );
+      const res = await fetch(`${baseurl}api/sub-owner/workers`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formDataToSend,
+      });
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
@@ -350,481 +340,435 @@ const AddWorkerForm = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-2xl p-8 w-full max-w-4xl border border-white/20">
-        <h2 className="text-3xl font-bold mb-8 text-center flex items-center justify-center text-gray-800">
-          <User className="mr-3 h-8 w-8 text-blue-500" /> Add Worker
-        </h2>
-        <form
-          onSubmit={handleSubmit}
-          className="grid grid-cols-1 md:grid-cols-2 gap-6"
-        >
-          {/* Worker Image Upload */}
-          <div className="md:col-span-2">
-            <label className="font-semibold text-gray-700 flex items-center">
-              <Camera size={20} className="mr-2 text-indigo-500" /> Worker Photo
-            </label>
-            <div className="mt-2 flex items-center space-x-4">
-              <div className="flex-shrink-0">
-                {imagePreview ? (
-                  <img
-                    src={imagePreview}
-                    alt="Worker preview"
-                    className="h-24 w-24 rounded-full object-cover border-4 border-indigo-200 shadow-md"
-                  />
-                ) : (
-                  <div className="h-24 w-24 rounded-full bg-gray-200 border-4 border-dashed border-gray-400 flex items-center justify-center">
-                    <User className="h-10 w-10 text-gray-400" />
-                  </div>
-                )}
-              </div>
-              <label className="cursor-pointer bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl px-6 py-3 font-medium hover:from-indigo-600 hover:to-purple-700 transition-all shadow-md">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="hidden"
-                />
-                Choose Photo
-              </label>
-              {imagePreview && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setImagePreview(null);
-                    setFormData((prev) => ({ ...prev, profileImage: null }));
-                  }}
-                  className="text-red-600 hover:text-red-800 font-medium"
-                >
-                  Remove
-                </button>
-              )}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Upload a clear photo (optional)
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-indigo-100 py-12 px-4">
+      <div className="max-w-5xl mx-auto">
+        <div className="bg-white/90 backdrop-blur-lg rounded-3xl shadow-2xl border border-white/30 overflow-hidden">
+          <div
+            className="bg-gradient-to-b 
+from-[#0A2F56] via-[#1E4569] to-[#0A2F56]
+ px-10 py-8 text-center"
+          >
+            <h2 className="text-4xl font-extrabold text-white flex items-center justify-center gap-4">
+              <User className="h-10 w-10" />
+              Add New Worker
+            </h2>
+            <p className="text-indigo-100 mt-2 text-lg">
+              Register a service worker for your properties
             </p>
           </div>
 
-          {/* Name */}
-          <div className="flex flex-col space-y-1">
-            <label className="font-semibold text-gray-700 flex items-center">
-              <User size={20} className="mr-2 text-pink-500" /> Name *
-            </label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
-              className={`border-2 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                errors.name ? "border-red-500" : "border-gray-300"
-              }`}
-              placeholder="Enter full name"
-              required
-            />
-            {errors.name && (
-              <p className="text-red-500 text-sm mt-1">{errors.name}</p>
-            )}
-          </div>
+          <div className="p-10">
+            <form onSubmit={handleSubmit} className="space-y-8">
+              {/* Profile Image */}
+              <div className="flex justify-center">
+                <div className="relative">
+                  <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-indigo-300 shadow-xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
+                    {imagePreview ? (
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User className="w-16 h-16 text-indigo-400" />
+                    )}
+                  </div>
+                  <label className="absolute bottom-0 right-0 bg-indigo-600 text-white rounded-full p-3 cursor-pointer shadow-lg hover:bg-indigo-700 transition">
+                    <Camera className="w-5 h-5" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="hidden"
+                    />
+                  </label>
+                  {imagePreview && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImagePreview(null);
+                        setFormData((prev) => ({
+                          ...prev,
+                          profileImage: null,
+                        }));
+                      }}
+                      className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
 
-          {/* Role */}
-          <div className="flex flex-col space-y-1">
-            <label className="font-semibold text-gray-700 flex items-center">
-              <Briefcase size={20} className="mr-2 text-green-500" /> Role *
-            </label>
-            <select
-              name="role"
-              value={formData.role}
-              onChange={handleInputChange}
-              className={`border-2 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                errors.role ? "border-red-500" : "border-gray-300"
-              }`}
-              required
-            >
-              <option value="">Select Role</option>
-              {roleOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-            {errors.role && (
-              <p className="text-red-500 text-sm mt-1">{errors.role}</p>
-            )}
-          </div>
-
-          {/* Contact Number */}
-          <div className="flex flex-col space-y-1">
-            <label className="font-semibold text-gray-700 flex items-center">
-              <Phone size={20} className="mr-2 text-orange-500" /> Contact Number *
-            </label>
-            <input
-              type="tel"
-              name="contactNumber"
-              value={formData.contactNumber}
-              onChange={handleInputChange}
-              maxLength={10}
-              className={`border-2 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                errors.contactNumber ? "border-red-500" : "border-gray-300"
-              }`}
-              placeholder="Enter 10-digit mobile number"
-              required
-            />
-            {errors.contactNumber && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.contactNumber}
-              </p>
-            )}
-          </div>
-
-          {/* Email */}
-          <div className="flex flex-col space-y-1">
-            <label className="font-semibold text-gray-700 flex items-center">
-              <Mail size={20} className="mr-2 text-purple-500" /> Email *
-            </label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              className={`border-2 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                errors.email ? "border-red-500" : "border-gray-300"
-              }`}
-              placeholder="Enter email address"
-              required
-            />
-            {errors.email && (
-              <p className="text-red-500 text-sm mt-1">{errors.email}</p>
-            )}
-          </div>
-
-          {/* Address */}
-          <div className="flex flex-col space-y-1">
-            <label className="font-semibold text-gray-700 flex items-center">
-              <Home size={20} className="mr-2 text-indigo-500" /> Address *
-            </label>
-            <input
-              type="text"
-              name="address"
-              value={formData.address}
-              onChange={handleInputChange}
-              className={`border-2 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                errors.address ? "border-red-500" : "border-gray-300"
-              }`}
-              placeholder="Enter full address"
-              required
-            />
-            {errors.address && (
-              <p className="text-red-500 text-sm mt-1">{errors.address}</p>
-            )}
-          </div>
-
-          {/* Password with Eye Icon */}
-          <div className="flex flex-col space-y-1">
-            <label className="font-semibold text-gray-700 flex items-center">
-              <Lock size={20} className="mr-2 text-red-600" /> Password *
-            </label>
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                name="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                className={`border-2 rounded-xl p-3 pr-12 w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                  errors.password ? "border-red-500" : "border-gray-300"
-                }`}
-                placeholder="Enter password (min 6 chars)"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-              >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
-            </div>
-            {errors.password && (
-              <p className="text-red-500 text-sm mt-1">{errors.password}</p>
-            )}
-          </div>
-
-          {/* Assigned Properties - Now showing only name, styled as buttons */}
-          <div className="flex flex-col space-y-1">
-            <label className="font-semibold text-gray-700 flex items-center">
-              <MapPin size={20} className="mr-2 text-purple-500" /> Assigned Properties *
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-gray-50 rounded-xl max-h-48 overflow-y-auto">
-              {unassignedProperties.slice(0, 2).map((property) => {
-                const isAssigned = allWorkers.some((worker) =>
-                  worker.assignedProperties?.some((p) => p.id === property.id)
-                );
-                const isSelected = formData.assignedProperties.includes(property.id);
-                return (
-                  <button
-                    key={property.id}
-                    type="button"
-                    onClick={() => !isAssigned && handlePropertyChange(property.id)}
-                    disabled={isAssigned}
-                    className={`p-3 rounded-xl font-medium text-sm transition-all transform hover:scale-105 shadow-md ${
-                      isAssigned
-                        ? "bg-orange-500 text-white opacity-60 cursor-not-allowed"
-                        : isSelected
-                        ? "bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg"
-                        : "bg-gradient-to-r from-gray-200 to-gray-300 text-gray-700 hover:from-gray-300 hover:to-gray-400"
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Name & Role */}
+                <div className="space-y-1">
+                  <label className="text-gray-700 font-semibold flex items-center gap-2">
+                    <User className="w-5 h-5 text-indigo-600" /> Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    placeholder="Enter worker's name"
+                    className={`w-full px-5 py-4 rounded-2xl border-2 bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-4 focus:ring-indigo-300 transition-all ${
+                      errors.name ? "border-red-400" : "border-gray-200"
                     }`}
-                  >
-                    {property.name}
-                  </button>
-                );
-              })}
-              {unassignedProperties.length > 2 && (
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(true)}
-                  className="p-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-medium transition-all transform hover:scale-105 shadow-md"
-                >
-                  +{unassignedProperties.length - 2} more
-                </button>
-              )}
-            </div>
-            {errors.assignedProperties && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.assignedProperties}
-              </p>
-            )}
-          </div>
-
-          {/* Availability Days - Button Style */}
-          <div className="md:col-span-2">
-            <div className="flex flex-col space-y-1">
-              <label className="font-semibold text-gray-700 flex items-center">
-                <Calendar size={20} className="mr-2 text-teal-500" /> Availability Days *
-              </label>
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-3 p-4 bg-gray-50 rounded-xl">
-                {days.map((day) => {
-                  const isSelected = formData.availabilityDays.includes(day);
-                  return (
-                    <button
-                      key={day}
-                      type="button"
-                      onClick={() => {
-                        const e = { target: { value: day, checked: !isSelected } };
-                        handleCheckboxChange(e, "availabilityDays");
-                      }}
-                      className={`p-2 rounded-lg font-medium text-sm transition-all transform hover:scale-105 shadow-sm ${
-                        isSelected
-                          ? "bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-md"
-                          : "bg-gradient-to-r from-gray-200 to-gray-300 text-gray-700 hover:from-gray-300 hover:to-gray-400"
-                      }`}
-                    >
-                      {day.slice(0, 3)}
-                    </button>
-                  );
-                })}
-              </div>
-              {errors.availabilityDays && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.availabilityDays}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Time Slots - Button Style */}
-          <div className="md:col-span-2">
-            <div className="flex flex-col space-y-1">
-              <label className="font-semibold text-gray-700 flex items-center">
-                <Clock size={20} className="mr-2 text-yellow-500" /> Available Time Slots *
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-gray-50 rounded-xl">
-                {timeSlots.map((slot) => {
-                  const isSelected = formData.availableTimeSlots.includes(slot);
-                  return (
-                    <button
-                      key={slot}
-                      type="button"
-                      onClick={() => {
-                        const e = { target: { value: slot, checked: !isSelected } };
-                        handleCheckboxChange(e, "availableTimeSlots");
-                      }}
-                      className={`p-3 rounded-xl font-medium transition-all transform hover:scale-105 shadow-md ${
-                        isSelected
-                          ? "bg-gradient-to-r from-amber-500 to-orange-600 text-white"
-                          : "bg-gradient-to-r from-gray-200 to-gray-300 text-gray-700 hover:from-gray-300 hover:to-gray-400"
-                      }`}
-                    >
-                      {slot}
-                    </button>
-                  );
-                })}
-              </div>
-              {errors.availableTimeSlots && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.availableTimeSlots}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Charge Per Service */}
-          <div className="flex flex-col space-y-1">
-            <label className="font-semibold text-gray-700 flex items-center">
-              <DollarSign size={20} className="mr-2 text-green-600" /> Charge Per Service (₹) *
-            </label>
-            <input
-              type="number"
-              name="chargePerService"
-              value={formData.chargePerService}
-              onChange={handleInputChange}
-              min="1"
-              className={`border-2 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                errors.chargePerService ? "border-red-500" : "border-gray-300"
-              }`}
-              placeholder="Enter amount"
-              required
-            />
-            {errors.chargePerService && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.chargePerService}
-              </p>
-            )}
-          </div>
-
-          {/* ID Proof Type */}
-          <div className="flex flex-col space-y-1">
-            <label className="font-semibold text-gray-700 flex items-center">
-              <FileText size={20} className="mr-2 text-red-500" /> ID Proof Type *
-            </label>
-            <select
-              name="idProofType"
-              value={formData.idProofType}
-              onChange={handleIdProofChange}
-              className={`border-2 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                errors.idProofType ? "border-red-500" : "border-gray-300"
-              }`}
-              required
-            >
-              <option value="">Select ID Proof Type</option>
-              {idProofOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-            {errors.idProofType && (
-              <p className="text-red-500 text-sm mt-1">{errors.idProofType}</p>
-            )}
-          </div>
-
-          {/* ID Proof Number */}
-          <div className="md:col-span-2">
-            <div className="flex flex-col space-y-1">
-              <label className="font-semibold text-gray-700 flex items-center">
-                <FileText size={20} className="mr-2 text-red-500" /> ID Proof Number *
-              </label>
-              <input
-                type="text"
-                name="idProofNumber"
-                value={formData.idProofNumber}
-                onChange={handleInputChange}
-                pattern={getIdProofPattern()}
-                placeholder={getIdProofPlaceholder()}
-                className={`border-2 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                  errors.idProofNumber ? "border-red-500" : "border-gray-300"
-                }`}
-                required
-              />
-              {errors.idProofNumber && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.idProofNumber}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Submit Button */}
-          <div className="md:col-span-2">
-            <button
-              type="submit"
-              className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl p-4 hover:from-blue-600 hover:to-purple-700 transition-all font-semibold text-lg shadow-lg hover:shadow-xl w-full"
-              disabled={loading}
-            >
-              {loading ? "Adding Worker..." : "Add Worker"}
-            </button>
-          </div>
-        </form>
-
-        {/* Success / Error Messages */}
-        {response && (
-          <div className="mt-4 p-3 bg-green-100 rounded-lg border-l-2 border-green-500 flex items-center space-x-2">
-            <CheckCircle className="h-5 w-5 text-green-500" />
-            <span className="text-green-800 font-medium">
-              Success! {response.worker.name} added successfully
-            </span>
-          </div>
-        )}
-        {error && (
-          <div className="mt-4 p-3 bg-red-100 rounded-lg border-l-2 border-red-500 flex items-center space-x-2">
-            <AlertCircle className="h-5 w-5 text-red-500" />
-            <span className="text-red-800 font-medium">{error}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Modal for more properties */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-6 max-w-4xl w-full max-h-[80vh] overflow-y-auto shadow-2xl">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold text-gray-800">All Available Properties</h2>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-gray-600 hover:text-gray-800 transition-all"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
                   />
-                </svg>
-              </button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {unassignedProperties.map((property) => {
-                const isAssigned = allWorkers.some((worker) =>
-                  worker.assignedProperties?.some((p) => p.id === property.id)
-                );
-                const isSelected = formData.assignedProperties.includes(property.id);
-                return (
-                  <button
-                    key={property.id}
-                    type="button"
-                    onClick={() => !isAssigned && handlePropertyChange(property.id)}
-                    disabled={isAssigned}
-                    className={`p-4 rounded-xl font-medium transition-all shadow-md transform hover:scale-105 ${
-                      isAssigned
-                        ? "bg-orange-500 text-white opacity-60 cursor-not-allowed"
-                        : isSelected
-                        ? "bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg"
-                        : "bg-gradient-to-r from-gray-200 to-gray-300 text-gray-700 hover:from-gray-300 hover:to-gray-400"
+                  {errors.name && (
+                    <p className="text-red-500 text-sm">{errors.name}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-gray-700 font-semibold flex items-center gap-2">
+                    <Briefcase className="w-5 h-5 text-purple-600" /> Role *
+                  </label>
+                  <select
+                    name="role"
+                    value={formData.role}
+                    onChange={handleInputChange}
+                    className={`w-full px-5 py-4 rounded-2xl border-2 bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-4 focus:ring-purple-300 transition-all ${
+                      errors.role ? "border-red-400" : "border-gray-200"
                     }`}
                   >
-                    {property.name}
-                  </button>
-                );
-              })}
-            </div>
+                    <option value="">Choose role</option>
+                    {roleOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.role && (
+                    <p className="text-red-500 text-sm">{errors.role}</p>
+                  )}
+                </div>
+
+                {/* Contact & Email */}
+                <div className="space-y-1">
+                  <label className="text-gray-700 font-semibold flex items-center gap-2">
+                    <Phone className="w-5 h-5 text-teal-600" /> Mobile Number *
+                  </label>
+                  <input
+                    type="tel"
+                    name="contactNumber"
+                    value={formData.contactNumber}
+                    onChange={handleInputChange}
+                    maxLength={10}
+                    placeholder="10-digit number"
+                    className={`w-full px-5 py-4 rounded-2xl border-2 bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-4 focus:ring-teal-300 transition-all ${
+                      errors.contactNumber
+                        ? "border-red-400"
+                        : "border-gray-200"
+                    }`}
+                  />
+                  {errors.contactNumber && (
+                    <p className="text-red-500 text-sm">
+                      {errors.contactNumber}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-gray-700 font-semibold flex items-center gap-2">
+                    <Mail className="w-5 h-5 text-pink-600" /> Email *
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    placeholder="worker@example.com"
+                    className={`w-full px-5 py-4 rounded-2xl border-2 bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-4 focus:ring-pink-300 transition-all ${
+                      errors.email ? "border-red-400" : "border-gray-200"
+                    }`}
+                  />
+                  {errors.email && (
+                    <p className="text-red-500 text-sm">{errors.email}</p>
+                  )}
+                </div>
+
+                {/* Address & Password */}
+                <div className="space-y-1">
+                  <label className="text-gray-700 font-semibold flex items-center gap-2">
+                    <Home className="w-5 h-5 text-amber-600" /> Address *
+                  </label>
+                  <input
+                    type="text"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleInputChange}
+                    placeholder="Full residential address"
+                    className={`w-full px-5 py-4 rounded-2xl border-2 bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-4 focus:ring-amber-300 transition-all ${
+                      errors.address ? "border-red-400" : "border-gray-200"
+                    }`}
+                  />
+                  {errors.address && (
+                    <p className="text-red-500 text-sm">{errors.address}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-gray-700 font-semibold flex items-center gap-2">
+                    <Lock className="w-5 h-5 text-red-600" /> Password *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      placeholder="Min 6 characters"
+                      className={`w-full px-5 py-4 pr-14 rounded-2xl border-2 bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-4 focus:ring-red-300 transition-all ${
+                        errors.password ? "border-red-400" : "border-gray-200"
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-5 h-5" />
+                      ) : (
+                        <Eye className="w-5 h-5" />
+                      )}
+                    </button>
+                  </div>
+                  {errors.password && (
+                    <p className="text-red-500 text-sm">{errors.password}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Assigned Properties - Chip Style */}
+              <div>
+                <label className="text-gray-700 font-semibold flex items-center gap-2 mb-4">
+                  <MapPin className="w-6 h-6 text-indigo-600" /> Assign
+                  Properties *
+                </label>
+                <div className="bg-gray-50/80 rounded-2xl p-6">
+                  <div className="flex flex-wrap gap-3">
+                    {unassignedProperties.map((property) => {
+                      const isSelected = formData.assignedProperties.includes(
+                        property.id
+                      );
+                      const isAssignedElsewhere = allWorkers.some((w) =>
+                        w.assignedProperties?.some((p) => p.id === property.id)
+                      );
+                      return (
+                        <button
+                          key={property.id}
+                          type="button"
+                          disabled={isAssignedElsewhere}
+                          onClick={() => handlePropertyChange(property.id)}
+                          className={`px-6 py-3 rounded-full font-medium transition-all shadow-md ${
+                            isAssignedElsewhere
+                              ? "bg-orange-100 text-orange-700 cursor-not-allowed"
+                              : isSelected
+                              ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg"
+                              : "bg-white border-2 border-gray-300 text-gray-700 hover:border-indigo-400 hover:shadow"
+                          }`}
+                        >
+                          {property.name}
+                          {isAssignedElsewhere && " (Assigned)"}
+                        </button>
+                      );
+                    })}
+                    {unassignedProperties.length === 0 && (
+                      <p className="text-gray-500">No available properties</p>
+                    )}
+                  </div>
+                  {errors.assignedProperties && (
+                    <p className="text-red-500 text-sm mt-3">
+                      {errors.assignedProperties}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Availability Days */}
+              <div>
+                <label className="text-gray-700 font-semibold flex items-center gap-2 mb-4">
+                  <Calendar className="w-6 h-6 text-teal-600" /> Available Days
+                  *
+                </label>
+                <div className="grid grid-cols-3 sm:grid-cols-7 gap-4">
+                  {days.map((day) => {
+                    const selected = formData.availabilityDays.includes(day);
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => {
+                          const e = {
+                            target: { value: day, checked: !selected },
+                          };
+                          handleCheckboxChange(e, "availabilityDays");
+                        }}
+                        className={`py-4 rounded-2xl font-semibold transition-all shadow-md ${
+                          selected
+                            ? "bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg"
+                            : "bg-white border-2 border-gray-300 text-gray-700 hover:border-teal-400"
+                        }`}
+                      >
+                        {day.slice(0, 3)}
+                      </button>
+                    );
+                  })}
+                </div>
+                {errors.availabilityDays && (
+                  <p className="text-red-500 text-sm mt-3">
+                    {errors.availabilityDays}
+                  </p>
+                )}
+              </div>
+
+              {/* Time Slots */}
+              <div>
+                <label className="text-gray-700 font-semibold flex items-center gap-2 mb-4">
+                  <Clock className="w-6 h-6 text-amber-600" /> Time Slots *
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
+                  {timeSlots.map((slot) => {
+                    const selected = formData.availableTimeSlots.includes(slot);
+                    return (
+                      <button
+                        key={slot}
+                        type="button"
+                        onClick={() => {
+                          const e = {
+                            target: { value: slot, checked: !selected },
+                          };
+                          handleCheckboxChange(e, "availableTimeSlots");
+                        }}
+                        className={`py-5 rounded-2xl font-semibold transition-all shadow-md ${
+                          selected
+                            ? "bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg"
+                            : "bg-white border-2 border-gray-300 text-gray-700 hover:border-amber-400"
+                        }`}
+                      >
+                        {slot}
+                      </button>
+                    );
+                  })}
+                </div>
+                {errors.availableTimeSlots && (
+                  <p className="text-red-500 text-sm mt-3">
+                    {errors.availableTimeSlots}
+                  </p>
+                )}
+              </div>
+
+              {/* Charge & ID Proof */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-1">
+                  <label className="text-gray-700 font-semibold flex items-center gap-2">
+                    <DollarSign className="w-6 h-6 text-green-600" /> Charge Per
+                    Service (₹) *
+                  </label>
+                  <input
+                    type="number"
+                    name="chargePerService"
+                    value={formData.chargePerService}
+                    onChange={handleInputChange}
+                    min="1"
+                    placeholder="e.g. 500"
+                    className={`w-full px-5 py-4 rounded-2xl border-2 bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-4 focus:ring-green-300 transition-all ${
+                      errors.chargePerService
+                        ? "border-red-400"
+                        : "border-gray-200"
+                    }`}
+                  />
+                  {errors.chargePerService && (
+                    <p className="text-red-500 text-sm">
+                      {errors.chargePerService}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-gray-700 font-semibold flex items-center gap-2">
+                    <FileText className="w-6 h-6 text-red-600" /> ID Proof Type
+                    *
+                  </label>
+                  <select
+                    name="idProofType"
+                    value={formData.idProofType}
+                    onChange={handleIdProofChange}
+                    className={`w-full px-5 py-4 rounded-2xl border-2 bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-4 focus:ring-red-300 transition-all ${
+                      errors.idProofType ? "border-red-400" : "border-gray-200"
+                    }`}
+                  >
+                    <option value="">Select type</option>
+                    {idProofOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.idProofType && (
+                    <p className="text-red-500 text-sm">{errors.idProofType}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* ID Proof Number */}
+              <div className="md:col-span-2">
+                <label className="text-gray-700 font-semibold flex items-center gap-2 mb-2">
+                  <FileText className="w-6 h-6 text-red-600" /> ID Proof Number
+                  *
+                </label>
+                <input
+                  type="text"
+                  name="idProofNumber"
+                  value={formData.idProofNumber}
+                  onChange={handleInputChange}
+                  placeholder={getIdProofPlaceholder()}
+                  className={`w-full px-5 py-4 rounded-2xl border-2 bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-4 focus:ring-red-300 transition-all ${
+                    errors.idProofNumber ? "border-red-400" : "border-gray-200"
+                  }`}
+                />
+                {errors.idProofNumber && (
+                  <p className="text-red-500 text-sm mt-2">
+                    {errors.idProofNumber}
+                  </p>
+                )}
+              </div>
+
+              {/* Submit */}
+              <div className="pt-6">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-gradient-to-b from-[#0A2F56] via-[#1E4569] to-[#0A2F56] text-white font-bold text-xl py-5 rounded-2xl shadow-2xl hover:shadow-indigo-500/50 transform hover:-translate-y-1 transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  {loading ? "Adding Worker..." : "Add Worker"}
+                </button>
+              </div>
+            </form>
+
+            {/* Messages */}
+            {response && (
+              <div className="mt-8 p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border border-green-200 flex items-center gap-4">
+                <CheckCircle className="w-10 h-10 text-green-600 flex-shrink-0" />
+                <p className="text-green-800 font-semibold text-lg">
+                  Worker{" "}
+                  <span className="text-green-900">{response.worker.name}</span>{" "}
+                  added successfully!
+                </p>
+              </div>
+            )}
+            {error && (
+              <div className="mt-8 p-6 bg-gradient-to-r from-red-50 to-pink-50 rounded-2xl border border-red-200 flex items-center gap-4">
+                <AlertCircle className="w-10 h-10 text-red-600 flex-shrink-0" />
+                <p className="text-red-800 font-semibold">{error}</p>
+              </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };

@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { AlertCircle, User, CheckCircle, Clock } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import baseurl from "../../../../../BaseUrl";
 
 const Complaints = () => {
   const { propertyId } = useParams();
@@ -55,7 +56,7 @@ const Complaints = () => {
       try {
         setLoading(true);
         const response = await axios.get(
-          `https://api.gharzoreality.com/api/sub-owner/properties/${propertyId}/complaints?page=${page}&limit=${pagination.limit}`,
+          `${baseurl}api/sub-owner/properties/${propertyId}/complaints?page=${page}&limit=${pagination.limit}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -114,7 +115,7 @@ const Complaints = () => {
 
     try {
       const response = await axios.patch(
-        `https://api.gharzoreality.com/api/sub-owner/properties/${propertyId}/complaints/${complaintId}`,
+        `${baseurl}api/sub-owner/properties/${propertyId}/complaints/${complaintId}`,
         { status: "Resolved", notes: landlordResponse },
         {
           headers: {

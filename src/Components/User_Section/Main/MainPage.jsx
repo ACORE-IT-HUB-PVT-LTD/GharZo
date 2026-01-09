@@ -57,7 +57,7 @@ function MainPage() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
-  const BASE_URL = "http://api.gharzoreality.com/health";
+  const BASE_URL = "https://api.gharzoreality.com/";
 
   // 🎬 Hero Background Images Array - Cinematic & Luxury Real Estate
   const heroImages = [
@@ -191,7 +191,7 @@ function MainPage() {
       const token = getToken();
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      let response = await fetch(`${BASE_URL}/api/properties`, {
+      let response = await fetch(`${BASE_URL}api/public/all-properties`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -578,51 +578,85 @@ Discover homes that match your comfort          </motion.p>
       ) : (
         /* Remove CardCarousel if you want static grid, or keep it to wrap the map below */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {properties.map((property, index) => (
-            <motion.div
-              key={property.id}
-              initial={{ opacity: 0, y: 50 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: index * 0.1, duration: 0.7 }}
-              className="group relative rounded-3xl overflow-hidden shadow-2xl cursor-pointer h-96 md:h-[500px] bg-cover bg-center"
-              style={{ backgroundImage: `url(${property.images?.[0] || '/placeholder-project.jpg'})` }}
+        {Array.isArray(properties) && properties.length > 0 ? (
+  properties.map((property, index) => (
+    <motion.div
+      key={property?.id || index}
+      initial={{ opacity: 0, y: 50 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ delay: index * 0.1, duration: 0.7 }}
+      className="group relative rounded-3xl overflow-hidden shadow-2xl cursor-pointer h-96 md:h-[500px] bg-cover bg-center"
+      style={{
+        backgroundImage: `url(${
+          property?.images?.[0] || "/placeholder-project.jpg"
+        })`,
+      }}
+    >
+      {/* Dark gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+
+      {/* Content at bottom */}
+      <div className="absolute bottom-0 left-0 right-0 p-8 text-left">
+        <h3 className="text-2xl md:text-4xl font-bold text-white">
+          {property?.name || property?.projectName || "Unnamed Project"}
+        </h3>
+
+        <p className="text-lg md:text-xl text-gray-200 mt-2">
+          {property?.location?.area || ""} {property?.location?.city || ""}
+        </p>
+
+        <div className="flex items-center justify-between mt-8">
+          <p className="text-gray-300 text-base md:text-lg">
+            Interested in this project by{" "}
+            <span className="font-semibold text-white">
+              {property?.builder || "Premium Developer"}
+            </span>
+            ?
+          </p>
+
+          <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl shadow-lg flex items-center gap-3 transition-all hover:shadow-xl">
+            <svg
+              className="w-3 h-3"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              {/* Dark gradient overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 5a22 22 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+              />
+            </svg>
+            View Number
+          </button>
+        </div>
+      </div>
 
-              {/* Content at bottom */}
-              <div className="absolute bottom-0 left-0 right-0 p-8 text-left">
-                <h3 className="text-2xl md:text-4xl font-bold text-white">
-                  {property.name || property.projectName}
-                </h3>
-                <p className="text-lg md:text-xl text-gray-200 mt-2">
-                  {property.location?.area} {property.location?.city}
-                </p>
-
-                <div className="flex items-center justify-between mt-8">
-                  <p className="text-gray-300 text-base md:text-lg">
-                    Interested in this project by <span className="font-semibold text-white">{property.builder || "Premium Developer"}</span>?
-                  </p>
-                  <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl shadow-lg flex items-center gap-3 transition-all hover:shadow-xl">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                    </svg>
-                    View Number
-                  </button>
-                </div>
-              </div>
-
-              {/* Optional navigation arrow if not using carousel */}
-              {index < properties.length - 1 && (
-                <div className="absolute right-6 top-1/2 -translate-y-1/2 bg-white/20 backdrop-blur-sm rounded-full p-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              )}
-            </motion.div>
-          ))}
+      {/* Navigation arrow */}
+      {index < properties.length - 1 && (
+        <div className="absolute right-6 top-1/2 -translate-y-1/2 bg-white/20 backdrop-blur-sm rounded-full p-3 opacity-0 group-hover:opacity-100 transition-opacity">
+          <svg
+            className="w-6 h-6 text-white"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={3}
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        </div>
+      )}
+    </motion.div>
+  ))
+) : (
+  <p className="text-center text-gray-500">No properties available.</p>
+)}
         </div>
       )}
     </div>

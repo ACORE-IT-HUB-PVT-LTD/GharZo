@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from "react";
-import { BedDouble, MapPin } from "lucide-react";
+import { BedDouble, MapPin, Home, Users, Search, RotateCcw } from "lucide-react";
 import { Link } from "react-router-dom";
 import gsap from "gsap";
+import { motion } from "framer-motion";
 import baseurl from "../../../../BaseUrl";
 
 function AllProperty() {
@@ -16,7 +17,7 @@ function AllProperty() {
   const [gender, setGender] = useState("");
   const [propertyType, setPropertyType] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const propertiesPerPage = 9; // 3 rows × 3 columns
+  const propertiesPerPage = 9;
 
   const searchIconRef = useRef(null);
 
@@ -36,7 +37,6 @@ function AllProperty() {
         const raw = data;
 
         if (raw?.properties && Array.isArray(raw.properties)) {
-          // ✅ Filter: only properties with hasAvailability === true
           const availableProps = raw.properties.filter(
             (item) => item.isActive === true
           );
@@ -88,7 +88,7 @@ function AllProperty() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Animate search icon (3D effect)
+  // Animate search icon
   useEffect(() => {
     if (searchIconRef.current) {
       gsap.to(searchIconRef.current, {
@@ -149,7 +149,7 @@ function AllProperty() {
     });
 
     setFilteredProperties(filtered);
-    setCurrentPage(1); // reset pagination on filter
+    setCurrentPage(1);
   }, [debouncedSearchTerm, city, rooms, priceRange, gender, propertyType, properties]);
 
   // Reset handler
@@ -169,192 +169,279 @@ function AllProperty() {
   const totalPages = Math.ceil(filteredProperties.length / propertiesPerPage);
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold text-center mb-6 mt-10 text-blue-700">
-        All Properties
-      </h1>
-
-      {/* Filter Section */}
-      <div
-        className="max-w-6xl mx-auto mb-8 bg-white/30 backdrop-blur-md border border-blue-500/50 shadow-lg rounded-xl p-4 flex flex-wrap items-center gap-3 justify-center mt-8"
-        style={{ boxShadow: "0 0 12px rgba(59,130,246,0.6)" }}
-      >
-        <div className="relative filter-item w-full sm:w-72">
-          <MapPin
-            ref={searchIconRef}
-            size={18}
-            className="absolute left-3 top-[13px]"
-          />
-          <input
-            type="text"
-            placeholder="Search by name, city or location"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 border border-blue-500/50 p-2 rounded w-full bg-white/50 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        <select
-          value={propertyType}
-          onChange={(e) => setPropertyType(e.target.value)}
-          className="border border-blue-500/50 p-2 rounded w-36 bg-white/50 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 filter-item text-sm"
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-orange-50">
+      {/* Hero Header Section */}
+      <div className="relative bg-gradient-to-r from-[#002B5C] via-[#003A75] to-[#002B5C] py-16 px-4 overflow-hidden">
+        {/* Decorative Elements */}
+        <div className="absolute top-0 left-0 w-96 h-96 bg-[#FF6B00]/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#FF6B00]/10 rounded-full blur-3xl" />
+        
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="relative max-w-7xl mx-auto text-center"
         >
-          <option value="">All Types</option>
-          {[...new Set(properties.map((p) => p.propertyType).filter((type) => type))]
-            .sort()
-            .map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-        </select>
-
-        <select
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
-          className="border border-blue-500/50 p-2 rounded w-36 bg-white/50 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 filter-item text-sm"
-        >
-          <option value="">All Cities</option>
-          {[...new Set(properties.map((p) => p.city).filter((cityName) => cityName))]
-            .sort()
-            .map((cityName) => (
-              <option key={cityName} value={cityName}>
-                {cityName}
-              </option>
-            ))}
-        </select>
-
-        <select
-          value={rooms}
-          onChange={(e) => setRooms(e.target.value)}
-          className="border border-blue-500/50 p-2 rounded w-36 bg-white/50 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 filter-item text-sm"
-        >
-          <option value="">All Rooms</option>
-          <option value="1">1 Room</option>
-          <option value="2">2 Rooms</option>
-          <option value="3">3 Rooms</option>
-          <option value="4">4+ Rooms</option>
-        </select>
-
-        {/* <select
-          value={priceRange}
-          onChange={(e) => setPriceRange(e.target.value)}
-          className="border border-blue-500/50 p-2 rounded w-36 bg-white/50 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 filter-item text-sm"
-        >
-          <option value="">All Prices</option>
-          <option value="0-5000">₹0 - ₹5,000</option>
-          <option value="5001-6000">₹5,001 - ₹6,000</option>
-          <option value="6001-7000">₹6,001 - ₹7,000</option>
-          <option value="7001+">₹7,001+</option>
-        </select> */}
-
-        <select
-          value={gender}
-          onChange={(e) => setGender(e.target.value)}
-          className="border border-blue-500/50 p-2 rounded w-32 bg-white/50 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 filter-item text-sm"
-        >
-          <option value="">All Genders</option>
-          <option value="girl">Girls</option>
-          <option value="boy">Boys</option>
-          <option value="unisex">Unisex</option>
-        </select>
-
-        <button
-          onClick={handleReset}
-          className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500 filter-item text-sm"
-        >
-          Reset
-        </button>
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+            Discover Your Perfect Home
+          </h1>
+          <p className="text-blue-200 text-lg">
+            Browse through {filteredProperties.length} amazing properties
+          </p>
+        </motion.div>
       </div>
 
-      <div className="min-h-screen bg-[#f6f8fa] py-12 px-4">
-        {/* Property Cards */}
-        <div className="p-6 max-w-7xl mx-auto">
-          {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="w-10 h-10 border-4 border-blue-500 border-dashed rounded-full animate-spin"></div>
+      {/* Search & Filter Section */}
+      <div className="max-w-7xl mx-auto px-4 -mt-8 relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-white rounded-2xl shadow-2xl p-6 border border-gray-100"
+        >
+          {/* Search Bar */}
+          <div className="mb-6">
+            <div className="relative">
+              <Search
+                ref={searchIconRef}
+                size={22}
+                className="absolute left-5 top-1/3 -translate-y-1/2 text-[#FF6B00]"
+              />
+              <input
+                type="text"
+                placeholder="Search by property name, city, or location..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-14 pr-6 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#FF6B00] focus:bg-white transition-all text-lg"
+              />
             </div>
-          ) : filteredProperties.length === 0 ? (
-            <p className="text-center text-gray-500">No properties found.</p>
-          ) : (
-            <>
-              <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                {currentProperties.map((property) => (
-                  <Link to={`/property/${property.id}`} key={property.id}>
-                    <div className="relative bg-white rounded-xl overflow-hidden shadow-md transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg cursor-pointer">
-                      <div className="w-full h-48 overflow-hidden">
+          </div>
+
+          {/* Filter Pills */}
+          <div className="flex flex-wrap items-center gap-3">
+            <select
+              value={propertyType}
+              onChange={(e) => setPropertyType(e.target.value)}
+              className="px-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-full text-gray-700 font-medium focus:outline-none focus:border-[#FF6B00] focus:bg-white transition-all cursor-pointer hover:border-gray-300"
+            >
+              <option value="">🏠 All Types</option>
+              {[...new Set(properties.map((p) => p.propertyType).filter((type) => type))]
+                .sort()
+                .map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+            </select>
+
+            <select
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              className="px-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-full text-gray-700 font-medium focus:outline-none focus:border-[#FF6B00] focus:bg-white transition-all cursor-pointer hover:border-gray-300"
+            >
+              <option value="">📍 All Cities</option>
+              {[...new Set(properties.map((p) => p.city).filter((cityName) => cityName))]
+                .sort()
+                .map((cityName) => (
+                  <option key={cityName} value={cityName}>
+                    {cityName}
+                  </option>
+                ))}
+            </select>
+
+            <select
+              value={rooms}
+              onChange={(e) => setRooms(e.target.value)}
+              className="px-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-full text-gray-700 font-medium focus:outline-none focus:border-[#FF6B00] focus:bg-white transition-all cursor-pointer hover:border-gray-300"
+            >
+              <option value="">🛏️ All Rooms</option>
+              <option value="1">1 Room</option>
+              <option value="2">2 Rooms</option>
+              <option value="3">3 Rooms</option>
+              <option value="4">4+ Rooms</option>
+            </select>
+
+            <select
+              value={gender}
+              onChange={(e) => setGender(e.target.value)}
+              className="px-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-full text-gray-700 font-medium focus:outline-none focus:border-[#FF6B00] focus:bg-white transition-all cursor-pointer hover:border-gray-300"
+            >
+              <option value="">👥 All Genders</option>
+              <option value="girl">Girls</option>
+              <option value="boy">Boys</option>
+              <option value="unisex">Unisex</option>
+            </select>
+
+            <button
+              onClick={handleReset}
+              className="ml-auto flex items-center gap-2 px-5 py-2.5 bg-gray-100 text-gray-700 rounded-full font-medium hover:bg-gray-200 transition-all"
+            >
+              <RotateCcw size={18} />
+              Reset
+            </button>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Properties Grid */}
+      <div className="max-w-7xl mx-auto px-4 py-12">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center h-64">
+            <div className="w-16 h-16 border-4 border-[#FF6B00] border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p className="text-gray-500 font-medium">Loading properties...</p>
+          </div>
+        ) : filteredProperties.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="text-center py-20"
+          >
+            <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Home size={48} className="text-gray-400" />
+            </div>
+            <h3 className="text-2xl font-bold text-gray-800 mb-2">No Properties Found</h3>
+            <p className="text-gray-500 mb-6">Try adjusting your filters to see more results</p>
+            <button
+              onClick={handleReset}
+              className="px-6 py-3 bg-gradient-to-r from-[#FF6B00] to-[#FF8C3A] text-white rounded-full font-semibold hover:shadow-lg transition-all"
+            >
+              Reset Filters
+            </button>
+          </motion.div>
+        ) : (
+          <>
+            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+              {currentProperties.map((property, index) => (
+                <motion.div
+                  key={property.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <Link to={`/property/${property.id}`}>
+                    <div className="group relative bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-500 cursor-pointer border border-gray-100">
+                      {/* Image */}
+                      <div className="relative w-full h-56 overflow-hidden bg-gray-100">
                         <img
                           src={
                             property.images?.[0] ||
                             "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQCQILdjI6IvkmXukmIVc7iLEkoa_lt8vcUOyoE8SMWJebAiB_NUaWD_j-4m7Wls1v-fqk&usqp=CAU"
                           }
                           alt={property.name}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                         />
+                        
+                        {/* Overlay Gradient */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                        
+                        {/* Property Type Badge */}
+                        <div className="absolute top-4 right-4 px-3 py-1.5 bg-white/95 backdrop-blur-sm rounded-full text-xs font-bold text-[#002B5C] shadow-lg">
+                          {property.propertyType}
+                        </div>
+
+                        {/* Gender Badge */}
+                        {property.gender !== "unisex" && (
+                          <div className="absolute top-4 left-4 px-3 py-1.5 bg-[#FF6B00]/95 backdrop-blur-sm rounded-full text-xs font-bold text-white shadow-lg capitalize">
+                            {property.gender}
+                          </div>
+                        )}
                       </div>
 
-                      <div className="p-4">
-                        <h2 className="text-lg font-bold text-gray-900 mb-1">
+                      {/* Content */}
+                      <div className="p-5">
+                        <h2 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-[#FF6B00] transition-colors line-clamp-1">
                           {property.name}
                         </h2>
-                        <p className="text-sm text-gray-600 mb-2">
-                          {property.address}, {property.city}, {property.state}
-                        </p>
-                        <div className="text-sm text-gray-700 font-medium">
-                          Total Rooms: {property.totalRooms || "N/A"}
+                        
+                        <div className="flex items-start gap-2 text-gray-600 mb-4">
+                          <MapPin size={16} className="mt-1 text-[#FF6B00] flex-shrink-0" />
+                          <p className="text-sm line-clamp-2">
+                            {property.address}, {property.city}, {property.state}
+                          </p>
                         </div>
-                        <div className="text-sm font-medium text-gray-600 mt-1">
-                          Type: {property.propertyType}
+
+                        {/* Stats */}
+                        <div className="flex items-center gap-4 pt-4 border-t border-gray-100">
+                          <div className="flex items-center gap-2">
+                            <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center">
+                              <BedDouble size={18} className="text-blue-600" />
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Rooms</p>
+                              <p className="text-sm font-bold text-gray-900">{property.totalRooms || "N/A"}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <div className="w-9 h-9 bg-orange-50 rounded-lg flex items-center justify-center">
+                              <Home size={18} className="text-orange-600" />
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Beds</p>
+                              <p className="text-sm font-bold text-gray-900">{property.totalBeds || "N/A"}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* View Details Button */}
+                        <div className="mt-4">
+                          <div className="w-full py-2.5 bg-gradient-to-r from-[#FF6B00] to-[#FF8C3A] text-white text-center rounded-xl font-semibold  duration-300">
+                            View Details
+                          </div>
                         </div>
                       </div>
+
+                      {/* Hover Border Glow */}
+                      <div className="absolute inset-0 border-2 border-[#FF6B00]/0 group-hover:border-[#FF6B00]/50 rounded-2xl transition-all duration-300 pointer-events-none" />
                     </div>
                   </Link>
-                ))}
-              </div>
+                </motion.div>
+              ))}
+            </div>
 
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex justify-center mt-10 space-x-2">
-                  <button
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.max(prev - 1, 1))
-                    }
-                    disabled={currentPage === 1}
-                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg disabled:opacity-50 hover:bg-gray-300"
-                  >
-                    Prev
-                  </button>
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                className="flex justify-center items-center mt-12 gap-2"
+              >
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-5 py-2.5 bg-white border-2 border-gray-200 text-gray-700 rounded-full font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:border-[#FF6B00] hover:text-[#FF6B00] transition-all"
+                >
+                  Previous
+                </button>
 
+                <div className="flex gap-2">
                   {Array.from({ length: totalPages }, (_, i) => (
                     <button
                       key={i}
                       onClick={() => setCurrentPage(i + 1)}
-                      className={`px-4 py-2 rounded-lg ${
+                      className={`w-11 h-11 rounded-full font-semibold transition-all ${
                         currentPage === i + 1
-                          ? "bg-blue-600 text-white"
-                          : "bg-gray-200 text-gray-800 hover:bg-gray-300"
+                          ? "bg-gradient-to-r from-[#FF6B00] to-[#FF8C3A] text-white shadow-lg scale-110"
+                          : "bg-white border-2 border-gray-200 text-gray-700 hover:border-[#FF6B00] hover:text-[#FF6B00]"
                       }`}
                     >
                       {i + 1}
                     </button>
                   ))}
-
-                  <button
-                    onClick={() =>
-                      setCurrentPage((prev) =>
-                        Math.min(prev + 1, totalPages)
-                      )
-                    }
-                    disabled={currentPage === totalPages}
-                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg disabled:opacity-50 hover:bg-gray-300"
-                  >
-                    Next
-                  </button>
                 </div>
-              )}
-            </>
-          )}
-        </div>
+
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="px-5 py-2.5 bg-white border-2 border-gray-200 text-gray-700 rounded-full font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:border-[#FF6B00] hover:text-[#FF6B00] transition-all"
+                >
+                  Next
+                </button>
+              </motion.div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

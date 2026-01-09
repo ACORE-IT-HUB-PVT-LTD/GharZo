@@ -16,6 +16,7 @@ import {
   FaShieldAlt,
   FaSpinner,
 } from "react-icons/fa";
+import baseurl from "../../../../BaseUrl";
 
 const LandlordProfile = () => {
   const navigate = useNavigate();
@@ -38,7 +39,7 @@ const LandlordProfile = () => {
         console.log("Fetching profile with Token:", token);
         setLoading(true);
         const response = await axios.get(
-          "https://api.gharzoreality.com/api/sub-owner/auth/profile",
+          `${baseurl}api/sub-owner/auth/profile`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }

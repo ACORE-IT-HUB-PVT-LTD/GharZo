@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import AOS from "aos";
 import "aos/dist/aos.css";
 import { BedDouble, Bath, CarFront, MapPin, Search, Home, IndianRupee } from "lucide-react";
+import baseurl from "../../../../BaseUrl.js";
 
 const PGHostelSection = () => {
   const { isAuthenticated } = useAuth();
@@ -23,7 +24,7 @@ const PGHostelSection = () => {
     const fetchProperties = async () => {
       setLoading(true);
       try {
-        const res = await axios.get("https://api.gharzoreality.com/api/public/all-properties");
+        const res = await axios.get(`${baseurl}api/public/all-properties`);
         const pgHostels = (res.data.properties || [])
           .filter(
             (p) =>
