@@ -115,7 +115,7 @@ const TenantList = () => {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-12"
         >
-          <h2 className="text-5xl font-extrabold text-orange-300 drop-shadow-2xl">
+          <h2 className="text-5xl font-extrabold text-white drop-shadow-2xl">
             Tenant List
           </h2>
           <p className="text-gray-300 mt-3 text-lg">
@@ -183,7 +183,7 @@ const TenantList = () => {
                   className="bg-white/10 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/20 p-8 flex flex-col justify-between hover:shadow-orange-500/30 transition-all duration-500"
                 >
                   <div>
-                    <h5 className="text-2xl font-bold text-orange-300 mb-4 truncate">
+                    <h5 className="text-2xl font-bold text-white mb-4 truncate">
                       {tenant.name || "Unnamed Tenant"}
                     </h5>
                     <div className="space-y-3 text-gray-300">

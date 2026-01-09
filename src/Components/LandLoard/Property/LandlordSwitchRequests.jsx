@@ -276,7 +276,7 @@ const LandlordSwitchRequests = () => {
     >
       {/* Header */}
       <header className="max-w-7xl mx-auto mb-8 text-center">
-        <h2 className="text-4xl font-extrabold text-orange-300 drop-shadow-lg">
+        <h2 className="text-4xl font-extrabold text-white drop-shadow-lg">
           Room Switch Requests
         </h2>
         <p className="text-gray-300 mt-2">Manage tenant room switch requests</p>

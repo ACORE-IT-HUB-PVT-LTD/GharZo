@@ -490,7 +490,7 @@ const TenantDetails = () => {
     return (
       <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4">
         <div className="bg-white/10 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/30 p-8 max-w-md w-full">
-          <h2 className="text-2xl font-bold text-orange-300 mb-6 text-center">Delete Tenant</h2>
+          <h2 className="text-2xl font-bold text-white mb-6 text-center">Delete Tenant</h2>
           {missingData && (
             <p className="text-red-400 text-center mb-4 text-sm">
               Some accommodation details are missing. Please verify or enter manually.
@@ -583,7 +583,7 @@ const TenantDetails = () => {
 
     return (
       <div className="bg-white/10 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/30 p-8 max-w-3xl mx-auto">
-        <h2 className="text-3xl font-bold text-orange-300 mb-8 text-center">Edit Tenant Details</h2>
+        <h2 className="text-3xl font-bold text-white mb-8 text-center">Edit Tenant Details</h2>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div>
             <label className="block text-base font-medium text-gray-200 mb-2">Name *</label>
@@ -782,7 +782,7 @@ const TenantDetails = () => {
         {/* Back Button */}
         <button
           onClick={() => navigate("/landlord/tenant-list")}
-          className="mb-6 flex items-center gap-3 text-gray-300 hover:text-orange-300 transition text-base"
+          className="mb-6 flex items-center gap-3 text-gray-300 hover:text-white transition text-base"
         >
           <FaArrowLeft className="text-xl" />
           Back to Tenant List
@@ -807,7 +807,7 @@ const TenantDetails = () => {
                   <FaUser />
                 </div>
               )}
-              <h2 className="text-3xl font-bold mt-6 text-orange-300">
+              <h2 className="text-3xl font-bold mt-6 text-white">
                 {tenant.name || "N/A"}
               </h2>
             </div>
@@ -815,11 +815,11 @@ const TenantDetails = () => {
             {/* Details Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-base">
               <div className="space-y-4">
-                <p><strong className="text-orange-300">Email:</strong> <span className="text-gray-300">{tenant.email || "N/A"}</span></p>
-                <p><strong className="text-orange-300">Mobile:</strong> <span className="text-gray-300">{tenant.mobile || "N/A"}</span></p>
-                <p><strong className="text-orange-300">Aadhaar:</strong> <span className="text-gray-300">{tenant.aadhaar || "N/A"}</span></p>
-                <p><strong className="text-orange-300">Work:</strong> <span className="text-gray-300">{tenant.work || "N/A"}</span></p>
-                <p><strong className="text-orange-300">DOB:</strong> <span className="text-gray-300">
+                <p><strong className="text-white">Email:</strong> <span className="text-gray-300">{tenant.email || "N/A"}</span></p>
+                <p><strong className="text-white">Mobile:</strong> <span className="text-gray-300">{tenant.mobile || "N/A"}</span></p>
+                <p><strong className="text-white">Aadhaar:</strong> <span className="text-gray-300">{tenant.aadhaar || "N/A"}</span></p>
+                <p><strong className="text-white">Work:</strong> <span className="text-gray-300">{tenant.work || "N/A"}</span></p>
+                <p><strong className="text-white">DOB:</strong> <span className="text-gray-300">
                   {tenant.dob
                     ? new Date(tenant.dob).toLocaleDateString("en-GB", {
                         day: "2-digit",
@@ -828,13 +828,13 @@ const TenantDetails = () => {
                       })
                     : "N/A"}
                 </span></p>
-                <p><strong className="text-orange-300">Marital Status:</strong> <span className="text-gray-300">{tenant.maritalStatus || "N/A"}</span></p>
+                <p><strong className="text-white">Marital Status:</strong> <span className="text-gray-300">{tenant.maritalStatus || "N/A"}</span></p>
               </div>
               <div className="space-y-4">
-                <p><strong className="text-orange-300">Father:</strong> <span className="text-gray-300">{tenant.fatherName || "N/A"} - {tenant.fatherMobile || "N/A"}</span></p>
-                <p><strong className="text-orange-300">Mother:</strong> <span className="text-gray-300">{tenant.motherName || "N/A"} - {tenant.motherMobile || "N/A"}</span></p>
-                <p><strong className="text-orange-300">Address:</strong> <span className="text-gray-300">{tenant.permanentAddress || "N/A"}</span></p>
-                <p><strong className="text-orange-300">Joined:</strong> <span className="text-gray-300">
+                <p><strong className="text-white">Father:</strong> <span className="text-gray-300">{tenant.fatherName || "N/A"} - {tenant.fatherMobile || "N/A"}</span></p>
+                <p><strong className="text-white">Mother:</strong> <span className="text-gray-300">{tenant.motherName || "N/A"} - {tenant.motherMobile || "N/A"}</span></p>
+                <p><strong className="text-white">Address:</strong> <span className="text-gray-300">{tenant.permanentAddress || "N/A"}</span></p>
+                <p><strong className="text-white">Joined:</strong> <span className="text-gray-300">
                   {tenant.createdAt
                     ? new Date(tenant.createdAt).toLocaleDateString("en-GB", {
                         day: "2-digit",
@@ -843,7 +843,7 @@ const TenantDetails = () => {
                       })
                     : "N/A"}
                 </span></p>
-                <p><strong className="text-orange-300">Accommodation:</strong> <span className="text-gray-300">
+                <p><strong className="text-white">Accommodation:</strong> <span className="text-gray-300">
                   {tenant.bookingRequests?.length > 0
                     ? tenant.bookingRequests.map((req, index) => (
                         <span key={index}>
@@ -868,7 +868,7 @@ const TenantDetails = () => {
             {/* Bills Section - Compact */}
             {tenant.bills?.length > 0 && (
               <div className="mt-12">
-                <h3 className="text-2xl font-bold text-orange-300 mb-6">Bills History</h3>
+                <h3 className="text-2xl font-bold text-white mb-6">Bills History</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {tenant.bills.map((bill, index) => (
                     <div key={index} className="bg-white/10 backdrop-blur-xl rounded-xl p-5 border border-white/20">
@@ -885,7 +885,7 @@ const TenantDetails = () => {
 
             {/* Document Upload Section - Compact */}
             <div className="mt-12">
-              <h3 className="text-2xl font-bold text-orange-300 mb-6">Upload Document</h3>
+              <h3 className="text-2xl font-bold text-white mb-6">Upload Document</h3>
               <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
                 <form onSubmit={handleUpload} className="space-y-6">
                   <div>
@@ -939,7 +939,7 @@ const TenantDetails = () => {
             {/* Landlord & Tenant Documents - Compact */}
             <div className="mt-12 space-y-12">
               <div>
-                <h3 className="text-2xl font-bold text-orange-300 mb-6">Landlord Documents</h3>
+                <h3 className="text-2xl font-bold text-white mb-6">Landlord Documents</h3>
                 {documents.length === 0 ? (
                   <p className="text-gray-400 text-center py-6">No documents uploaded yet.</p>
                 ) : (
@@ -972,7 +972,7 @@ const TenantDetails = () => {
               </div>
 
               <div>
-                <h3 className="text-2xl font-bold text-orange-300 mb-6">Tenant Uploaded Documents</h3>
+                <h3 className="text-2xl font-bold text-white mb-6">Tenant Uploaded Documents</h3>
                 {tenantDocuments.length === 0 ? (
                   <p className="text-gray-400 text-center py-6">No documents uploaded by tenant.</p>
                 ) : (

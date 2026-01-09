@@ -505,7 +505,7 @@ const AddProperty = ({ propertyData }) => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
       >
-        <h2 className="text-4xl font-extrabold mb-8 text-center text-orange-300 drop-shadow-lg">
+        <h2 className="text-4xl font-extrabold mb-8 text-center text-white drop-shadow-lg">
           {isUpdate ? "Update Property" : "Add Property"}
         </h2>
 
@@ -522,8 +522,8 @@ const AddProperty = ({ propertyData }) => {
         <form className="space-y-10" onSubmit={handleSubmit}>
           {/* PROPERTY DETAILS */}
           <section>
-            <h3 className="text-2xl font-bold mb-6 flex items-center gap-3 text-orange-300">
-              <FaHome className="text-orange-400" />
+            <h3 className="text-2xl font-bold mb-6 flex items-center gap-3 text-white">
+              <FaHome className="text-white" />
               Property Details
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -567,7 +567,7 @@ const AddProperty = ({ propertyData }) => {
                     whileHover={{ scale: 1.2 }}
                     className="absolute left-3 top-4 z-10"
                   >
-                    <f.icon className="text-2xl text-orange-400 drop-shadow-md" />
+                    <f.icon className="text-2xl text-orange-500 drop-shadow-md" />
                   </motion.div>
                   {f.select ? (
                     <select
@@ -626,8 +626,8 @@ const AddProperty = ({ propertyData }) => {
 
           {/* IMAGES */}
           <section>
-            <h3 className="text-2xl font-bold mb-6 flex items-center gap-3 text-orange-300">
-              <FaImage className="text-orange-400" />
+            <h3 className="text-2xl font-bold mb-6 flex items-center gap-3 text-white">
+              <FaImage className="text-white" />
               Property Images (Max 10)
             </h3>
             <div className="space-y-6">
@@ -651,7 +651,7 @@ const AddProperty = ({ propertyData }) => {
               </div>
 
               <div className="relative">
-                <FaImage className="absolute left-4 top-4 text-2xl text-orange-400 z-10" />
+                <FaImage className="absolute left-4 top-4 text-2xl text-white z-10" />
                 <input
                   type="file"
                   accept="image/*"

@@ -279,7 +279,7 @@ const Dashboard = () => {
   ];
 
   // Brand Colors
-  const ACCENT_ORANGE = "#f57c00"; // Vibrant orange for highlights
+  const ACCENT_ORANGE = "white"; // Vibrant orange for highlights
   const PIE_COLORS = ["#f57c00", "#ff9d3f", "#ffb87a"];
 
   return (
@@ -345,7 +345,7 @@ const Dashboard = () => {
           },
           {
             icon: FaUsers,
-            title: "Total SubAdmins",
+            title: "Total Sub Owner",
             value: totalSubAdmins,
             link: "/landlord/landlord_subadmin",
           },
@@ -376,7 +376,7 @@ const Dashboard = () => {
               className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 border border-white/20 hover:shadow-orange-500/20 transition-all duration-300"
             >
               <div className="flex items-center justify-between mb-4">
-                <Icon className="text-4xl text-orange-400" />
+                <Icon className="text-4xl text-orange-600" />
                 <span className="text-sm font-medium text-gray-300">{stat.title}</span>
               </div>
               <h3 className="text-3xl font-bold text-white">{stat.value}</h3>
@@ -402,7 +402,7 @@ const Dashboard = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6 }}
       >
-        <h5 className="text-2xl font-bold mb-8 text-center text-orange-300">
+        <h5 className="text-2xl font-bold mb-8 text-center text-white">
           Property Type Distribution
         </h5>
         <ResponsiveContainer width="100%" height={380}>

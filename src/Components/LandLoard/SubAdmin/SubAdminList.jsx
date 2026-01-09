@@ -1507,7 +1507,7 @@ const SubAdminList = () => {
                               setAgreementDuration(value);
                             }
                           }}
-                          className="pl-10 p-3 border rounded-lg focus:ring-2 focus:ring-blue-400 shadow-sm w-full"
+                          className="pl-10 p-3 text-black border rounded-lg focus:ring-2 focus:ring-blue-400 shadow-sm w-full"
                           min="1"
                           step="1"
                         />
@@ -1525,7 +1525,7 @@ const SubAdminList = () => {
                           type="date"
                           value={agreementEndDate}
                           onChange={(e) => setAgreementEndDate(e.target.value)}
-                          className="pl-10 p-3 border rounded-lg focus:ring-2 focus:ring-blue-400 shadow-sm w-full"
+                          className="pl-10 p-3 border text-black rounded-lg focus:ring-2 focus:ring-blue-400 shadow-sm w-full"
                         />
                       </div>
                     </div>

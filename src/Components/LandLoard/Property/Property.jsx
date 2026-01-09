@@ -228,7 +228,7 @@ const Property = () => {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-10"
         >
-          <h2 className="text-4xl font-bold tracking-wide bg-gradient-to-r from-orange-400 to-yellow-300 bg-clip-text text-transparent drop-shadow-lg">
+          <h2 className="text-4xl font-bold tracking-wide bg-gradient-to-r from-white to-white bg-clip-text text-transparent drop-shadow-lg">
             My Properties
           </h2>
           <p className="text-gray-400 text-base mt-2">

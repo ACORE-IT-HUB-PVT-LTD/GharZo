@@ -640,7 +640,7 @@ const performDelete = async (categoryId) => {
       <div className="max-w-7xl mx-auto p-4 sm:p-6">
         {/* Header */}
         <header className="bg-white/5 backdrop-blur-xl rounded-3xl shadow-2xl mb-8 p-6 sm:p-8 border border-white/10 text-center">
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-wide bg-gradient-to-r from-orange-300 to-white bg-clip-text text-transparent drop-shadow-2xl">
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-wide bg-gradient-to-r from-white to-white bg-clip-text text-transparent drop-shadow-2xl">
             Dues Management
           </h1>
         </header>
