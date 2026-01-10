@@ -13,7 +13,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 
-// Icon Wrapper with colorful 3D effect
+// Icon Wrapper with orange-themed 3D effect
 const Colorful3DIcon = ({ Icon, gradient, size = 22 }) => (
   <motion.div
     className="relative p-2 rounded-full shadow-lg hover:scale-110 transition-all duration-300"
@@ -98,8 +98,8 @@ function WorkerProfile() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="text-xl font-semibold text-gray-600 animate-pulse">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'radial-gradient(circle at center bottom, rgba(245, 124, 0, 0.35), transparent 60%), linear-gradient(rgb(7, 26, 47) 0%, rgb(13, 47, 82) 45%, rgb(18, 62, 107) 75%, rgb(11, 42, 74) 100%)' }}>
+        <div className="text-xl font-semibold text-orange-300 animate-pulse">
           Loading Worker Profile...
         </div>
       </div>
@@ -108,8 +108,8 @@ function WorkerProfile() {
 
   if (error || !profileData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="text-xl font-semibold text-red-600">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'radial-gradient(circle at center bottom, rgba(245, 124, 0, 0.35), transparent 60%), linear-gradient(rgb(7, 26, 47) 0%, rgb(13, 47, 82) 45%, rgb(18, 62, 107) 75%, rgb(11, 42, 74) 100%)' }}>
+        <div className="text-xl font-semibold text-red-400">
           {error || "No profile data found"}
         </div>
       </div>
@@ -137,20 +137,20 @@ function WorkerProfile() {
   /* -------------------------------------------------------------------------- */
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100 py-8">
+    <div className="min-h-screen py-8" style={{ background: 'radial-gradient(circle at center bottom, rgba(245, 124, 0, 0.35), transparent 60%), linear-gradient(rgb(7, 26, 47) 0%, rgb(13, 47, 82) 45%, rgb(18, 62, 107) 75%, rgb(11, 42, 74) 100%)' }}>
       <div className="container mx-auto px-4 max-w-4xl">
         {/* Profile Header */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="bg-white rounded-2xl shadow-xl p-6 mb-8 text-center border border-white/50"
+          className="backdrop-blur-md bg-white/10 rounded-2xl shadow-xl p-6 mb-8 text-center border border-white/20"
         >
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.2, type: "spring", stiffness: 300 }}
-            className="w-28 h-28 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full mx-auto mb-4 overflow-hidden flex items-center justify-center"
+            className="w-28 h-28 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full mx-auto mb-4 overflow-hidden flex items-center justify-center shadow-2xl"
           >
             {profileImage ? (
               <img
@@ -162,13 +162,13 @@ function WorkerProfile() {
               <User className="text-white" size={50} />
             )}
           </motion.div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">{name}</h1>
-          <p className="text-indigo-600 font-semibold text-lg">{role}</p>
+          <h1 className="text-3xl font-bold text-orange-200 mb-2">{name}</h1>
+          <p className="text-orange-300 font-semibold text-lg">{role}</p>
           <span
-            className={`inline-block mt-3 px-4 py-1 text-sm rounded-full font-semibold ${
+            className={`inline-block mt-3 px-4 py-1 text-sm rounded-full font-semibold backdrop-blur-sm ${
               status === "Active"
-                ? "bg-green-100 text-green-700"
-                : "bg-gray-100 text-gray-700"
+                ? "bg-green-500/20 text-green-300 border border-green-500/30"
+                : "bg-gray-500/20 text-gray-300 border border-gray-500/30"
             }`}
           >
             {status}
@@ -180,15 +180,15 @@ function WorkerProfile() {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="bg-white rounded-2xl shadow-xl p-6 mb-8 border border-white/50"
+          className="backdrop-blur-md bg-white/10 rounded-2xl shadow-xl p-6 mb-8 border border-white/20"
         >
           <div className="flex items-center gap-3 mb-6">
             <Colorful3DIcon
               Icon={User}
-              gradient="from-blue-400 to-indigo-500"
+              gradient="from-orange-500 to-amber-600"
               size={28}
             />
-            <h2 className="text-2xl font-bold text-gray-800">
+            <h2 className="text-2xl font-bold text-orange-200">
               Personal Information
             </h2>
           </div>
@@ -198,25 +198,25 @@ function WorkerProfile() {
                 icon: User,
                 label: "Name",
                 value: name,
-                gradient: "from-blue-400 to-indigo-500",
+                gradient: "from-orange-500 to-amber-600",
               },
               {
                 icon: Mail,
                 label: "Email",
                 value: email,
-                gradient: "from-green-400 to-teal-500",
+                gradient: "from-blue-500 to-cyan-600",
               },
               {
                 icon: Phone,
                 label: "Contact Number",
                 value: contactNumber,
-                gradient: "from-purple-400 to-pink-500",
+                gradient: "from-orange-400 to-red-600",
               },
               {
                 icon: Wrench,
                 label: "Role",
                 value: role,
-                gradient: "from-orange-400 to-red-500",
+                gradient: "from-amber-500 to-orange-600",
               },
             ].map((item, i) => (
               <motion.div
@@ -224,14 +224,14 @@ function WorkerProfile() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
-                className="flex items-center gap-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl hover:shadow-md transition-all"
+                className="flex items-center gap-4 p-4 backdrop-blur-sm bg-white/10 rounded-xl hover:shadow-md transition-all border border-white/20"
               >
                 <Colorful3DIcon Icon={item.icon} gradient={item.gradient} />
                 <div>
-                  <p className="text-sm font-medium text-gray-600">
+                  <p className="text-sm font-medium text-orange-300">
                     {item.label}
                   </p>
-                  <p className="text-lg font-semibold text-gray-800">
+                  <p className="text-lg font-semibold text-white">
                     {item.value || "N/A"}
                   </p>
                 </div>
@@ -245,41 +245,41 @@ function WorkerProfile() {
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6, delay: 0.3 }}
-          className="bg-white rounded-2xl shadow-xl p-6 border border-white/50"
+          className="backdrop-blur-md bg-white/10 rounded-2xl shadow-xl p-6 border border-white/20"
         >
           <div className="flex items-center gap-3 mb-6">
             <Colorful3DIcon
               Icon={Activity}
-              gradient="from-purple-400 to-pink-500"
+              gradient="from-orange-500 to-amber-600"
               size={28}
             />
-            <h2 className="text-2xl font-bold text-gray-800">Work Details</h2>
+            <h2 className="text-2xl font-bold text-orange-200">Work Details</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl">
+            <div className="flex items-center gap-4 p-4 backdrop-blur-sm bg-white/10 rounded-xl border border-white/20">
               <Colorful3DIcon
                 Icon={DollarSign}
-                gradient="from-green-400 to-emerald-500"
+                gradient="from-green-500 to-emerald-600"
               />
               <div>
-                <p className="text-sm font-medium text-gray-600">
+                <p className="text-sm font-medium text-orange-300">
                   Charge per Service
                 </p>
-                <p className="text-lg font-semibold text-gray-800">
+                <p className="text-lg font-semibold text-white">
                   ₹{chargePerService}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl">
+            <div className="flex items-center gap-4 p-4 backdrop-blur-sm bg-white/10 rounded-xl border border-white/20">
               <Colorful3DIcon
                 Icon={Star}
-                gradient="from-yellow-400 to-orange-500"
+                gradient="from-yellow-400 to-amber-600"
               />
               <div>
-                <p className="text-sm font-medium text-gray-600">
+                <p className="text-sm font-medium text-orange-300">
                   Ratings (Avg / Count)
                 </p>
-                <p className="text-lg font-semibold text-gray-800">
+                <p className="text-lg font-semibold text-white">
                   {ratings?.average} ★ ({ratings?.count})
                 </p>
               </div>
@@ -289,18 +289,18 @@ function WorkerProfile() {
           {/* Assigned Properties and Active Complaints */}
           <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Assigned Properties */}
-            <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50">
+            <div className="p-4 rounded-xl backdrop-blur-sm bg-white/10 border border-white/20">
               <div className="flex items-center gap-3 mb-2">
                 <Colorful3DIcon
                   Icon={Building}
-                  gradient="from-blue-400 to-indigo-500"
+                  gradient="from-blue-500 to-indigo-600"
                 />
-                <h3 className="text-lg font-bold text-gray-800">
+                <h3 className="text-lg font-bold text-orange-200">
                   Assigned Properties
                 </h3>
               </div>
               {assignedProperties.length > 0 ? (
-                <ul className="list-disc pl-6 text-gray-700">
+                <ul className="list-disc pl-6 text-orange-100">
                   {assignedProperties.map((p, i) => (
                     <li key={i}>
                       {p.name
@@ -310,7 +310,7 @@ function WorkerProfile() {
                   ))}
                 </ul>
               ) : (
-                <p className="text-gray-600 text-sm">No properties assigned</p>
+                <p className="text-orange-300 text-sm">No properties assigned</p>
               )}
             </div>
 

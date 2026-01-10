@@ -6,7 +6,8 @@ import Particles from "react-tsparticles";
 import { loadFull } from "tsparticles";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import signupbg from "../../../assets/Images/signupbg.jpg";
+import signupbg from "../../assets/Images/signupbg.jpg";
+import logo from "../../assets/logo/logo.png";
 
 function PropertyOwnerLogin() {
   const navigate = useNavigate();
@@ -44,7 +45,7 @@ function PropertyOwnerLogin() {
           localStorage.setItem("propertyOwner", JSON.stringify(data));
           
           toast.success("Login successful!", {
-            position: "top-right",
+            position: "top-center",
             autoClose: 2000,
             hideProgressBar: false,
             closeOnClick: true,
@@ -52,10 +53,10 @@ function PropertyOwnerLogin() {
             draggable: true,
           });
           
-          navigate("/worker-dashboard/dashboard");
+          navigate("/dr-worker-dashboard/dashboard");
         } else {
           toast.error(result.message || "Login failed. Please check your credentials.", {
-            position: "top-right",
+            position: "top-center",
             autoClose: 3000,
             hideProgressBar: false,
             closeOnClick: true,
@@ -66,7 +67,7 @@ function PropertyOwnerLogin() {
       } else {
         const errorData = await response.json();
         toast.error(errorData.message || "Login failed. Server error.", {
-          position: "top-right",
+          position: "top-center",
           autoClose: 3000,
           hideProgressBar: false,
           closeOnClick: true,
@@ -77,7 +78,7 @@ function PropertyOwnerLogin() {
     } catch (error) {
       console.error("Login error:", error);
       toast.error("Network error. Please try again.", {
-        position: "top-right",
+        position: "top-center",
         autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
@@ -89,9 +90,9 @@ function PropertyOwnerLogin() {
 
   const handleCancel = async () => {
     try {
-      const token = localStorage.getItem("orgToken");
+      const token = localStorage.getItem("token");
       if (!token) {
-        navigate(-1);
+        navigate('/');
         return;
       }
 
@@ -119,129 +120,262 @@ function PropertyOwnerLogin() {
     }
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") handleSubmit(e);
+  };
+
   return (
-    <div className="fixed inset-0 flex items-center justify-center p-4 z-[9999]">
-      {/* Toast Container */}
-      <ToastContainer />
+    <div className="min-h-screen flex items-center justify-center bg-white px-4">
+      <div className="relative w-full max-w-5xl h-[650px] bg-slate-900 rounded-3xl shadow-2xl overflow-hidden flex">
 
-      {/* Background Blur Image */}
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage: `url(${signupbg})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          filter: "blur(6px)",
-        }}
-      ></div>
+        {/* Modern toast styling */}
+        <ToastContainer
+          position="top-center"
+          autoClose={3000}
+          hideProgressBar
+          newestOnTop
+          closeOnClick
+          draggable
+          pauseOnHover={false}
+          toastClassName="backdrop-blur-xl bg-slate-800/95 shadow-2xl rounded-xl border border-cyan-500/20"
+          bodyClassName="text-white font-medium"
+        />
 
-      {/* Particles Animation */}
-      <Particles
-        id="tsparticles"
-        init={particlesInit}
-        options={{
-          background: { color: { value: "#00000050" } },
-          fpsLimit: 60,
-          interactivity: {
-            events: {
-              onHover: { enable: true, mode: "repulse" },
-              resize: true,
-            },
-            modes: { repulse: { distance: 100, duration: 0.4 } },
-          },
-          particles: {
-            color: { value: "#5C4EFF" },
-            links: {
-              color: "#5C4EFF",
-              distance: 150,
-              enable: true,
-              opacity: 0.4,
-              width: 1,
-            },
-            move: { enable: true, speed: 1.5 },
-            number: { value: 50 },
-            opacity: { value: 0.5 },
-            shape: { type: "circle" },
-            size: { value: { min: 1, max: 5 } },
-          },
-          detectRetina: true,
-        }}
-        className="absolute inset-0 -z-10"
-      />
-
-      {/* Login Card */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.8, y: 50 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 relative z-10"
-      >
-        {/* Icon Animation */}
-        <motion.div
-          initial={{ rotateY: 0 }}
-          animate={{ rotateY: 360 }}
-          transition={{ duration: 1 }}
-          className="flex justify-center mb-4"
-        >
-          <FaUserCircle className="text-7xl text-[#5C4EFF] drop-shadow-lg" />
-        </motion.div>
-
-        <h2 className="text-2xl font-bold text-center text-[#5C4EFF] mb-6">
-          Login as <span className="text-green-700">Worker Dashboard</span>
-        </h2>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit}>
-          <label className="block text-sm text-gray-700 mb-1">User Email</label>
-          <input
-            type="email"
-            placeholder="Enter useremail"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-[#5C4EFF]"
-            value={useremail}
-            onChange={(e) => setEmail(e.target.value)}
-            required
+        {/* LEFT SIDE - Dark sidebar with form */}
+        <div className="w-full lg:w-[45%] bg-gradient-to-b from-[#0c2344] to-[#0b4f91] relative overflow-hidden flex items-center justify-center p-6 sm:p-8">
+          {/* Subtle gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-blue-500/5"></div>
+          
+          {/* Animated particles background */}
+          <Particles
+            id="tsparticles"
+            init={particlesInit}
+            options={{
+              background: { color: { value: "transparent" } },
+              fpsLimit: 60,
+              interactivity: {
+                events: {
+                  onHover: { enable: true, mode: "grab" },
+                  resize: true,
+                },
+                modes: { 
+                  grab: { 
+                    distance: 120, 
+                    links: { opacity: 0.3 }
+                  } 
+                },
+              },
+              particles: {
+                color: { value: "#06b6d4" },
+                links: {
+                  color: "#06b6d4",
+                  distance: 150,
+                  enable: true,
+                  opacity: 0.15,
+                  width: 1,
+                },
+                move: { 
+                  enable: true, 
+                  speed: 0.5,
+                },
+                number: { 
+                  value: 40,
+                  density: {
+                    enable: true,
+                    area: 800
+                  }
+                },
+                opacity: { value: 0.3 },
+                shape: { type: "circle" },
+                size: { value: { min: 1, max: 2 } },
+              },
+              detectRetina: true,
+            }}
+            className="absolute inset-0"
           />
 
-          <label className="block text-sm text-gray-700 mb-1">Password</label>
-          <div className="relative mb-4">
-            <input
-              type={showPassword ? "text" : "password"}
-              placeholder="Enter Password"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5C4EFF]"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-2.5 text-gray-500 hover:text-[#5C4EFF]"
+          {/* Form container */}
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="relative w-full max-w-md z-10"
+          >
+            {/* Logo/Icon area */}
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2, duration: 0.5 }}
+              className="mb-10"
             >
-              {showPassword ? <FaEyeSlash /> : <FaEye />}
-            </button>
+              <div className="flex items-center gap-3 mb-8">
+                <div className="w-15 h-15 bg-white rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/30">
+                  <img 
+                    src={logo} 
+                    alt="GharZo" 
+                    className="h-17 w-[150px] object-contain" 
+                  />
+                </div>
+              </div>
+
+              <div>
+                <h2 className="text-3xl sm:text-4xl font-bold text-white mb-2">
+                  Worker Dashboard Login
+                </h2>
+                <p className="text-slate-400 text-sm">
+                  Enter your credentials to access your workspace
+                </p>
+              </div>
+            </motion.div>
+
+            {/* Form content */}
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.5 }}
+              >
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  EMAIL ADDRESS
+                </label>
+                <input
+                  type="email"
+                  placeholder="Enter your email"
+                  className="w-full px-4 py-3.5 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-cyan-500 transition-all duration-300"
+                  value={useremail}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  required
+                />
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4, duration: 0.5 }}
+              >
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  PASSWORD
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    className="w-full px-4 py-3.5 pr-12 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-cyan-500 transition-all duration-300"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-cyan-400 transition-colors cursor-pointer"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
+                  </button>
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 0.5 }}
+                className="space-y-3"
+              >
+                <motion.button
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  type="submit"
+                  className="w-full py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-cyan-500/30 transition-all duration-300"
+                >
+                  Login
+                </motion.button>
+
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="w-full py-3.5 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 text-slate-300 font-medium rounded-xl transition-all duration-300"
+                >
+                  Cancel
+                </button>
+              </motion.div>
+
+              <p className="text-xs text-white text-center mt-6">
+                By continuing, you agree to our Terms & Conditions
+              </p>
+            </form>
+          </motion.div>
+        </div>
+
+        {/* RIGHT SIDE - Beautiful image background */}
+        <motion.div
+          initial={{ opacity: 0, scale: 1.05 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8 }}
+          className="hidden lg:block lg:w-[55%] relative overflow-hidden"
+        >
+          {/* Background image with overlay */}
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{
+              backgroundImage: `url(${signupbg})`,
+            }}
+          >
+            {/* Gradient overlay for depth and text readability */}
+            <div className="absolute inset-0 bg-gradient-to-br from-slate-900/40 via-cyan-900/20 to-blue-900/40"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent"></div>
           </div>
 
-          <div className="flex gap-4">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              type="submit"
-              className="w-full bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400 hover:from-blue-600 hover:via-cyan-500 hover:to-green-500 text-white py-2 rounded-lg shadow-lg"
+          {/* Content overlay on image */}
+          <div className="relative h-full flex flex-col justify-end p-12 z-10">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.6 }}
+              className="max-w-xl"
             >
-              Login
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              type="button"
-              onClick={handleCancel}
-              className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg shadow-lg"
+              <h2 className="text-4xl font-bold text-white mb-4 leading-tight">
+                Your Work Hub Awaits
+              </h2>
+              <p className="text-lg text-white/80 leading-relaxed">
+                Access your worker dashboard to manage tasks, track progress & collaborate with your team. Streamline your workflow today.
+              </p>
+            </motion.div>
+
+            {/* Decorative stats placeholder */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
+              className="mt-8 flex items-center gap-4"
             >
-              Cancel
-            </motion.button>
+            </motion.div>
           </div>
-        </form>
-      </motion.div>
+
+          {/* Floating expand button (decorative) */}
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.8 }}
+            className="absolute bottom-8 right-8 w-14 h-14 bg-white/10 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-all duration-300 group"
+          >
+            <svg
+              className="w-6 h-6 group-hover:scale-110 transition-transform"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
+              />
+            </svg>
+          </motion.button>
+        </motion.div>
+      </div>
     </div>
   );
 }

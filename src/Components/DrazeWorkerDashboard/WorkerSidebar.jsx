@@ -1,5 +1,5 @@
 // Sidebar.jsx (for Worker - exactly like your previous sidebar)
-import dd from "../../../assets/logo/logo.png";
+import dd from "../../assets/logo/logo.png";
 import React, { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -39,7 +39,7 @@ const Sidebar = ({ setSidebarWidth }) => {
       const token = localStorage.getItem("token");
       if (!token) return;
       try {
-        const res = await fetch("https://api.gharzoreality.com/api/organization/my-website", {
+        const res = await fetch("https://api.gharzoreality.com/api/organi", {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (res.ok) {
