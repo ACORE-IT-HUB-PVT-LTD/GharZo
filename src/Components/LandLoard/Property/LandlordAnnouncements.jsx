@@ -325,7 +325,7 @@ const LandlordAnnouncements = () => {
 
             {/* Create Announcement Form */}
             <div className="mb-10 bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl shadow-xl p-6">
-              <h3 className="text-2xl font-bold mb-6 text-center text-orange-300">
+              <h3 className="text-2xl font-bold mb-6 text-center text-white">
                 Create Announcement
               </h3>
               <form onSubmit={handleSubmit} className="space-y-4">

@@ -755,7 +755,7 @@ const SubAdminList = () => {
 
   return (
     <div className="p-6 min-h-[70vh] ">
-      <h2 className="text-3xl font-bold mb-6 text-center text-gray-800">
+      <h2 className="text-3xl font-bold mb-6 text-center text-gray-50">
         Team Members
       </h2>
       {error && <p className="text-red-500 text-center text-sm mb-4">{error}</p>}
@@ -813,14 +813,14 @@ const SubAdminList = () => {
                       {subAdmin.name?.charAt(0).toUpperCase() || "?"}
                     </div>
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                  <h3 className="text-xl font-semibold text-gray-50 mb-2">
                     {subAdmin.name || "Unnamed"}
                   </h3>
-                  <p className="text-sm text-gray-600 mb-4">
+                  <p className="text-sm text-gray-0 mb-4">
                     {subAdmin.email || "—"}
                   </p>
                   <div className="mx-auto w-full max-w-xs">
-                    <p className="text-lg font-semibold text-gray-900 text-center">
+                    <p className="text-lg font-semibold text-gray-50 text-center">
                       {subAdmin.mobile || "—"}
                     </p>
                     <p className="text-xs text-gray-500 text-center mt-1">Contact</p>
