@@ -629,104 +629,139 @@ const RoomOverview = () => {
             <p className="text-xl text-gray-500">No available rooms found.</p>
           </motion.div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-4">
             {rooms.map((room, index) => (
               <motion.div
                 key={room.roomId + "-" + index}
                 initial={{ opacity: 0, y: 50 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
+                transition={{ delay: index * 0.1, type: "spring", stiffness: 100 }}
                 whileHover={{
-                  scale: 1.05,
-                  rotateX: 5,
-                  rotateY: 5,
-                  boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+                  scale: 1.02,
+                  y: -5,
+                  transition: { duration: 0.3 }
                 }}
-                className="bg-white rounded-2xl shadow-lg overflow-hidden cursor-pointer border border-gray-200 hover:border-blue-300 transition-all duration-300 w-full h-[360px] flex flex-col"
+                className="bg-white rounded-2xl shadow-lg hover:shadow-2xl overflow-hidden cursor-pointer border-2 border-transparent hover:border-orange-400 transition-all duration-300 w-full flex flex-col group max-h-[420px]"
               >
-                <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 text-center relative overflow-hidden flex-grow">
-                  <motion.div className="absolute top-2 left-2 bg-white p-2 rounded-full shadow-md">
+                {/* Compact Header with Brand Colors */}
+                <div className="relative p-4 text-center overflow-hidden bg-gradient-to-br from-[#003366] to-[#004d99]">
+                  {/* Subtle Pattern Overlay */}
+                  <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.2),transparent)]"></div>
+
+                  {/* Action Buttons - Compact */}
+                  <motion.div 
+                    className="absolute top-2 left-2 bg-white/95 backdrop-blur-sm p-1.5 rounded-full shadow-md hover:bg-white transition-all"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
                     <FaTrash
-                      className="text-red-500 cursor-pointer drop-shadow-lg"
+                      className="text-red-500 cursor-pointer text-sm"
                       onClick={(e) => {
                         e.stopPropagation();
                         openDeleteModal(room);
                       }}
                     />
                   </motion.div>
-                  <motion.div className="absolute top-2 right-2 bg-white p-2 rounded-full shadow-md">
+                  <motion.div 
+                    className="absolute top-2 right-2 bg-white/95 backdrop-blur-sm p-1.5 rounded-full shadow-md hover:bg-white transition-all"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
                     <FaEdit
-                      className="text-blue-500 cursor-pointer drop-shadow-lg"
+                      className="text-[#FF6600] cursor-pointer text-sm"
                       onClick={(e) => {
                         e.stopPropagation();
                         openEditModal(room);
                       }}
                     />
                   </motion.div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-1 truncate">
-                    {room.name}
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-2">{room.type}</p>
-                  <div className="flex items-center justify-center space-x-2 mb-4">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        room.status === "Available"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {room.status}
-                    </span>
-                  </div>
-                <div className="text-2xl font-bold text-blue-600 mb-2">
-                    ₹{room.price}
-                  </div>
-                  <p className="text-sm text-gray-500">per month</p>
-                </div>
 
-                <div className="p-4 bg-gray-50 border-t">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">
-                      Beds Available
-                    </span>
-                    <div className="flex items-center">
-                      <span className="text-lg font-semibold text-green-600 mr-2">
-                        {room.availableBeds}/{room.totalBeds}
-                      </span>
-                      <motion.div
-                        whileHover={{ scale: 1.1 }}
-                        className="text-blue-500 cursor-pointer drop-shadow-lg"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedRoom(room);
-                          fetchBeds(room.roomId);
-                          setIsBedModalOpen(true);
-                        }}
+                  {/* Compact Room Info */}
+                  <div className="relative z-10 pt-3">
+                    <h3 className="text-lg font-bold text-white mb-1 truncate drop-shadow-md">
+                      {room.name}
+                    </h3>
+                    <p className="text-xs text-white/80 font-medium mb-2 uppercase tracking-wide">
+                      {room.type}
+                    </p>
+                    
+                    {/* Status Badge - Inline with Price */}
+                    <div className="flex items-center justify-center gap-3 mb-2">
+                      <motion.span
+                        className={`px-3 py-0.5 rounded-full text-xs font-bold shadow-md ${
+                          room.status === "Available"
+                            ? "bg-green-500 text-white"
+                            : "bg-red-500 text-white"
+                        }`}
                       >
-                        <FaEdit />
-                      </motion.div>
+                        {room.status}
+                      </motion.span>
+                    </div>
+
+                    {/* Compact Price */}
+                    <div className="bg-white/15 backdrop-blur-sm rounded-xl p-2 border border-white/20">
+                      <div className="text-2xl font-extrabold text-[#FF6600] drop-shadow-md">
+                        ₹{room.price}
+                      </div>
+                      <p className="text-[10px] text-white/70 uppercase tracking-wide font-semibold">
+                        per month
+                      </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="p-4 flex-grow">
-                  <h4 className="font-semibold text-gray-800 mb-3 flex items-center">
-                    <FaHome className="mr-2 text-blue-500 drop-shadow-lg" />
-                    Facilities
-                  </h4>
-                  <div className="text-sm text-gray-700">
-                    {getFacilityCount(room.facilities)} Facilities Available
+                {/* Compact Info Grid */}
+                <div className="p-3 bg-gray-50 flex-grow">
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Beds Info */}
+                    <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="bg-[#003366] p-1.5 rounded-lg">
+                          <FaBed className="text-white text-xs" />
+                        </div>
+                        <motion.div
+                          whileHover={{ scale: 1.15 }}
+                          whileTap={{ scale: 0.9 }}
+                          className="bg-[#FF6600] p-1.5 rounded-lg cursor-pointer shadow-sm hover:shadow-md transition-all"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedRoom(room);
+                            fetchBeds(room.roomId);
+                            setIsBedModalOpen(true);
+                          }}
+                        >
+                          <FaEdit className="text-white text-xs" />
+                        </motion.div>
+                      </div>
+                      <div className="text-xs text-gray-600 font-medium mb-1">Beds</div>
+                      <div className="text-lg font-bold text-[#003366]">
+                        {room.availableBeds}
+                        <span className="text-sm text-gray-400 font-medium">/{room.totalBeds}</span>
+                      </div>
+                    </div>
+
+                    {/* Facilities Info */}
+                    <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
+                      <div className="bg-[#FF6600] p-1.5 rounded-lg w-fit mb-1">
+                        <FaHome className="text-white text-xs" />
+                      </div>
+                      <div className="text-xs text-gray-600 font-medium mb-1">Facilities</div>
+                      <div className="text-lg font-bold text-[#FF6600]">
+                        {getFacilityCount(room.facilities)}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <div className="p-4 bg-gray-50 border-t">
+                {/* Compact View Details Button */}
+                <div className="p-3 bg-white border-t border-gray-100">
                   <motion.button
                     onClick={() => openModal(room)}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center"
+                    className="w-full bg-gradient-to-r from-[#003366] to-[#004d99] hover:from-[#004d99] hover:to-[#FF6600] text-white py-2.5 px-4 rounded-xl font-bold text-sm flex items-center justify-center shadow-md hover:shadow-lg transition-all duration-300"
                   >
-                    <FaBed className="mr-2 drop-shadow-lg" />
+                    <FaBed className="mr-2 text-base" />
                     View Details
                   </motion.button>
                 </div>

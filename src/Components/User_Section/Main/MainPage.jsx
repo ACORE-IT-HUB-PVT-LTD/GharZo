@@ -370,175 +370,136 @@ function MainPage() {
   return (
     <div className="flex flex-col min-h-screen" style={{ marginTop: "-20px" }}>
       {/* 🎬 HERO SECTION WITH CINEMATIC BACKGROUND SLIDER */}
-      <section 
-        className="pt-12 h-[90vh] flex items-center justify-center text-white text-center relative overflow-hidden"
-        onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => setIsPaused(false)}
-      >
-        {/* Background Image Slider with Fade + Ken Burns Effect */}
-        <div className="absolute inset-0">
-          <AnimatePresence initial={false}>
-            <motion.img
-              key={currentImageIndex}
-              src={heroImages[currentImageIndex]}
-              alt={`Hero Background ${currentImageIndex + 1}`}
-              className="absolute inset-0 w-full h-full object-cover"
-              initial={{ opacity: 0, scale: 1 }}
-              animate={{ 
-                opacity: 1, 
-                scale: 1.1, // Ken Burns zoom effect
-              }}
-              exit={{ opacity: 0, scale: 1.15 }}
-              transition={{ 
-                opacity: { duration: 1.5 },
-                scale: { duration: 8, ease: "linear" }
-              }}
-            />
-          </AnimatePresence>
-        </div>
-        
-        {/* Enhanced gradient overlay using GharZo colors */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#1E3A5F]/90 via-[#1E3A5F]/70 to-orange-600/50 z-10" />
+   <section
+  className="pt-12 h-[85vh] sm:h-[90vh] md:h-screen flex items-center justify-center text-white text-center relative overflow-hidden px-2 sm:px-6"
+  onMouseEnter={() => setIsPaused(true)}
+  onMouseLeave={() => setIsPaused(false)}
+>
+  {/* Background Image Slider */}
+  <div className="absolute inset-0">
+    <AnimatePresence initial={false}>
+      <motion.img
+        key={currentImageIndex}
+        src={heroImages[currentImageIndex]}
+        alt={`Hero Background ${currentImageIndex + 1}`}
+        className="absolute inset-0 w-full h-full object-cover"
+        initial={{ opacity: 0, scale: 1 }}
+        animate={{
+          opacity: 1,
+          scale: 1.1,
+        }}
+        exit={{ opacity: 0, scale: 1.15 }}
+        transition={{
+          opacity: { duration: 1.5 },
+          scale: { duration: 8, ease: "linear" },
+        }}
+      />
+    </AnimatePresence>
+  </div>
 
-        {/* Animated particles/shapes */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none z-20">
-          {[...Array(20)].map((_, i) => (
-            <motion.div
-              key={i}
-              className="absolute w-2 h-2 bg-orange-400/30 rounded-full"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-              }}
-              animate={{
-                y: [0, -30, 0],
-                opacity: [0.1, 0.5, 0.2],
-              }}
-              transition={{
-                duration: 3 + Math.random() * 2,
-                repeat: Infinity,
-                delay: Math.random() * 2,
-              }}
-            />
-          ))}
-        </div>
+  {/* Gradient Overlay */}
+  <div className="absolute inset-0 bg-gradient-to-br from-[#1E3A5F]/90 via-[#1E3A5F]/70 to-orange-600/50 z-10" />
 
-        {/* Slide Indicators */}
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex gap-2 z-30">
-          {heroImages.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentImageIndex(index)}
-              className={`transition-all duration-300 rounded-full ${
-                index === currentImageIndex
-                  ? 'w-8 h-2 bg-orange-500'
-                  : 'w-2 h-2 bg-white/50 hover:bg-white/70'
-              }`}
-              aria-label={`Go to slide ${index + 1}`}
-            />
-          ))}
-        </div>
+  {/* Animated particles */}
+  <div className="absolute inset-0 overflow-hidden pointer-events-none z-20">
+    {[...Array(20)].map((_, i) => (
+      <motion.div
+        key={i}
+        className="absolute w-2 h-2 bg-orange-400/30 rounded-full"
+        style={{
+          left: `${Math.random() * 100}%`,
+          top: `${Math.random() * 100}%`,
+        }}
+        animate={{
+          y: [0, -30, 0],
+          opacity: [0.1, 0.5, 0.2],
+        }}
+        transition={{
+          duration: 3 + Math.random() * 2,
+          repeat: Infinity,
+          delay: Math.random() * 2,
+        }}
+      />
+    ))}
+  </div>
 
-        {/* Content */}
-        <div className="relative z-30 px-6" data-aos="fade-up">
-          <motion.h1 
-            initial={{ opacity: 0, y: -30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="text-4xl md:text-6xl font-extrabold mb-6 bg-gradient-to-r from-white via-cyan-100 to-orange-200 bg-clip-text text-transparent drop-shadow-2xl"
-          >
-            Welcome to GharZo
-          </motion.h1>
+  {/* Navigation Arrows - using charcoal style dark blue */}
+{/* Left */}
+<button
+  onClick={() => setCurrentImageIndex((prev) => (prev - 1 + heroImages.length) % heroImages.length)}
+  className="absolute -left-2 sm:left-4 top-1/2 -translate-y-1/2 z-30
+             w-14 h-14 flex items-center justify-center
+             bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20
+             rounded-full transition-all duration-300 shadow-xl
+             group"
+  aria-label="Previous image"
+>
+<span
+  className="text-white text-7xl sm:text-6xl transition-transform duration-300
+             group-hover:-translate-x-1.5 group-hover:-translate-y-2"
+>
+  ‹
+</span>
+</button>
 
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="text-lg md:text-2xl max-w-2xl mx-auto mb-8 text-gray-100 font-light"
-          >
-Discover homes that match your comfort          </motion.p>
+{/* Right */}
+<button
+  onClick={() => setCurrentImageIndex((prev) => (prev + 1) % heroImages.length)}
+  className="absolute -right-2 sm:right-4 top-1/2 -translate-y-1/2 z-30
+             w-14 h-14 flex items-center justify-center
+             bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20
+             rounded-full transition-all duration-300 shadow-xl
+             group"
+  aria-label="Next image"
+>
+  <span
+  className="text-white text-4xl sm:text-5xl transition-transform duration-300
+             group-hover:-translate-y-2"
+>
+  ›
+</span>
+</button>
 
-          {/* Enhanced Action Buttons */}
-          {/* <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="flex flex-wrap justify-center gap-4 sm:gap-6 mt-12"
-          >
-            <motion.button
-              whileHover={{ scale: 1.1, rotate: 2, boxShadow: "0 0 30px rgba(255,107,53,0.6)" }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => handleNavigation("/rent")}
-              className="group relative w-32 h-14 sm:w-40 sm:h-16 
-              flex items-center justify-center gap-2 
-              bg-gradient-to-r from-white to-gray-100 
-              text-[#1E3A5F] text-base sm:text-lg font-bold
-              rounded-2xl overflow-hidden
-              shadow-xl hover:shadow-2xl
-              border-2 border-orange-400
-              transition-all duration-300"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-orange-400/0 via-orange-400/20 to-orange-400/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-              <FaHome className="text-2xl sm:text-3xl text-blue-600 relative z-10" />
-              <span className="relative z-10">Rent</span>
-            </motion.button>
+  {/* Slide Indicators */}
+  <div className="absolute bottom-5 sm:bottom-8 left-1/2 transform -translate-x-1/2 flex gap-2 z-30">
+    {heroImages.map((_, index) => (
+      <button
+        key={index}
+        onClick={() => setCurrentImageIndex(index)}
+        className={`transition-all duration-300 rounded-full ${
+          index === currentImageIndex
+            ? "w-6 sm:w-8 h-2 bg-orange-500"
+            : "w-2 h-2 bg-white/50 hover:bg-white/70"
+        }`}
+        aria-label={`Go to slide ${index + 1}`}
+      />
+    ))}
+  </div>
 
-            <motion.button
-              whileHover={{ scale: 1.1, rotate: -2, boxShadow: "0 0 30px rgba(34,197,94,0.6)" }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => handleNavigation("/sell")}
-              className="group relative w-32 h-14 sm:w-40 sm:h-16 
-              flex items-center justify-center gap-2 
-              bg-gradient-to-r from-white to-gray-100 
-              text-[#1E3A5F] text-base sm:text-lg font-bold
-              rounded-2xl overflow-hidden
-              shadow-xl hover:shadow-2xl
-              border-2 border-green-400
-              transition-all duration-300"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-green-400/0 via-green-400/20 to-green-400/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-              <FaTags className="text-2xl sm:text-3xl text-green-600 relative z-10" />
-              <span className="relative z-10">Sell</span>
-            </motion.button>
+  {/* Content */}
+  <div
+    className="relative z-30 px-2 sm:px-4"
+    data-aos="fade-up"
+  >
+    <motion.h1
+      initial={{ opacity: 0, y: -30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.8 }}
+      className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 sm:mb-6 bg-gradient-to-r from-white via-cyan-100 to-orange-200 bg-clip-text text-transparent drop-shadow-2xl"
+    >
+      Welcome to GharZo
+    </motion.h1>
 
-            <motion.button
-              whileHover={{ scale: 1.1, rotate: 2, boxShadow: "0 0 30px rgba(234,179,8,0.6)" }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => handleNavigation("/pg")}
-              className="group relative w-32 h-14 sm:w-40 sm:h-16 
-              flex items-center justify-center gap-2 
-              bg-gradient-to-r from-white to-gray-100 
-              text-[#1E3A5F] text-base sm:text-lg font-bold
-              rounded-2xl overflow-hidden
-              shadow-xl hover:shadow-2xl
-              border-2 border-yellow-400
-              transition-all duration-300"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/0 via-yellow-400/20 to-yellow-400/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-              <FaUserFriends className="text-2xl sm:text-3xl text-yellow-600 relative z-10" />
-              <span className="relative z-10">PG</span>
-            </motion.button>
-
-            <motion.button
-              whileHover={{ scale: 1.1, rotate: -2, boxShadow: "0 0 30px rgba(168,85,247,0.6)" }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => handleNavigation("/hostel")}
-              className="group relative w-32 h-14 sm:w-40 sm:h-16 
-              flex items-center justify-center gap-2 
-              bg-gradient-to-r from-white to-gray-100 
-              text-[#1E3A5F] text-base sm:text-lg font-bold
-              rounded-2xl overflow-hidden
-              shadow-xl hover:shadow-2xl
-              border-2 border-purple-400
-              transition-all duration-300"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-400/0 via-purple-400/20 to-purple-400/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-              <FaSchool className="text-2xl sm:text-3xl text-purple-600 relative z-10" />
-              <span className="relative z-10">Hostel</span>
-            </motion.button>
-          </motion.div> */}
-        </div>
-      </section>
+    <motion.p
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.8, delay: 0.2 }}
+      className="text-sm sm:text-lg md:text-2xl max-w-md sm:max-w-xl md:max-w-2xl mx-auto mb-6 sm:mb-8 text-gray-100 font-light"
+    >
+      Your one stop solution for rent, buy and sell your property.
+    </motion.p>
+  </div>
+</section>
 
       <PGHostelSection />
 
@@ -718,37 +679,7 @@ Discover homes that match your comfort          </motion.p>
                     "Here to make your property experience seamless."
                   </p>
                   
-                  {/* <div className="flex justify-center gap-4 mt-6">
-                    <motion.a
-                      whileHover={{ scale: 1.2, rotate: 5 }}
-                      whileTap={{ scale: 0.9 }}
-                      href={`tel:${agent.phone}`}
-                      className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center hover:shadow-lg transition-all"
-                      title="Call"
-                    >
-                      <FaPhoneAlt size={16} />
-                    </motion.a>
-                    <motion.a
-                      whileHover={{ scale: 1.2, rotate: -5 }}
-                      whileTap={{ scale: 0.9 }}
-                      href={`mailto:${agent.email}`}
-                      className="w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-red-600 text-white flex items-center justify-center hover:shadow-lg transition-all"
-                      title="Email"
-                    >
-                      <FaEnvelope size={16} />
-                    </motion.a>
-                    <motion.a
-                      whileHover={{ scale: 1.2, rotate: 5 }}
-                      whileTap={{ scale: 0.9 }}
-                      href={agent.linkedin}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-700 to-blue-800 text-white flex items-center justify-center hover:shadow-lg transition-all"
-                      title="LinkedIn"
-                    >
-                      <FaLinkedin size={16} />
-                    </motion.a>
-                  </div> */}
+                
                 </div>
               </motion.div>
             ))}
@@ -819,7 +750,7 @@ Discover homes that match your comfort          </motion.p>
 
           {/* Feedback Quote */}
           <div className="relative text-center">
-            <FaQuoteLeft className="text-orange-400 text-3xl absolute -top-3 left-1/2 -translate-x-1/2 opacity-30" />
+            {/* <FaQuoteLeft className="text-orange-400 text-3xl absolute -top-3 left-1/2 -translate-x-1/2 opacity-30" /> */}
             <p className="text-gray-700 text-sm italic leading-relaxed mt-6">
               "{testimonial.feedback}"
             </p>
@@ -828,83 +759,11 @@ Discover homes that match your comfort          </motion.p>
       ))}
     </motion.div>
 
-    {/* View All Link */}
-    {/* <div className="text-center mt-12">
-      <a
-        href="/testimonials"
-        className="text-orange-600 font-semibold text-lg hover:text-orange-700 transition flex items-center justify-center gap-2"
-      >
-        View all testimonials →
-      </a>
-    </div> */}
+   
   </div>
 </section>
 
-      {/* Final CTA Section */}
-      {/* <section
-        className="relative h-[500px] mx-6 my-16 rounded-3xl overflow-hidden shadow-2xl"
-        onMouseMove={handleMouseMove}
-      >
-        <motion.div
-          className="absolute inset-0"
-          animate={{
-            background: [
-              "linear-gradient(135deg, #1E3A5F, #2a4f7a)",
-              "linear-gradient(135deg, #FF6B35, #ff8555)",
-              "linear-gradient(135deg, #14B8A6, #06B6D4)",
-              "linear-gradient(135deg, #1E3A5F, #2a4f7a)",
-            ],
-          }}
-          transition={{ duration: 12, repeat: Infinity, repeatType: "reverse" }}
-        />
-
-        {images.map((img, i) => (
-          <motion.img
-            key={i}
-            src={img}
-            className="absolute w-40 h-40 object-cover rounded-2xl border-4 border-white shadow-2xl"
-            style={{
-              top: i < 2 ? "15%" : "60%",
-              left: i % 2 === 0 ? "10%" : "75%",
-              rotate: "45deg",
-            }}
-            animate={{
-              x: [0, i % 2 === 0 ? 15 : -15, 0],
-              y: [0, i < 2 ? -20 : 20, 0],
-              rotate: [45, 50, 45],
-            }}
-            transition={{ repeat: Infinity, duration: 4 + i }}
-            whileHover={{ scale: 1.15, zIndex: 10 }}
-          />
-        ))}
-
-        <motion.div
-          className="absolute inset-0 flex flex-col items-center justify-center text-center text-white px-6"
-          style={{
-            transform: `translate(${mousePos.x / 10}px, ${mousePos.y / 10}px)`,
-          }}
-        >
-          <motion.h2
-            className="text-4xl md:text-5xl font-extrabold drop-shadow-2xl"
-            initial={{ opacity: 0, y: -30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 1 }}
-          >
-            Start your journey with{" "}
-            <span className="text-orange-300">GharZo</span>
-          </motion.h2>
-          <motion.p
-            className="mt-5 text-xl drop-shadow-lg"
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 1, delay: 0.3 }}
-          >
-            Find rentals, PGs & hostels like never before.
-          </motion.p>
-        </motion.div>
-      </section> */}
+     
     </div>
   );
 }
