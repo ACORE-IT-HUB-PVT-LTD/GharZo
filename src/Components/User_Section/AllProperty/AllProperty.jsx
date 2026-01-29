@@ -26,43 +26,42 @@ function AllProperty() {
       setLoading(true);
       try {
         const res = await fetch(
-          `${baseurl}api/public/all-properties`,
+          `${baseurl}api/public/properties?page=1&limit=100`,
           {
             cache: "no-cache",
           }
         );
         const data = await res.json();
         console.log("API Response:", data);
-        const raw = data;
 
-        if (raw?.properties && Array.isArray(raw.properties)) {
-          const availableProps = raw.properties.filter(
-            (item) => item.isActive === true
-          );
-
-          const formatted = availableProps.map((item) => ({
-            id: item.id,
-            name: item.name,
-            image: item.images?.[0] || "",
+        if (data?.success && data?.data && Array.isArray(data.data)) {
+          const formatted = data.data.map((item) => ({
+            id: item._id,
+            name: item.title,
+            image: item.images?.[0]?.url || "",
             images: item.images || [],
             address: item.location?.address || "",
             city: item.location?.city || "",
-            state: item.location?.state || "",
-            location: `${item.location?.city}, ${item.location?.state}`,
-            price: item.lowestPrice || item.price || 0,
-            bedrooms: item.totalBeds,
-            area: item.area || "",
+            state: item.location?.city || "",
+            location: `${item.location?.city || ""}`,
+            price: item.price?.amount || 0,
+            bedrooms: item.bhk || 0,
+            bathrooms: item.bathrooms || 0,
+            area: item.area?.carpet || "",
             description: item.description || "",
-            propertyType: item.type,
-            totalRooms: item.totalRooms,
-            totalBeds: item.totalBeds,
+            propertyType: item.propertyType || "",
+            totalBeds: item.bhk || 0,
             createdAt: item.createdAt || new Date().toISOString(),
-            purpose: item.purpose || "rent", // assuming some default
+            purpose: item.listingType?.toLowerCase() || "rent",
+            amenitiesList: item.amenitiesList || [],
+            furnishing: item.furnishing || "",
+            ownerName: item.ownerId?.name || "",
+            ownerPhone: item.ownerId?.phone || "",
           }));
           setProperties(formatted);
           setFilteredProperties(formatted);
         } else {
-          console.error("Unexpected API response:", raw);
+          console.error("Unexpected API response:", data);
         }
       } catch (error) {
         console.error("Error fetching properties:", error);

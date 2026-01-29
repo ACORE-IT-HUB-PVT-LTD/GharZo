@@ -16,9 +16,12 @@ import {
   FaClock,
   FaHeadset,
   FaChevronDown,
-  FaChevronUp
+  FaChevronUp,
+  FaSpinner
 } from 'react-icons/fa';
 import teamWork from '../../../assets/Images/teamWork.png';
+import baseurl from '../../../../BaseUrl';
+import { toast, ToastContainer } from 'react-toastify';
 
 const ChannelPartnerPage = () => {
   const [formData, setFormData] = useState({
@@ -30,6 +33,7 @@ const ChannelPartnerPage = () => {
   });
 
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [openFaq, setOpenFaq] = useState(null);
 
   const handleChange = (e) => {
@@ -39,10 +43,61 @@ const ChannelPartnerPage = () => {
     });
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setIsSubmitted(true);
-    setTimeout(() => setIsSubmitted(false), 3000);
+  const handleSubmit = async (e) => {
+    if (e) e.preventDefault();
+    
+    // Validate required fields
+    if (!formData.phone || !formData.email) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`${baseurl}api/public/enquiries/channel-partner`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contactInfo: {
+            name: `${formData.firstName} ${formData.lastName}`.trim(),
+            email: formData.email,
+            phone: formData.phone,
+          },
+          message: `Channel Partner Inquiry from ${formData.company || 'Individual'}`,
+          typeSpecificData: {
+            partnerDetails: {
+              firstName: formData.firstName,
+              lastName: formData.lastName,
+              company: formData.company,
+              phone: formData.phone,
+              email: formData.email,
+            },
+          },
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast.success(data.message || 'Channel partner inquiry submitted successfully!');
+        setIsSubmitted(true);
+        setTimeout(() => {
+          setIsSubmitted(false);
+          setFormData({
+            firstName: '',
+            lastName: '',
+            phone: '',
+            email: '',
+            company: ''
+          });
+        }, 3000);
+      } else {
+        toast.error(data.message || 'Failed to submit channel partner inquiry');
+      }
+    } catch (error) {
+      console.error('Error submitting inquiry:', error);
+      toast.error('An error occurred. Please try again later.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const benefits = [
@@ -322,12 +377,22 @@ const ChannelPartnerPage = () => {
 
                     {/* Submit Button */}
                     <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                      disabled={isSubmitting}
+                      whileHover={{ scale: isSubmitting ? 1 : 1.02 }}
+                      whileTap={{ scale: isSubmitting ? 1 : 0.98 }}
                       onClick={handleSubmit}
-                      className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-3 rounded-lg shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 text-base"
+                      className={`w-full font-bold py-3 rounded-lg shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 text-base ${
+                        isSubmitting
+                          ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
+                          : 'bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white'
+                      }`}
                     >
-                      {isSubmitted ? (
+                      {isSubmitting ? (
+                        <>
+                          <FaSpinner className="animate-spin" />
+                          Submitting...
+                        </>
+                      ) : isSubmitted ? (
                         <>
                           <FaCheckCircle className="text-lg" />
                           <span>Submitted Successfully!</span>
@@ -542,6 +607,7 @@ const ChannelPartnerPage = () => {
         </div>
       </section>
 
+      <ToastContainer position="top-right" autoClose={3000} />
     </div>
   );
 };

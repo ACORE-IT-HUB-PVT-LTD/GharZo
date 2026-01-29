@@ -132,10 +132,10 @@ const CommercialListingPage = () => {
         >
           <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900">
             <span className="bg-gradient-to-b from-[#0c2344] to-[#0b4f91] bg-clip-text text-transparent">
-              Rooms for Rent
+              Commercial Properties 
             </span>
           </h2>
-          <p className="mt-2 text-gray-600">Find affordable rooms with great amenities</p>
+          {/* <p className="mt-2 text-gray-600">Find affordable rooms with great amenities</p> */}
         </motion.div>
 
         <motion.button
@@ -147,7 +147,7 @@ const CommercialListingPage = () => {
           className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-all"
         >
           <Plus size={20} />
-          Add Your Listing
+          Add Your Properties 
         </motion.button>
       </div>
 

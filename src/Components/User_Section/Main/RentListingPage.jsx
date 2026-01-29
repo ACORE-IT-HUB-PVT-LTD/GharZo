@@ -119,7 +119,7 @@ const RentListingPage = () => {
           <span>Back</span>
         </button>
 
-        <div className="flex-1 text-center">
+        {/* <div className="flex-1 text-center">
           <div className="inline-flex flex-wrap justify-center gap-4 sm:gap-6">
             <button 
               onClick={() => navigate('/rent')}
@@ -152,7 +152,7 @@ const RentListingPage = () => {
               Hostels
             </button>
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* Header with Add Listing Button */}
@@ -178,7 +178,7 @@ const RentListingPage = () => {
           className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-all"
         >
           <Plus size={20} />
-          Add Your Listing
+          Add Your Properties
         </motion.button>
       </div>
 

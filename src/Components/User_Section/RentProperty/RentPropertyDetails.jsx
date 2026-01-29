@@ -157,14 +157,14 @@ function PropertyDetails() {
       try {
         const timestamp = new Date().getTime();
         const response = await axios.get(
-          `https://api.drazeapp.com/api/public/property/${id}?_=${timestamp}`,
+          `https://api.gharzoreality.com/api/public/properties/${id}?_=${timestamp}`,
           {
             headers: {
               "Content-Type": "application/json",
             },
           }
         );
-        const found = response.data?.property;
+        const found = response.data?.data?.property;
 
         if (!found) {
           console.error("No property found in response");
@@ -182,14 +182,14 @@ function PropertyDetails() {
           ...found,
           description:
             found?.description ||
-            `${found.name} is a premium ${
-              found.type?.toLowerCase?.() || "property"
+            `${found.title} is a premium ${
+              found.propertyType?.toLowerCase?.() || "property"
             } located at ${found.location?.address || ""}, ${
               found.location?.city || ""
-            }, ${found.location?.state || ""}. This property offers ${
-              found.totalRooms || 0
-            } rooms and ${found.totalBeds || 0} beds, managed by ${
-              found.landlord?.name || "the manager"
+            }. This property offers ${
+              found.bhk || 0
+            } BHK with ${found.bathrooms || 0} bathrooms, managed by ${
+              found.ownerId?.name || "the manager"
             }.`,
         };
 
@@ -208,15 +208,15 @@ function PropertyDetails() {
       try {
         const timestamp = new Date().getTime();
         const response = await axios.get(
-          `https://api.drazeapp.com/api/reels?propertyId=${id}&_=${timestamp}`,
+          `https://api.gharzoreality.com/api/public/properties/${id}?_=${timestamp}`,
           {
             headers: {
               "Content-Type": "application/json",
             },
           }
         );
-        if (response.data.success) {
-          setReels(response.data.reels || []);
+        if (response.data.success && response.data.data?.reels) {
+          setReels(response.data.data.reels || []);
         } else {
           console.error("Failed to fetch reels:", response.data.message);
           setReels([]);

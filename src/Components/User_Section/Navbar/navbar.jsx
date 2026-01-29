@@ -22,7 +22,7 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import gsap from "gsap";
 import logo from "../../../assets/logo/logo.png";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
-import { useAuth } from "../../User_Section/Context/AuthContext.jsx";
+import { useAuth } from "../../User_Section/Context/AuthContext.jsx"; 
 
 // Download App Button Component
 const DownloadAppButton = () => (

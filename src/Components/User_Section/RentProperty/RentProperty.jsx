@@ -31,30 +31,30 @@ const RentProperty = () => {
 
     const fetchData = async () => {
       try {
-        const res = await axios.get(`${baseurl}api/all-properties`);
+        const res = await axios.get(`${baseurl}api/public/properties?listingType=Rent&limit=100`);
         console.log("API Response:", res.data); // Debug log
         const raw = res.data;
 
-        if (raw?.properties && Array.isArray(raw.properties)) {
-          const formatted = raw.properties.map((item) => ({
-            id: item.id,
-            name: item.name,
-            image: item.images?.[0] || "",
+        if (raw?.success && raw?.data && Array.isArray(raw.data)) {
+          const formatted = raw.data.map((item) => ({
+            id: item._id,
+            name: item.title,
+            image: item.images?.[0]?.url || "",
             images: item.images || [],
             city: item.location?.city || "",
-            state: item.location?.state || "",
-            location: `${item.location?.city}, ${item.location?.state}`,
-            price: item.lowestPrice || item.price || 0,
-            bedrooms: item.totalBeds, // Using totalBeds as a proxy for bedrooms
-            area: item.area || "",
+            state: item.location?.city || "",
+            location: item.location?.city || "",
+            price: item.price?.amount || 0,
+            bedrooms: item.bhk || 0,
+            bathrooms: item.bathrooms || 0,
+            area: item.area?.carpet || "",
             description: item.description || "",
-            propertyType: item.type,
-            totalRooms: item.totalRooms,
-            totalBeds: item.totalBeds,
+            propertyType: item.propertyType || "",
+            totalBeds: item.bhk || 0,
             createdAt: item.createdAt || new Date().toISOString(),
-            gender: item.rooms && item.rooms.length > 0 && item.rooms[0].allFacilities?.propertySpecific?.genderSpecific
-              ? item.rooms[0].allFacilities.propertySpecific.genderSpecific.toLowerCase()
-              : "unisex",
+            gender: "unisex",
+            amenitiesList: item.amenitiesList || [],
+            furnishing: item.furnishing || "",
           }));
           setPropertyData(formatted);
           setFilteredProperties(formatted);

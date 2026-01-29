@@ -26,11 +26,6 @@ const Footer = () => {
       link: "https://www.instagram.com/gharzoreality?igsh=MTVnYnhoNXkzeDkydA==",
       gradient: "from-pink-500 via-purple-500 to-yellow-500",
     },
-    // {
-    //   Icon: FaXTwitter,
-    //   link: "https://x.com/Drazeindia",
-    //   gradient: "from-sky-400 to-sky-600",
-    // },
     {
       Icon: FaYoutube,
       link: "https://youtube.com/@gharzoreality?si=zUXs0B8C8rw8hf8x",
@@ -40,7 +35,7 @@ const Footer = () => {
 
   return (
     <footer className="bg-gradient-to-br from-[#1E3A5F] to-[#2a4f7a] text-gray-300 pt-14 pb-6 px-4 md:px-20 mt-16">
-      <div className="grid md:grid-cols-4 gap-10">
+      <div className="grid md:grid-cols-5 gap-10">
         {/* Company Info */}
         <div>
           <div className="inline-flex items-center justify-center bg-white/90 backdrop-blur-md rounded-xl p-3 shadow-lg mb-4">
@@ -57,7 +52,7 @@ const Footer = () => {
           </p>
         </div>
 
-        {/* Top Cities */}
+        {/* Top Areas */}
         <div>
           <h3 className="text-xl font-semibold inline-block mb-4 bg-gradient-to-r from-orange-400 to-blue-400 text-transparent bg-clip-text">
             Top Areas
@@ -67,6 +62,50 @@ const Footer = () => {
             <li>Vijay Nagar</li>
             <li>LIG</li>
             <li>Station</li>
+          </ul>
+        </div>
+
+        {/* Services */}
+        <div>
+          <h3 className="text-xl font-semibold inline-block mb-4 bg-gradient-to-r from-orange-500 to-blue-400 text-transparent bg-clip-text">
+            Services
+          </h3>
+          <ul className="space-y-2 text-gray-300 text-base font-medium">
+            <li>
+              <a href="/rent" className="hover:text-white transition">
+                Rent
+              </a>
+            </li>
+            <li>
+              <a href="/sale" className="hover:text-white transition">
+                Buy
+              </a>
+            </li>
+            <li>
+              <a href="/commercial" className="hover:text-white transition">
+                Commercial
+              </a>
+            </li>
+            <li>
+              <a href="/pg" className="hover:text-white transition">
+                PG/Hostel
+              </a>
+            </li>
+            <li>
+              <a href="/hostels" className="hover:text-white transition">
+                Hotels / Banquets
+              </a>
+            </li>
+            <li>
+              <a href="/services" className="hover:text-white transition">
+                Services
+              </a>
+            </li>
+            <li>
+              <a href="/home-loan" className="hover:text-white transition">
+                Home Loan
+              </a>
+            </li>
           </ul>
         </div>
 
@@ -118,7 +157,7 @@ const Footer = () => {
             <li className="flex items-center gap-2">
               <EnvelopeIcon className="w-5 h-5 text-blue-400 flex-shrink-0" />
               <a
-                href="mailto:support@draze.in"
+                href="mailto:support@GharZo.in"
                 className="hover:text-white transition"
               >
                 support@GharZo.in
@@ -157,7 +196,7 @@ const Footer = () => {
           {/* App Download Buttons */}
           <div className="flex flex-wrap gap-3 mt-6">
             {/* App Store Button */}
-            {/* <a
+            {/* 
               href="#"
               className="flex items-center gap-3 bg-white text-black px-5 py-2.5 rounded-full shadow-md hover:shadow-lg transition transform hover:scale-105 active:scale-95"
             >
@@ -171,7 +210,7 @@ const Footer = () => {
             </a> */}
 
             {/* Google Play Button */}
-            {/* <a
+            {/* 
               href="https://play.google.com/store/apps/details?id=com.acore.draze&pcampaignid=web_share"
               className="flex items-center gap-3 bg-white text-black px-5 py-2.5 rounded-full shadow-md hover:shadow-lg transition transform hover:scale-105 active:scale-95"
             >

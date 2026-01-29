@@ -9,8 +9,11 @@ import {
   FaMapMarkerAlt,
   FaCheckCircle,
   FaUniversity,
-  FaWhatsapp
+  FaWhatsapp,
+  FaSpinner
 } from 'react-icons/fa';
+import baseurl from '../../../../BaseUrl';
+import { toast, ToastContainer } from 'react-toastify';
 
 const HomeLoanCalculator = () => {
   const [selectedBank, setSelectedBank] = useState('');
@@ -22,6 +25,7 @@ const HomeLoanCalculator = () => {
   const [processingFees, setProcessingFees] = useState(25000);
   const [showInquiry, setShowInquiry] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [inquiryData, setInquiryData] = useState({
     name: '',
@@ -78,21 +82,66 @@ const HomeLoanCalculator = () => {
     });
   };
 
-  const handleInquirySubmit = (e) => {
+  const handleInquirySubmit = async (e) => {
     e.preventDefault();
-    setIsSubmitted(true);
-    setTimeout(() => {
-      setIsSubmitted(false);
-      setShowInquiry(false);
-      setInquiryData({
-        name: '',
-        email: '',
-        phone: '',
-        address: '',
-        propertyValue: '',
-        downPayment: ''
+    
+    // Validate required fields
+    if (!inquiryData.name || !inquiryData.email || !inquiryData.phone) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`${baseurl}api/public/enquiries/home-loan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contactInfo: {
+            name: inquiryData.name,
+            email: inquiryData.email,
+            phone: inquiryData.phone,
+          },
+          message: `Home Loan Inquiry - Property Value: ₹${inquiryData.propertyValue || 'N/A'}, Down Payment: ₹${inquiryData.downPayment || 'N/A'}`,
+          typeSpecificData: {
+            loanDetails: {
+              loanAmount: loanAmount,
+              tenure: tenure,
+              interestRate: interestRate,
+              monthlyEMI: emi,
+              selectedBank: selectedBank,
+              propertyValue: inquiryData.propertyValue,
+              downPayment: inquiryData.downPayment,
+              propertyAddress: inquiryData.address,
+            },
+          },
+        }),
       });
-    }, 3000);
+      const data = await response.json();
+      if (data.success) {
+        toast.success(data.message || 'Home loan inquiry submitted successfully!');
+        setIsSubmitted(true);
+        setTimeout(() => {
+          setIsSubmitted(false);
+          setShowInquiry(false);
+          setInquiryData({
+            name: '',
+            email: '',
+            phone: '',
+            address: '',
+            propertyValue: '',
+            downPayment: ''
+          });
+        }, 3000);
+      } else {
+        toast.error(data.message || 'Failed to submit home loan inquiry');
+      }
+    } catch (error) {
+      console.error('Error submitting inquiry:', error);
+      toast.error('An error occurred. Please try again later.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const totalAmount = loanAmount + totalInterest + processingFees;
@@ -103,9 +152,9 @@ const HomeLoanCalculator = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50 relative">
       {/* Floating Buttons */}
-<div className="fixed left-4 bottom-6 flex flex-col gap-3 z-40">
+      <div className="fixed left-4 bottom-6 flex flex-col gap-3 z-40">
         <motion.a
-          href="https://wa.me/1234567890" // Replace with actual WhatsApp link
+          href="https://wa.me/1234567890"
           target="_blank"
           rel="noopener noreferrer"
           whileHover={{ scale: 1.1 }}
@@ -114,7 +163,7 @@ const HomeLoanCalculator = () => {
           <FaWhatsapp className="text-2xl" />
         </motion.a>
         <motion.a
-          href="tel:+911234567890" // Replace with actual phone number
+          href="tel:+911234567890"
           whileHover={{ scale: 1.1 }}
           className="bg-blue-500 text-white p-3 rounded-full shadow-md hover:bg-blue-600 transition-all animate-glow"
         >
@@ -141,6 +190,15 @@ const HomeLoanCalculator = () => {
                 Home Loan EMI Calculator
               </h1>
             </div>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowInquiry(true)}
+              className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold px-6 py-3 rounded-xl shadow-lg transition-all flex items-center gap-2"
+            >
+              <FaHome />
+              Apply Home Loan
+            </motion.button>
           </motion.div>
         </div>
       </div>
@@ -210,9 +268,14 @@ const HomeLoanCalculator = () => {
                     Loan Amount (₹)
                   </label>
                   <div className="bg-blue-50 px-4 py-2 rounded-lg">
-                    <span className="text-lg font-bold text-blue-900">
-                      ₹{loanAmount.toLocaleString('en-IN')}
-                    </span>
+                    <input
+                      type="number"
+                      value={loanAmount}
+                      onChange={(e) => setLoanAmount(Number(e.target.value))}
+                      className="w-32 text-lg font-bold text-blue-900 bg-transparent text-right outline-none"
+                      min="100000"
+                      max="50000000"
+                    />
                   </div>
                 </div>
                 <input
@@ -240,9 +303,14 @@ const HomeLoanCalculator = () => {
                     Tenure (Years)
                   </label>
                   <div className="bg-orange-50 px-4 py-2 rounded-lg">
-                    <span className="text-lg font-bold text-orange-900">
-                      {tenure} Years
-                    </span>
+                    <input
+                      type="number"
+                      value={tenure}
+                      onChange={(e) => setTenure(Number(e.target.value))}
+                      className="w-20 text-lg font-bold text-orange-900 bg-transparent text-right outline-none"
+                      min="2"
+                      max="30"
+                    />
                   </div>
                 </div>
                 <input
@@ -270,9 +338,15 @@ const HomeLoanCalculator = () => {
                     Rate of Interest (%)
                   </label>
                   <div className="bg-purple-50 px-4 py-2 rounded-lg">
-                    <span className="text-lg font-bold text-purple-900">
-                      {interestRate}%
-                    </span>
+                    <input
+                      type="number"
+                      value={interestRate}
+                      onChange={(e) => setInterestRate(Number(e.target.value))}
+                      step="0.1"
+                      className="w-16 text-lg font-bold text-purple-900 bg-transparent text-right outline-none"
+                      min="7"
+                      max="15"
+                    />
                   </div>
                 </div>
                 <input
@@ -580,11 +654,23 @@ const HomeLoanCalculator = () => {
 
                     <motion.button
                       type="submit"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-4 rounded-xl shadow-lg transition-all mt-4"
+                      disabled={isSubmitting}
+                      whileHover={{ scale: isSubmitting ? 1 : 1.02 }}
+                      whileTap={{ scale: isSubmitting ? 1 : 0.98 }}
+                      className={`w-full font-bold py-4 rounded-xl shadow-lg transition-all mt-4 flex items-center justify-center gap-2 ${
+                        isSubmitting
+                          ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
+                          : 'bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white'
+                      }`}
                     >
-                      Submit Inquiry
+                      {isSubmitting ? (
+                        <>
+                          <FaSpinner className="animate-spin" />
+                          Submitting...
+                        </>
+                      ) : (
+                        'Submit Inquiry'
+                      )}
                     </motion.button>
                   </form>
                 ) : (
@@ -603,6 +689,8 @@ const HomeLoanCalculator = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ToastContainer position="top-right" autoClose={3000} />
 
       <style jsx global>{`
         @keyframes glow {

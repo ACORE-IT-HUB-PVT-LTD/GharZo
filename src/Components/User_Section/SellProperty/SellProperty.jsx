@@ -27,20 +27,25 @@ function SellProperty() {
         setLoading(true);
         setError(null);
 
-        const res = await axios.get('https://api.drazeapp.com/api/seller/sellerproperties');
+        const res = await axios.get(`${baseurl}api/public/properties?listingType=Sale&limit=100`);
 
         if (res.data.success) {
           // Clean and prepare properties data
-          const cleanedProperties = res.data.properties.map((prop) => ({
+          const cleanedProperties = res.data.data.map((prop) => ({
             ...prop,
-            // Filter valid images (remove "undefined" paths) and take first one for card
-            image: (() => {
-              const validImg = prop.images?.filter((img) => img && !img.includes("undefined")).slice(0, 1)[0];
-              if (!validImg) return "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=500"; // Fallback placeholder
-              return validImg.startsWith('http') ? validImg : `${baseurl}${validImg}`;
-            })(),
-            location: `${prop.address || ""}, ${prop.city || ""}, ${prop.state || ""}`.replace(/, /g, " ").trim(),
-            amenitiesText: prop.amenities ? prop.amenities.join(", ") : "None",
+            id: prop._id,
+            name: prop.title,
+            image: prop.images?.[0]?.url || "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=500",
+            address: prop.location?.address || "",
+            city: prop.location?.city || "",
+            state: prop.location?.city || "",
+            location: `${prop.location?.address || ""}, ${prop.location?.city || ""}`.replace(/, /g, " ").trim(),
+            amenitiesText: prop.amenitiesList ? prop.amenitiesList.join(", ") : "None",
+            price: prop.price?.amount || 0,
+            bhk: prop.bhk || 0,
+            bathrooms: prop.bathrooms || 0,
+            area: prop.area?.carpet || 0,
+            propertyType: prop.propertyType || "",
           }));
           setProperties(cleanedProperties);
           setFilteredProperties(cleanedProperties);

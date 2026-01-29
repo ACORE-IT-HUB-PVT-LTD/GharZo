@@ -147,7 +147,7 @@ const SaleListingPage = () => {
           className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-all"
         >
           <Plus size={20} />
-          Add Your Listing
+          Add Your Properties 
         </motion.button>
       </div>
 

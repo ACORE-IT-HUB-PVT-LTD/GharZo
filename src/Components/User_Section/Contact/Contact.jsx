@@ -5,6 +5,7 @@ import { MapPin, Phone, Mail, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import baseurl from "../../../../BaseUrl";
 
 function Contact() {
   useEffect(() => {
@@ -123,18 +124,26 @@ function Contact() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("https://api.drazeapp.com/api/contact", {
+      const response = await fetch(`${baseurl}api/public/enquiries/property`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          contactInfo: {
+            name: formData.fullName,
+            email: formData.email,
+            phone: formData.phone,
+          },
+          message: formData.message,
+          enquiryType: "property_inquiry",
+        }),
       });
 
       const data = await response.json();
 
       if (data.success) {
-        toast.success("Message sent successfully!", {
+        toast.success(data.message || "Message sent successfully!", {
           position: "top-right",
           autoClose: 3000,
           hideProgressBar: false,
@@ -148,7 +157,7 @@ function Contact() {
         setErrors({});
         setTouched({});
       } else {
-        toast.error("Failed to send message. Please try again.", {
+        toast.error(data.message || "Failed to send message. Please try again.", {
           position: "top-right",
           autoClose: 3000,
           hideProgressBar: false,
@@ -160,6 +169,7 @@ function Contact() {
         });
       }
     } catch (error) {
+      console.error("Error:", error);
       toast.error("An error occurred. Please try again later.", {
         position: "top-right",
         autoClose: 3000,

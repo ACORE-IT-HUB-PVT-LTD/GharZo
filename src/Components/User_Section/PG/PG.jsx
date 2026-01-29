@@ -12,6 +12,7 @@ import {
   FaWifi,
   FaShower,
   FaArrowLeft,
+  FaPlus,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../Context/AuthContext";
@@ -210,7 +211,7 @@ const PG = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 px-4 py-10 md:px-10">
       {/* Back Button */}
-      <div className="max-w-6xl mx-auto mb-6">
+      <div className="max-w-6xl mx-auto mb-6 flex justify-between items-center">
         <button
           onClick={() => navigate(-1)}
           className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
@@ -218,6 +219,16 @@ const PG = () => {
           <FaArrowLeft className="w-4 h-4" />
           <span>Back</span>
         </button>
+
+         <button
+              onClick={handleLandlordLogin}
+              className="px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white transition-all duration-300 transform hover:-translate-y-1 flex items-center gap-2 rounded-2xl"
+              
+              data-aos-delay="200"
+            >
+              <FaPlus className="w-5 h-5" />
+               Add Your Properties
+            </button>
       </div>
 
       {/* Header with Action Buttons */}
@@ -247,15 +258,7 @@ const PG = () => {
               Login as Tenant
             </button>
 
-            <button
-              onClick={handleLandlordLogin}
-              className="px-6 py-3 bg-gradient-to-r from-blue-800 to-blue-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:from-orange-600 hover:to-blue-700 transition-all duration-300 transform hover:-translate-y-1 flex items-center gap-2"
-              data-aos="zoom-in"
-              data-aos-delay="200"
-            >
-              <FaHome className="w-5 h-5" />
-              List Your Property
-            </button>
+           
             <button
               onClick={handleSubowerLogin}
               className="px-6 py-3 bg-gradient-to-r from-blue-800 to-blue-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:from-orange-600 hover:to-blue-700 transition-all duration-300 transform hover:-translate-y-1 flex items-center gap-2"

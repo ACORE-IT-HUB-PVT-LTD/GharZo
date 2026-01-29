@@ -158,14 +158,14 @@ function PropertyDetails() {
       try {
         const timestamp = new Date().getTime();
         const response = await axios.get(
-          `${baseurl}api/public/property/${id}?_=${timestamp}`,
+          `${baseurl}api/public/properties/${id}?_=${timestamp}`,
           {
             headers: {
               "Content-Type": "application/json",
             },
           }
         );
-        const found = response.data?.property;
+        const found = response.data?.data?.property;
 
         if (!found) {
           console.error("No property found in response");
@@ -182,18 +182,16 @@ function PropertyDetails() {
           description:
             found?.description ||
             `${
-              found.name
-            } is a premium ${found.type.toLowerCase()} property located at ${
-              found.location.address
-            }, ${found.location.city}, ${found.location.state} (PIN: ${
-              found.location.pinCode
-            }). This expansive estate features a total of ${
-              found.totalRooms
-            } rooms and ${
-              found.totalBeds
-            } beds, designed for ultimate comfort and elegance. Managed by ${
-              found.landlord.name
-            }, it offers a serene and upscale living experience with various amenities tailored to your needs.`,
+              found.title
+            } is a premium ${found.propertyType?.toLowerCase() || "property"} located at ${
+              found.location?.address
+            }, ${found.location?.city}. This property features ${
+              found.bhk
+            } BHK with ${
+              found.bathrooms
+            } bathrooms, designed for ultimate comfort and elegance. Managed by ${
+              found.ownerId?.name
+            }, it offers a serene living experience with various amenities tailored to your needs.`,
         };
 
         setProperty(updatedProperty);

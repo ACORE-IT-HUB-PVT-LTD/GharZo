@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle, TrendingUp, DollarSign, Headphones, Users, Phone, MessageCircle } from 'lucide-react';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import baseurl from '../../../../BaseUrl';
 
 const FranchiseRequest = () => {
   const [formData, setFormData] = useState({
@@ -12,6 +15,7 @@ const FranchiseRequest = () => {
   });
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const investmentRanges = [
     '₹5–10 Lakhs',
@@ -66,15 +70,64 @@ const FranchiseRequest = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (validateForm()) {
-      console.log('Form submitted:', formData);
-      setSubmitted(true);
+      setIsSubmitting(true);
+      try {
+        const response = await fetch(`${baseurl}api/public/enquiries/franchise`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contactInfo: {
+              name: formData.fullName,
+              email: formData.email,
+              phone: formData.mobile,
+            },
+            message: `Franchise enquiry - Investment Range: ${formData.investment}`,
+            typeSpecificData: {
+              franchiseDetails: {
+                city: formData.city,
+                investmentCapacity: formData.investment,
+                experience: '',
+              },
+            },
+          }),
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          toast.success(data.message || 'Franchise request submitted successfully!', {
+            position: 'top-right',
+            autoClose: 3000,
+            theme: 'dark',
+          });
+          setSubmitted(true);
+        } else {
+          toast.error(data.message || 'Failed to submit franchise request', {
+            position: 'top-right',
+            autoClose: 3000,
+            theme: 'dark',
+          });
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        toast.error('An error occurred. Please try again later.', {
+          position: 'top-right',
+          autoClose: 3000,
+          theme: 'dark',
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+      <ToastContainer />
       {/* Hero Section */}
       <section className="relative text-white overflow-hidden" style={{ height: '65vh' }}>
         <div 
@@ -274,11 +327,24 @@ const FranchiseRequest = () => {
 
                   <motion.button
                     onClick={handleSubmit}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold py-4 px-6 rounded-xl text-lg shadow-lg hover:shadow-xl transition-all"
+                    disabled={isSubmitting}
+                    whileHover={{ scale: isSubmitting ? 1 : 1.02 }}
+                    whileTap={{ scale: isSubmitting ? 1 : 0.98 }}
+                    className={`w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold py-4 px-6 rounded-xl text-lg shadow-lg hover:shadow-xl transition-all ${
+                      isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
+                    }`}
                   >
-                    Submit Franchise Request
+                    {isSubmitting ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Submitting...
+                      </span>
+                    ) : (
+                      'Submit Franchise Request'
+                    )}
                   </motion.button>
 
                   <p className="text-center text-sm text-gray-500 mt-4">

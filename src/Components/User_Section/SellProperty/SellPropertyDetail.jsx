@@ -40,16 +40,22 @@ const SellPropertyDetail = () => {
           throw new Error("Property ID is undefined. Please check the URL or navigation.");
         }
 
-        const response = await axios.get(`${baseurl}api/seller/properties/${propertyId}`);
+        const response = await axios.get(`${baseurl}api/public/properties/${propertyId}`);
 
-        if (response.data.success && response.data.property) {
-          setProperty(response.data.property);
+        if (response.data.success && response.data.data?.property) {
+          const property = response.data.data.property;
+          setProperty(property);
 
           // Set images from property response (filter invalid ones)
-          const validImages = response.data.property.images.filter(
-            (img) => img && img !== "/uploads/properties/undefined"
-          );
+          const validImages = (property.images || []).filter(
+            (img) => img?.url && !img.url.includes("undefined")
+          ).map(img => img.url);
           setImages(validImages);
+
+          // Set reels if available
+          if (response.data.data?.reels) {
+            setReels(response.data.data.reels);
+          }
         } else {
           throw new Error("Invalid property data received from the server.");
         }

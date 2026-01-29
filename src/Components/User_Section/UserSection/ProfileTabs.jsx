@@ -21,14 +21,18 @@ import {
   FaTools,
   FaWrench,
   FaHardHat,
-  FaStar // Added for ratings
+  FaStar,
+  FaClipboardList,
+  FaClock,
+  FaPhone,
+  FaUser
 } from 'react-icons/fa';
 
 const ProfileTabs = () => {
   const [activeTab, setActiveTab] = useState('listings');
   const [selectedReel, setSelectedReel] = useState(null);
   const [uploadModal, setUploadModal] = useState(false);
-  const [serviceModal, setServiceModal] = useState(false); // New for adding service
+  const [serviceModal, setServiceModal] = useState(false);
   const [reelForm, setReelForm] = useState({
     title: '',
     description: '',
@@ -162,6 +166,65 @@ const ProfileTabs = () => {
     }
   ];
 
+  const myVisits = [
+    {
+      id: 1,
+      propertyTitle: 'Luxury 3BHK Apartment',
+      propertyType: 'Apartment',
+      location: 'Vijay Nagar, Indore',
+      visitDate: '2026-01-25',
+      visitTime: '10:30 AM',
+      status: 'Completed',
+      agentName: 'Rajesh Kumar',
+      agentPhone: '+91 98765 43210',
+      image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=500',
+      rating: 4,
+      feedback: 'Great property, well maintained. Location is perfect.'
+    },
+    {
+      id: 2,
+      propertyTitle: 'Commercial Office Space',
+      propertyType: 'Office',
+      location: 'MG Road, Indore',
+      visitDate: '2026-01-28',
+      visitTime: '2:00 PM',
+      status: 'Scheduled',
+      agentName: 'Priya Sharma',
+      agentPhone: '+91 98765 43211',
+      image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=500',
+      rating: null,
+      feedback: null
+    },
+    {
+      id: 3,
+      propertyTitle: 'Penthouse with City View',
+      propertyType: 'Penthouse',
+      location: 'South Tukoganj, Indore',
+      visitDate: '2026-01-20',
+      visitTime: '11:00 AM',
+      status: 'Completed',
+      agentName: 'Amit Verma',
+      agentPhone: '+91 98765 43212',
+      image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=500',
+      rating: 5,
+      feedback: 'Absolutely stunning! The view is breathtaking.'
+    },
+    {
+      id: 4,
+      propertyTitle: 'Modern Villa',
+      propertyType: 'Villa',
+      location: 'Nipania, Indore',
+      visitDate: '2026-01-15',
+      visitTime: '4:30 PM',
+      status: 'Cancelled',
+      agentName: 'Sneha Patel',
+      agentPhone: '+91 98765 43213',
+      image: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=500',
+      rating: null,
+      feedback: null
+    }
+  ];
+
   const mySubscriptions = [
     {
       id: 1,
@@ -188,7 +251,7 @@ const ProfileTabs = () => {
   const tabs = [
     { id: 'listings', label: 'My Listings', icon: <FaBuilding /> },
     { id: 'reels', label: 'My Reels', icon: <FaVideo /> },
-    // { id: 'services', label: 'My Services', icon: <FaTools /> },
+    { id: 'visits', label: 'My Visits', icon: <FaClipboardList /> },
     { id: 'subscriptions', label: 'Subscriptions', icon: <FaCrown /> }
   ];
 
@@ -208,10 +271,23 @@ const ProfileTabs = () => {
     setServiceForm({ title: '', category: '', price: '', location: '', experience: '', description: '' });
   };
 
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'Completed':
+        return 'bg-green-500 text-white';
+      case 'Scheduled':
+        return 'bg-blue-500 text-white';
+      case 'Cancelled':
+        return 'bg-red-500 text-white';
+      default:
+        return 'bg-gray-500 text-white';
+    }
+  };
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 min-h-screen"> {/* Improved container with bg */}
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 min-h-screen">
       {/* Tabs Header */}
-      <div className="bg-white rounded-2xl shadow-xl p-2 mb-8 border border-gray-200"> {/* Enhanced shadow and border */}
+      <div className="bg-white rounded-2xl shadow-xl p-2 mb-8 border border-gray-200">
         <div className="flex gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
           {tabs.map((tab) => (
             <button
@@ -223,7 +299,7 @@ const ProfileTabs = () => {
                   : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
               }`}
             >
-              <span className="text-xl">{tab.icon}</span> {/* Larger icons */}
+              <span className="text-xl">{tab.icon}</span>
               <span className="hidden sm:inline">{tab.label}</span>
             </button>
           ))}
@@ -246,7 +322,7 @@ const ProfileTabs = () => {
                 key={property.id} 
                 className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-blue-200"
               >
-                <div className="relative aspect-[4/3]"> {/* Fixed aspect ratio for images */}
+                <div className="relative aspect-[4/3]">
                   <img src={property.image} alt={property.title} className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 hover:scale-105" />
                   <div className="absolute top-3 right-3">
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
@@ -262,10 +338,10 @@ const ProfileTabs = () => {
                   </div>
                 </div>
                 
-                <div className="p-5"> {/* Increased padding */}
-                  <h3 className="font-bold text-xl text-gray-800 mb-2">{property.title}</h3> {/* Larger title */}
+                <div className="p-5">
+                  <h3 className="font-bold text-xl text-gray-800 mb-2">{property.title}</h3>
                   <div className="flex items-center text-gray-600 text-sm mb-3">
-                    <FaMapMarkerAlt className="mr-1 text-blue-500" /> {/* Colored icon */}
+                    <FaMapMarkerAlt className="mr-1 text-blue-500" />
                     <span>{property.location}</span>
                   </div>
                   
@@ -284,7 +360,7 @@ const ProfileTabs = () => {
                   </div>
                   
                   <div className="flex justify-between items-center pt-3 border-t border-gray-200">
-                    <span className="text-blue-600 font-bold text-xl">{property.price}</span> {/* Larger price */}
+                    <span className="text-blue-600 font-bold text-xl">{property.price}</span>
                     <div className="flex gap-4 text-xs text-gray-500">
                       <span className="flex items-center gap-1"><FaEye className="text-green-500" /> {property.views}</span>
                       <span className="flex items-center gap-1"><FaComment className="text-purple-500" /> {property.inquiries}</span>
@@ -321,10 +397,10 @@ const ProfileTabs = () => {
                   onClick={() => setSelectedReel(reel)}
                   className="bg-white rounded-xl shadow-md overflow-hidden cursor-pointer hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-purple-200"
                 >
-                  <div className="relative aspect-[9/16]"> {/* Better aspect for reels/thumbnails */}
+                  <div className="relative aspect-[9/16]">
                     <img src={reel.thumbnail} alt={reel.title} className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 hover:scale-105" />
                     <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300">
-                      <FaPlay className="text-white text-5xl" /> {/* Larger play icon */}
+                      <FaPlay className="text-white text-5xl" />
                     </div>
                     <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs font-semibold">
                       {reel.duration}
@@ -332,7 +408,7 @@ const ProfileTabs = () => {
                   </div>
                   
                   <div className="p-5">
-                    <h3 className="font-bold text-xl text-gray-800 mb-2">{reel.title}</h3> {/* Larger title */}
+                    <h3 className="font-bold text-xl text-gray-800 mb-2">{reel.title}</h3>
                     <div className="flex justify-between items-center text-sm text-gray-600">
                       <div className="flex gap-4">
                         <span className="flex items-center gap-1"><FaEye className="text-green-500" /> {reel.views.toLocaleString()}</span>
@@ -344,6 +420,92 @@ const ProfileTabs = () => {
                 </div>
               ))}
             </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'visits' && (
+          <motion.div
+            key="visits"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="grid grid-cols-1 md:grid-cols-2 gap-6"
+          >
+            {myVisits.map((visit) => (
+              <div 
+                key={visit.id} 
+                className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-blue-200"
+              >
+                <div className="relative h-48">
+                  <img 
+                    src={visit.image} 
+                    alt={visit.propertyTitle} 
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute top-3 right-3">
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(visit.status)}`}>
+                      {visit.status}
+                    </span>
+                  </div>
+                  <div className="absolute bottom-3 left-3">
+                    <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
+                      {visit.propertyType}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-5">
+                  <h3 className="font-bold text-xl text-gray-800 mb-2">{visit.propertyTitle}</h3>
+                  
+                  <div className="flex items-center text-gray-600 text-sm mb-3">
+                    <FaMapMarkerAlt className="mr-1 text-blue-500" />
+                    <span>{visit.location}</span>
+                  </div>
+
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-center gap-2 text-sm text-gray-700">
+                      <FaCalendar className="text-purple-500" />
+                      <span className="font-medium">{visit.visitDate}</span>
+                      <FaClock className="text-orange-500 ml-2" />
+                      <span>{visit.visitTime}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-sm text-gray-700">
+                      <FaUser className="text-green-500" />
+                      <span>{visit.agentName}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-sm text-gray-700">
+                      <FaPhone className="text-blue-500" />
+                      <span>{visit.agentPhone}</span>
+                    </div>
+                  </div>
+
+                  {visit.rating && (
+                    <div className="mb-3">
+                      <div className="flex items-center gap-1 mb-2">
+                        {[...Array(5)].map((_, i) => (
+                          <FaStar 
+                            key={i} 
+                            className={i < visit.rating ? 'text-yellow-500' : 'text-gray-300'} 
+                          />
+                        ))}
+                      </div>
+                      {visit.feedback && (
+                        <p className="text-sm text-gray-600 italic">"{visit.feedback}"</p>
+                      )}
+                    </div>
+                  )}
+
+                  {visit.status === 'Scheduled' && (
+                    <button className="w-full mt-3 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300">
+                      View Details
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
           </motion.div>
         )}
 
@@ -370,7 +532,7 @@ const ProfileTabs = () => {
                   key={service.id} 
                   className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-indigo-200"
                 >
-                  <div className="relative aspect-[4/3]"> {/* Fixed aspect ratio for images */}
+                  <div className="relative aspect-[4/3]">
                     <img 
                       src={service.image} 
                       alt={service.title} 
@@ -498,7 +660,7 @@ const ProfileTabs = () => {
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.2 }}
-            className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl my-4" // Added my-4 for vertical spacing on small screens
+            className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl my-4"
           >
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-2xl font-bold text-gray-800">Upload Reel</h3>
@@ -570,125 +732,122 @@ const ProfileTabs = () => {
       )}
 
       {/* Add Service Modal */}
-    {serviceModal && (
-  <div 
-    className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 overflow-y-auto"
-    onClick={() => setServiceModal(false)} // Close when clicking outside
-  >
-    <motion.div
-      initial={{ scale: 0.9, opacity: 0, y: 20 }}
-      animate={{ scale: 1, opacity: 1, y: 0 }}
-      exit={{ scale: 0.9, opacity: 0, y: 20 }}
-      transition={{ duration: 0.25 }}
-      className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-auto"
-      // Stop click propagation so clicking inside doesn't close modal
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* Header */}
-      <div className="flex justify-between items-center p-6 pb-4 border-b border-gray-200">
-        <h3 className="text-2xl font-bold text-gray-900">Add New Service</h3>
-        <button 
+      {serviceModal && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 overflow-y-auto"
           onClick={() => setServiceModal(false)}
-          className="p-1 text-gray-500 hover:text-gray-800 rounded-full hover:bg-gray-100 transition-colors"
         >
-          <FaTimes size={24} />
-        </button>
-      </div>
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            transition={{ duration: 0.25 }}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center p-6 pb-4 border-b border-gray-200">
+              <h3 className="text-2xl font-bold text-gray-900">Add New Service</h3>
+              <button 
+                onClick={() => setServiceModal(false)}
+                className="p-1 text-gray-500 hover:text-gray-800 rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <FaTimes size={24} />
+              </button>
+            </div>
 
-      {/* Scrollable content area */}
-      <div className="max-h-[70vh] overflow-y-auto px-6 py-4">
-        <form onSubmit={handleServiceUpload} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Title</label>
-            <input
-              type="text"
-              value={serviceForm.title}
-              onChange={(e) => setServiceForm({...serviceForm, title: e.target.value})}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
-              placeholder="Enter service title"
-              required
-            />
-          </div>
+            <div className="max-h-[70vh] overflow-y-auto px-6 py-4">
+              <form onSubmit={handleServiceUpload} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Title</label>
+                  <input
+                    type="text"
+                    value={serviceForm.title}
+                    onChange={(e) => setServiceForm({...serviceForm, title: e.target.value})}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
+                    placeholder="Enter service title"
+                    required
+                  />
+                </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Category</label>
-            <select
-              value={serviceForm.category}
-              onChange={(e) => setServiceForm({...serviceForm, category: e.target.value})}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
-              required
-            >
-              <option value="">Select category</option>
-              <option value="Interior Design">Interior Design</option>
-              <option value="Legal Services">Legal Services</option>
-              <option value="Construction">Construction</option>
-              <option value="Architecture">Architecture</option>
-              <option value="Vastu Consultant">Vastu Consultant</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Category</label>
+                  <select
+                    value={serviceForm.category}
+                    onChange={(e) => setServiceForm({...serviceForm, category: e.target.value})}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
+                    required
+                  >
+                    <option value="">Select category</option>
+                    <option value="Interior Design">Interior Design</option>
+                    <option value="Legal Services">Legal Services</option>
+                    <option value="Construction">Construction</option>
+                    <option value="Architecture">Architecture</option>
+                    <option value="Vastu Consultant">Vastu Consultant</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Price Range</label>
-            <input
-              type="text"
-              value={serviceForm.price}
-              onChange={(e) => setServiceForm({...serviceForm, price: e.target.value})}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
-              placeholder="e.g. ₹45,000 - ₹2,50,000 or Custom Quote"
-              required
-            />
-          </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Price Range</label>
+                  <input
+                    type="text"
+                    value={serviceForm.price}
+                    onChange={(e) => setServiceForm({...serviceForm, price: e.target.value})}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
+                    placeholder="e.g. ₹45,000 - ₹2,50,000 or Custom Quote"
+                    required
+                  />
+                </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Location</label>
-            <input
-              type="text"
-              value={serviceForm.location}
-              onChange={(e) => setServiceForm({...serviceForm, location: e.target.value})}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
-              placeholder="e.g. Indore & Nearby Cities"
-              required
-            />
-          </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Location</label>
+                  <input
+                    type="text"
+                    value={serviceForm.location}
+                    onChange={(e) => setServiceForm({...serviceForm, location: e.target.value})}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
+                    placeholder="e.g. Indore & Nearby Cities"
+                    required
+                  />
+                </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Experience</label>
-            <input
-              type="text"
-              value={serviceForm.experience}
-              onChange={(e) => setServiceForm({...serviceForm, experience: e.target.value})}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
-              placeholder="e.g. 8+ Years"
-              required
-            />
-          </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Experience</label>
+                  <input
+                    type="text"
+                    value={serviceForm.experience}
+                    onChange={(e) => setServiceForm({...serviceForm, experience: e.target.value})}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
+                    placeholder="e.g. 8+ Years"
+                    required
+                  />
+                </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
-            <textarea
-              value={serviceForm.description}
-              onChange={(e) => setServiceForm({...serviceForm, description: e.target.value})}
-              rows={4}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all resize-none"
-              placeholder="Describe your service, what you offer, typical timeline, etc..."
-            />
-          </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
+                  <textarea
+                    value={serviceForm.description}
+                    onChange={(e) => setServiceForm({...serviceForm, description: e.target.value})}
+                    rows={4}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all resize-none"
+                    placeholder="Describe your service, what you offer, typical timeline, etc..."
+                  />
+                </div>
 
-          {/* Submit Button */}
-          <div className="pt-2 pb-4">
-            <button
-              type="submit"
-              className="w-full py-3 px-6 bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg hover:from-indigo-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all duration-300"
-            >
-              Add Service
-            </button>
-          </div>
-        </form>
-      </div>
-    </motion.div>
-  </div>
-)}
+                <div className="pt-2 pb-4">
+                  <button
+                    type="submit"
+                    className="w-full py-3 px-6 bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg hover:from-indigo-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all duration-300"
+                  >
+                    Add Service
+                  </button>
+                </div>
+              </form>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       {/* Reel Preview Modal */}
       {selectedReel && (
         <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-50 overflow-y-auto" onClick={() => setSelectedReel(null)}>

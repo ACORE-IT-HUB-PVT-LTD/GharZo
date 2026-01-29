@@ -75,8 +75,8 @@ function Login({ onClose }) {
     }
     try {
       await axios.post(
-        `${baseurl}api/users/auth/request-otp`,
-        { mobile: phone },
+        `${baseurl}api/auth/send-otp`,
+        { phone },
         { headers: { "Content-Type": "application/json" } }
       );
       setOtpSent(true);
@@ -102,8 +102,8 @@ function Login({ onClose }) {
     setIsResending(true);
     try {
       await axios.post(
-        `${baseurl}api/users/auth/request-otp`,
-        { mobile: phone },
+        `${baseurl}api/auth/resend-otp`,
+        { phone },
         { headers: { "Content-Type": "application/json" } }
       );
       toast.success("New OTP sent successfully!");
@@ -127,39 +127,47 @@ function Login({ onClose }) {
     }
     try {
       const response = await axios.post(
-        `${baseurl}api/users/auth/verify-otp`,
-        { mobile: phone, otp },
+        `${baseurl}api/auth/verify-otp`,
+        { phone, otp },
         { headers: { "Content-Type": "application/json" } }
       );
 
-      const isRegistered = response.data?.isRegistered;
+      const resp = response.data?.data || response.data || {};
 
-      if (!isRegistered) {
-        toast.error("Number not registered. Please register first!");
+      // If server requires name/registration info, navigate to signup
+      if (!response.data?.success && /name is required/i.test(response.data?.message || "")) {
+        toast.error(response.data?.message || "Please complete registration");
         setTimeout(() => {
           onClose?.();
           navigate("/signupuser", { state: { mobile: phone, from } });
-        }, 2000);
+        }, 1200);
         return;
       }
 
-      const token = response.data?.token;
+      const token = resp?.token || response.data?.token;
+      const user = resp?.user || response.data?.user;
+
       if (token) localStorage.setItem("usertoken", token);
-      localStorage.setItem("role", "user");
+      if (user) {
+        localStorage.setItem("user", JSON.stringify(user));
+        localStorage.setItem("role", user.role || "user");
+      } else {
+        localStorage.setItem("role", "user");
+      }
 
       login({
         phone,
-        role: "user",
+        role: user?.role || "user",
         isRegistered: true,
-        fullName: response.data?.user?.fullName,
-        email: response.data?.user?.email,
+        fullName: user?.fullName || user?.name,
+        email: user?.email,
       });
 
-      toast.success("OTP Verified Successfully!");
+      toast.success(response.data?.message || "OTP Verified Successfully!");
       setTimeout(() => {
         onClose?.();
         navigate(from, { replace: true });
-      }, 2000);
+      }, 1200);
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to verify OTP");
     }

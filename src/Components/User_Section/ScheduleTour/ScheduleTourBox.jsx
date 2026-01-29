@@ -124,7 +124,8 @@ const ScheduleTourBox = () => {
     setDateTimeError("");
     setSuccess(false);
     try {
-      const response = await fetch(`${baseurl}api/visits`, {
+      // Submit to visits API (existing)
+      const visitResponse = await fetch(`${baseurl}api/visits`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -137,10 +138,34 @@ const ScheduleTourBox = () => {
           contactNumber,
         }),
       });
-      const data = await response.json();
+      
+      // Also submit to enquiry API (new)
+      await fetch(`${baseurl}api/public/enquiries/property`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          propertyId: id,
+          contactInfo: {
+            name: "Property Visitor",
+            phone: contactNumber,
+            email: "",
+          },
+          message: `Visit scheduled for ${new Date(visitDate).toLocaleString()}. ${notes}`,
+          typeSpecificData: {
+            propertyDetails: {
+              visitDate: visitDate,
+              notes: notes,
+            },
+          },
+        }),
+      }).catch(err => console.log("Enquiry log error:", err));
+
+      const data = await visitResponse.json();
       console.log(data);
       
-      if (response.ok) {
+      if (visitResponse.ok) {
         const successMessage = data.message || "Visit successfully scheduled!";
         toast.success(successMessage, {
           position: "top-right",
@@ -159,7 +184,7 @@ const ScheduleTourBox = () => {
           position: "top-right",
           autoClose: 5000,
         });
-        if (response.status === 401) {
+        if (visitResponse.status === 401) {
           setError("Session expired. Please log in again.");
           toast.error("Session expired. Please log in again.", {
             position: "top-right",

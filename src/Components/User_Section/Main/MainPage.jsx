@@ -47,6 +47,7 @@ import PropertyInquiryForm from "./PropertyInquiryForm.jsx";
 import PlotsHome from "./PlotsHome.jsx";
 import DownloadAppSection from "./DownloadAppSection.jsx";
 import HeroSection from "./HeroSection.jsx";
+import AdsCarousel from "./AdsCarousel.jsx";
 
 function MainPage() { 
   const navigate = useNavigate();
@@ -439,7 +440,9 @@ function MainPage() {
     <div className="flex flex-col min-h-screen" style={{ marginTop: "-20px" }}>
       {/* 🎬 HERO SECTION WITH CINEMATIC BACKGROUND SLIDER */}
       <HeroSection />
+
       <PGHostelSection />
+      <AdsCarousel />
 
       <RentalPropety />
       <PlotsHome />
