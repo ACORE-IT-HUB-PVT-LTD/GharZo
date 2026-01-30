@@ -17,7 +17,10 @@ import {
   FaHeadset,
   FaChevronDown,
   FaChevronUp,
-  FaSpinner
+  FaSpinner,
+  FaBriefcase,
+  FaUserFriends,
+  FaMapMarkedAlt
 } from 'react-icons/fa';
 import teamWork from '../../../assets/Images/teamWork.png';
 import baseurl from '../../../../BaseUrl';
@@ -29,7 +32,12 @@ const ChannelPartnerPage = () => {
     lastName: '',
     phone: '',
     email: '',
-    company: ''
+    company: '',
+    yearsInBusiness: '',
+    currentPortfolio: '',
+    teamSize: '',
+    operatingCities: '',
+    partnershipType: 'Standard'
   });
 
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -47,38 +55,54 @@ const ChannelPartnerPage = () => {
     if (e) e.preventDefault();
     
     // Validate required fields
-    if (!formData.phone || !formData.email) {
+    if (!formData.phone || !formData.email || !formData.firstName) {
       toast.error('Please fill in all required fields');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`${baseurl}api/public/enquiries/channel-partner`, {
+      const fullName = `${formData.firstName} ${formData.lastName}`.trim();
+      
+      // Parse operating cities from comma-separated string to array
+      const citiesArray = formData.operatingCities 
+        ? formData.operatingCities.split(',').map(city => city.trim()).filter(city => city)
+        : [];
+
+      const requestBody = {
+        contactInfo: {
+          name: fullName,
+          phone: formData.phone,
+          email: formData.email
+        },
+        message: formData.company 
+          ? `Channel Partner Inquiry from ${formData.company}` 
+          : 'Channel Partner Inquiry',
+        channelPartnerDetails: {
+          companyName: formData.company || fullName,
+          yearsInBusiness: formData.yearsInBusiness ? parseInt(formData.yearsInBusiness) : 0,
+          currentPortfolio: formData.currentPortfolio ? parseInt(formData.currentPortfolio) : 0,
+          teamSize: formData.teamSize ? parseInt(formData.teamSize) : 0,
+          operatingCities: citiesArray,
+          partnershipType: formData.partnershipType || "Standard"
+        }
+      };
+
+      const response = await fetch(`${baseurl}api/v2/enquiries/channel-partner`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contactInfo: {
-            name: `${formData.firstName} ${formData.lastName}`.trim(),
-            email: formData.email,
-            phone: formData.phone,
-          },
-          message: `Channel Partner Inquiry from ${formData.company || 'Individual'}`,
-          typeSpecificData: {
-            partnerDetails: {
-              firstName: formData.firstName,
-              lastName: formData.lastName,
-              company: formData.company,
-              phone: formData.phone,
-              email: formData.email,
-            },
-          },
-        }),
+        headers: { 
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody),
       });
+
       const data = await response.json();
-      if (data.success) {
-        toast.success(data.message || 'Channel partner inquiry submitted successfully!');
+      
+      if (response.ok && data.success) {
+        toast.success(data.message || 'Channel partner enquiry submitted. Our team will contact you soon!');
         setIsSubmitted(true);
+        
+        // Reset form after 3 seconds
         setTimeout(() => {
           setIsSubmitted(false);
           setFormData({
@@ -86,7 +110,12 @@ const ChannelPartnerPage = () => {
             lastName: '',
             phone: '',
             email: '',
-            company: ''
+            company: '',
+            yearsInBusiness: '',
+            currentPortfolio: '',
+            teamSize: '',
+            operatingCities: '',
+            partnershipType: 'Standard'
           });
         }, 3000);
       } else {
@@ -226,16 +255,6 @@ const ChannelPartnerPage = () => {
                   </span>
                 </motion.h2>
 
-                {/* Description */}
-                {/* <motion.p
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 }}
-                  className="text-sm sm:text-base text-gray-200 leading-relaxed max-w-xl"
-                >
-                  As the real estate industry undergoes a transformative phase, we invite visionaries like you to become part of our exclusive network of channel partners. Unleash your potential, unlock lucrative prospects, and embark on a journey towards limitless success.
-                </motion.p> */}
-
                 <motion.p
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -280,7 +299,7 @@ const ChannelPartnerPage = () => {
                     Register to become Channel Partner
                   </h2>
 
-                  <div className="space-y-4">
+                  <form onSubmit={handleSubmit} className="space-y-4">
                     {/* First Name & Last Name */}
                     <div className="grid sm:grid-cols-2 gap-3">
                       <div>
@@ -375,12 +394,109 @@ const ChannelPartnerPage = () => {
                       </div>
                     </div>
 
+                    {/* Years in Business & Current Portfolio */}
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                          Years in business
+                        </label>
+                        <div className="relative">
+                          <FaBriefcase className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-900/50 text-sm" />
+                          <input
+                            type="number"
+                            name="yearsInBusiness"
+                            value={formData.yearsInBusiness}
+                            onChange={handleChange}
+                            min="0"
+                            className="w-full pl-10 pr-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition-all"
+                            placeholder="10"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                          Current portfolio
+                        </label>
+                        <div className="relative">
+                          <FaChartLine className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-900/50 text-sm" />
+                          <input
+                            type="number"
+                            name="currentPortfolio"
+                            value={formData.currentPortfolio}
+                            onChange={handleChange}
+                            min="0"
+                            className="w-full pl-10 pr-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition-all"
+                            placeholder="500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Team Size */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                        Team size
+                      </label>
+                      <div className="relative">
+                        <FaUserFriends className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-900/50 text-sm" />
+                        <input
+                          type="number"
+                          name="teamSize"
+                          value={formData.teamSize}
+                          onChange={handleChange}
+                          min="0"
+                          className="w-full pl-10 pr-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition-all"
+                          placeholder="25"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Operating Cities */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                        Operating cities
+                      </label>
+                      <div className="relative">
+                        <FaMapMarkedAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-900/50 text-sm" />
+                        <input
+                          type="text"
+                          name="operatingCities"
+                          value={formData.operatingCities}
+                          onChange={handleChange}
+                          className="w-full pl-10 pr-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition-all"
+                          placeholder="Indore, Bhopal, Ujjain"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Separate multiple cities with commas</p>
+                    </div>
+
+                    {/* Partnership Type */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                        Partnership type
+                      </label>
+                      <div className="relative">
+                        <FaHandshake className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-900/50 text-sm" />
+                        <select
+                          name="partnershipType"
+                          value={formData.partnershipType}
+                          onChange={handleChange}
+                          className="w-full pl-10 pr-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition-all appearance-none bg-white"
+                        >
+                          <option value="Standard">Standard</option>
+                          <option value="Exclusive">Exclusive</option>
+                          <option value="Premium">Premium</option>
+                        </select>
+                      </div>
+                    </div>
+
                     {/* Submit Button */}
                     <motion.button
+                      type="submit"
                       disabled={isSubmitting}
                       whileHover={{ scale: isSubmitting ? 1 : 1.02 }}
                       whileTap={{ scale: isSubmitting ? 1 : 0.98 }}
-                      onClick={handleSubmit}
                       className={`w-full font-bold py-3 rounded-lg shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 text-base ${
                         isSubmitting
                           ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
@@ -403,7 +519,7 @@ const ChannelPartnerPage = () => {
                         </>
                       )}
                     </motion.button>
-                  </div>
+                  </form>
 
                   {/* Success Message */}
                   {isSubmitted && (
@@ -437,7 +553,7 @@ const ChannelPartnerPage = () => {
               transition={{ duration: 0.8 }}
             >
               <img 
-                src= {teamWork}
+                src={teamWork}
                 alt="Team Work" 
                 className="w-full h-auto rounded-2xl shadow-xl"
               />

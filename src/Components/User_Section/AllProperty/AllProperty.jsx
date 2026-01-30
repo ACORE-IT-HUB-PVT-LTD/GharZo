@@ -17,22 +17,43 @@ function AllProperty() {
   const [priceRange, setPriceRange] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const propertiesPerPage = 9;
+  const [totalPagesServer, setTotalPagesServer] = useState(1);
 
   const searchIconRef = useRef(null);
 
-  // Fetch all properties
+  // Fetch properties from server using filters/search/pagination
   useEffect(() => {
+    const controller = new AbortController();
     const fetchProperties = async () => {
       setLoading(true);
       try {
-        const res = await fetch(
-          `${baseurl}api/public/properties?page=1&limit=100`,
-          {
-            cache: "no-cache",
+        const params = new URLSearchParams();
+        params.append("page", currentPage);
+        params.append("limit", propertiesPerPage);
+        if (debouncedSearchTerm) params.append("search", debouncedSearchTerm);
+        if (purpose) params.append("listingType", purpose);
+        if (propertyType) params.append("propertyType", propertyType);
+        if (priceRange) {
+          if (priceRange === "0-5000") {
+            params.append("maxPrice", "5000");
+          } else if (priceRange === "5000-10000") {
+            params.append("minPrice", "5000");
+            params.append("maxPrice", "10000");
+          } else if (priceRange === "10000-20000") {
+            params.append("minPrice", "10000");
+            params.append("maxPrice", "20000");
+          } else if (priceRange === "20000-50000") {
+            params.append("minPrice", "20000");
+            params.append("maxPrice", "50000");
+          } else if (priceRange === "50000+") {
+            params.append("minPrice", "50000");
           }
-        );
+        }
+
+        const url = `${baseurl}api/public/properties?${params.toString()}`;
+        const res = await fetch(url, { signal: controller.signal, cache: "no-cache" });
         const data = await res.json();
-        console.log("API Response:", data);
+        // console.log("API Response:", data);
 
         if (data?.success && data?.data && Array.isArray(data.data)) {
           const formatted = data.data.map((item) => ({
@@ -51,6 +72,7 @@ function AllProperty() {
             description: item.description || "",
             propertyType: item.propertyType || "",
             totalBeds: item.bhk || 0,
+            totalRooms: item.totalRooms || item.rooms?.length || "N/A",
             createdAt: item.createdAt || new Date().toISOString(),
             purpose: item.listingType?.toLowerCase() || "rent",
             amenitiesList: item.amenitiesList || [],
@@ -58,19 +80,33 @@ function AllProperty() {
             ownerName: item.ownerId?.name || "",
             ownerPhone: item.ownerId?.phone || "",
           }));
+
           setProperties(formatted);
           setFilteredProperties(formatted);
+          // Use server pagination info if available
+          if (data.totalPages) setTotalPagesServer(data.totalPages);
+          else setTotalPagesServer(Math.ceil((data.total || formatted.length) / propertiesPerPage));
         } else {
           console.error("Unexpected API response:", data);
+          setProperties([]);
+          setFilteredProperties([]);
+          setTotalPagesServer(1);
         }
       } catch (error) {
+        if (error.name === 'AbortError') return;
         console.error("Error fetching properties:", error);
+        setProperties([]);
+        setFilteredProperties([]);
+        setTotalPagesServer(1);
       } finally {
         setLoading(false);
       }
     };
+
     fetchProperties();
-  }, []);
+
+    return () => controller.abort();
+  }, [debouncedSearchTerm, purpose, propertyType, priceRange, currentPage]);
 
   // Debounce search term
   useEffect(() => {
@@ -80,6 +116,11 @@ function AllProperty() {
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
+
+  // Reset to first page when filters/search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchTerm, purpose, propertyType, priceRange]);
 
   // Animate search icon
   useEffect(() => {
@@ -95,39 +136,7 @@ function AllProperty() {
     }
   }, []);
 
-  // Auto Filter handler
-  useEffect(() => {
-    const filtered = properties.filter((property) => {
-      const matchesSearch =
-        debouncedSearchTerm === "" ||
-        property.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        property.city.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        property.address.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
-
-      const matchesPurpose = purpose
-        ? property.purpose?.toLowerCase() === purpose.toLowerCase()
-        : true;
-
-      const matchesType = propertyType
-        ? property.propertyType?.toLowerCase() === propertyType.toLowerCase()
-        : true;
-
-      const price = property.price || 0;
-      const matchesPrice = (() => {
-        if (priceRange === "0-5000") return price <= 5000;
-        if (priceRange === "5000-10000") return price > 5000 && price <= 10000;
-        if (priceRange === "10000-20000") return price > 10000 && price <= 20000;
-        if (priceRange === "20000-50000") return price > 20000 && price <= 50000;
-        if (priceRange === "50000+") return price > 50000;
-        return true;
-      })();
-
-      return matchesSearch && matchesPurpose && matchesType && matchesPrice;
-    });
-
-    setFilteredProperties(filtered);
-    setCurrentPage(1);
-  }, [debouncedSearchTerm, purpose, propertyType, priceRange, properties]);
+  // Note: filtering is now performed by the server. `filteredProperties` contains server results.
 
   // Reset handler
   const handleReset = () => {
@@ -138,10 +147,9 @@ function AllProperty() {
   };
 
   // Pagination logic
-  const indexOfLast = currentPage * propertiesPerPage;
-  const indexOfFirst = indexOfLast - propertiesPerPage;
-  const currentProperties = filteredProperties.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.ceil(filteredProperties.length / propertiesPerPage);
+  // Server returns paginated results; `filteredProperties` already reflects current page
+  const currentProperties = filteredProperties;
+  const totalPages = totalPagesServer;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-orange-50">

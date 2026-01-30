@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -23,89 +23,62 @@ const RentListingPage = () => {
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [showBudgetDropdown, setShowBudgetDropdown] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [filteredProperties, setFilteredProperties] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [totalPages, setTotalPages] = useState(1);
   
   const propertiesPerPage = 9;
-
-  // Dummy Data for Rent
-  const rentProperties = [
-    {
-      id: 1,
-      name: "Luxury 3BHK Apartment",
-      type: "Apartment",
-      price: 35000,
-      location: { city: "Indore", area: "Vijay Nagar" },
-      bedrooms: 3,
-      bathrooms: 2,
-      area: "1450 sq ft",
-      image: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=500",
-    },
-    {
-      id: 2,
-      name: "Modern 2BHK Flat",
-      type: "Apartment",
-      price: 25000,
-      location: { city: "Indore", area: "AB Road" },
-      bedrooms: 2,
-      bathrooms: 2,
-      area: "1100 sq ft",
-      image: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=500",
-    },
-    {
-      id: 3,
-      name: "Spacious Villa",
-      type: "Villa",
-      price: 65000,
-      location: { city: "Indore", area: "Scheme 54" },
-      bedrooms: 4,
-      bathrooms: 3,
-      area: "2500 sq ft",
-      image: "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=500",
-    },
-    {
-      id: 4,
-      name: "Cozy 1BHK Studio",
-      type: "Studio",
-      price: 15000,
-      location: { city: "Indore", area: "Palasia" },
-      bedrooms: 1,
-      bathrooms: 1,
-      area: "650 sq ft",
-      image: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=500",
-    },
-    {
-      id: 5,
-      name: "Premium Penthouse",
-      type: "Penthouse",
-      price: 85000,
-      location: { city: "Indore", area: "MG Road" },
-      bedrooms: 4,
-      bathrooms: 4,
-      area: "3200 sq ft",
-      image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=500",
-    },
-    {
-      id: 6,
-      name: "Family 3BHK Home",
-      type: "Apartment",
-      price: 30000,
-      location: { city: "Indore", area: "Nipania" },
-      bedrooms: 3,
-      bathrooms: 2,
-      area: "1350 sq ft",
-      image: "https://images.unsplash.com/photo-1571508601891-ca5e7a713859?w=500",
-    },
-  ];
-
-  const [filteredProperties, setFilteredProperties] = useState(rentProperties);
 
   const handlePropertyClick = (id) => {
     navigate(`/property/${id}`);
   };
 
-  const indexOfLast = currentPage * propertiesPerPage;
-  const indexOfFirst = indexOfLast - propertiesPerPage;
-  const currentProperties = filteredProperties.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.ceil(filteredProperties.length / propertiesPerPage);
+  useEffect(() => {
+    const controller = new AbortController();
+    const fetchProperties = async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams();
+        params.append("page", currentPage);
+        params.append("limit", propertiesPerPage);
+        params.append("listingType", "rent");
+        if (searchQuery) params.append("search", searchQuery);
+        if (selectedType) params.append("propertyType", selectedType);
+        if (selectedBudget) {
+          if (selectedBudget === "Under 20K") params.append("maxPrice", "20000");
+          if (selectedBudget === "20K-40K") { params.append("minPrice", "20000"); params.append("maxPrice", "40000"); }
+          if (selectedBudget === "40K-60K") { params.append("minPrice", "40000"); params.append("maxPrice", "60000"); }
+          if (selectedBudget === "Above 60K") params.append("minPrice", "60000");
+        }
+        const res = await fetch(`https://api.gharzoreality.com/api/public/properties?${params.toString()}`, { signal: controller.signal });
+        const data = await res.json();
+        const list = data?.data || [];
+        const mapped = list.map((p) => ({
+          id: p._id,
+          name: p.title || p.name,
+          image: p.images?.[0]?.url || "",
+          price: p.price?.amount || 0,
+          location: p.location || { city: "", area: "" },
+          bedrooms: p.bhk || p.bedrooms || 0,
+          bathrooms: p.bathrooms || 0,
+          area: p.area?.carpet || p.area || "",
+          type: p.propertyType || p.type || "",
+        }));
+        setFilteredProperties(mapped);
+        setTotalPages(data.totalPages || Math.ceil((data.total || mapped.length) / propertiesPerPage));
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        console.error('Error fetching rent properties', err);
+        setFilteredProperties([]);
+        setTotalPages(1);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProperties();
+    return () => controller.abort();
+  }, [currentPage, searchQuery, selectedType, selectedBudget]);
 
   return (
     <section className="py-8 sm:py-12 px-4 sm:px-6 lg:px-10 bg-gradient-to-b from-blue-50/50 to-white min-h-screen">
@@ -256,47 +229,47 @@ const RentListingPage = () => {
 
       {/* Property Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
-        {currentProperties.map((property, index) => (
+        {(loading ? Array.from({length: propertiesPerPage}) : filteredProperties).map((property, index) => (
           <motion.div
-            key={property.id}
+            key={property?.id || `ph-${index}`}
             initial={{ opacity: 0, y: 40 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
             whileHover={{ y: -8, scale: 1.03 }}
-            onClick={() => handlePropertyClick(property.id)}
+            onClick={() => !loading && handlePropertyClick(property?.id)}
             className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl overflow-hidden cursor-pointer transition-all duration-500"
           >
             <div className="relative">
               <img
-                src={property.image}
-                alt={property.name}
+                src={property?.image || 'https://via.placeholder.com/800x600?text=Loading'}
+                alt={property?.name || 'Loading'}
                 className="w-full h-60 object-cover group-hover:scale-110 transition-transform duration-700"
               />
               <div className="absolute top-4 left-4 bg-blue-600 text-white px-4 py-2 rounded-full font-semibold text-sm shadow-lg">
-                ₹{property.price.toLocaleString()}/mo
+                ₹{(property?.price || 0).toLocaleString()}/mo
               </div>
             </div>
 
             <div className="p-6">
               <h3 className="text-xl font-bold text-gray-900 line-clamp-1">
-                {property.name}
+                {property?.name}
               </h3>
 
               <div className="flex items-center text-gray-600 mt-2">
                 <MapPin size={18} className="text-orange-500 mr-1" />
                 <span className="text-sm">
-                  {property.location.city}, {property.location.area}
+                  {property?.location?.city}, {property?.location?.area}
                 </span>
               </div>
 
               <div className="grid grid-cols-3 gap-4 mt-5 text-center text-gray-700">
                 <div>
                   <BedDouble size={20} className="mx-auto text-orange-500" />
-                  <p className="text-sm mt-1">{property.bedrooms} Beds</p>
+                  <p className="text-sm mt-1">{property?.bedrooms} Beds</p>
                 </div>
                 <div>
                   <Bath size={20} className="mx-auto text-orange-500" />
-                  <p className="text-sm mt-1">{property.bathrooms} Baths</p>
+                  <p className="text-sm mt-1">{property?.bathrooms} Baths</p>
                 </div>
                 <div>
                   <CarFront size={20} className="mx-auto text-orange-500" />
@@ -305,7 +278,7 @@ const RentListingPage = () => {
               </div>
 
               <p className="mt-4 text-sm font-medium text-blue-600 uppercase tracking-wider">
-                {property.type}
+                {property?.type}
               </p>
             </div>
           </motion.div>

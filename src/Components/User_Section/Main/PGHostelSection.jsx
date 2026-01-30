@@ -47,11 +47,12 @@ const PGHostelSection = () => {
     const fetchProperties = async () => {
       setLoading(true);
       try {
-        const res = await axios.get(`${baseurl}api/public/all-properties`);
-        const pgHostels = (res.data.properties || []).filter(
+        const res = await axios.get(`${baseurl}api/public/properties?page=1&limit=100`);
+        const list = res.data?.data || [];
+        const pgHostels = list.filter(
           (p) =>
-            (p.type?.toLowerCase() === "pg" || p.type?.toLowerCase() === "hostel") &&
-            p.isActive === true
+            (p.propertyType?.toLowerCase() === "pg" || p.propertyType?.toLowerCase() === "hostel") &&
+            (p.isActive === undefined ? true : p.isActive === true)
         );
         setProperties(pgHostels);
         setFilteredProperties(pgHostels);

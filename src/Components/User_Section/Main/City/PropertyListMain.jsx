@@ -32,14 +32,20 @@ const PropertyList = () => {
     const fetchProperties = async () => {
       setLoading(true);
       try {
-        const res = await fetch(
-          `${baseurl}api/all-properties`,
-          {
-            cache: "no-cache",
-          }
-        );
+        const res = await fetch(`${baseurl}api/public/properties?page=1&limit=100`, {
+          cache: "no-cache",
+        });
         const data = await res.json();
-        setProperties(data.properties || []);
+        const list = data?.data || [];
+        const normalized = list.map((p) => ({
+          ...p,
+          name: p.title || p.name,
+          location: p.location || { address: "", city: "" },
+          type: p.propertyType || p.type || "",
+          lowestPrice: p.price?.amount || 0,
+          isActive: p.isActive === undefined ? true : p.isActive,
+        }));
+        setProperties(normalized || []);
       } catch (error) {
         console.error("Error fetching properties:", error);
       } finally {

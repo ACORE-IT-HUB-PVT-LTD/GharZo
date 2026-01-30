@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -13,6 +13,7 @@ import {
   Square,
   ArrowLeft,
 } from "lucide-react";
+import baseurl from "../../../../BaseUrl";
 
 const SaleListingPage = () => {
   const navigate = useNavigate();
@@ -23,89 +24,61 @@ const SaleListingPage = () => {
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [showBudgetDropdown, setShowBudgetDropdown] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [filteredProperties, setFilteredProperties] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [totalPages, setTotalPages] = useState(1);
   
   const propertiesPerPage = 9;
-
-  // Dummy Data for Sale
-  const saleProperties = [
-    {
-      id: 101,
-      name: "Luxurious 4BHK Villa",
-      type: "Villa",
-      price: 12500000,
-      location: { city: "Indore", area: "Super Corridor" },
-      bedrooms: 4,
-      bathrooms: 4,
-      area: "3500 sq ft",
-      image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=500",
-    },
-    {
-      id: 102,
-      name: "Premium 3BHK Apartment",
-      type: "Apartment",
-      price: 6500000,
-      location: { city: "Indore", area: "Scheme 78" },
-      bedrooms: 3,
-      bathrooms: 3,
-      area: "1850 sq ft",
-      image: "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=500",
-    },
-    {
-      id: 103,
-      name: "Modern Duplex House",
-      type: "Duplex",
-      price: 8500000,
-      location: { city: "Indore", area: "Nipania" },
-      bedrooms: 5,
-      bathrooms: 4,
-      area: "2800 sq ft",
-      image: "https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?w=500",
-    },
-    {
-      id: 104,
-      name: "Elegant Penthouse",
-      type: "Penthouse",
-      price: 15000000,
-      location: { city: "Indore", area: "Vijay Nagar" },
-      bedrooms: 5,
-      bathrooms: 5,
-      area: "4200 sq ft",
-      image: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=500",
-    },
-    {
-      id: 105,
-      name: "Spacious Farmhouse",
-      type: "Farmhouse",
-      price: 25000000,
-      location: { city: "Indore", area: "Bypass Road" },
-      bedrooms: 6,
-      bathrooms: 5,
-      area: "6000 sq ft",
-      image: "https://images.unsplash.com/photo-1600607687644-c7171b42498f?w=500",
-    },
-    {
-      id: 106,
-      name: "Cozy 2BHK Flat",
-      type: "Apartment",
-      price: 4200000,
-      location: { city: "Indore", area: "AB Road" },
-      bedrooms: 2,
-      bathrooms: 2,
-      area: "1100 sq ft",
-      image: "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=500",
-    },
-  ];
-
-  const [filteredProperties] = useState(saleProperties);
 
   const handlePropertyClick = (id) => {
     navigate(`/property/${id}`);
   };
 
-  const indexOfLast = currentPage * propertiesPerPage;
-  const indexOfFirst = indexOfLast - propertiesPerPage;
-  const currentProperties = filteredProperties.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.ceil(filteredProperties.length / propertiesPerPage);
+  useEffect(() => {
+    const controller = new AbortController();
+    const fetchProperties = async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams();
+        params.append('page', currentPage);
+        params.append('limit', propertiesPerPage);
+        params.append('listingType', 'sale');
+        if (searchQuery) params.append('search', searchQuery);
+        if (selectedType) params.append('propertyType', selectedType);
+        if (selectedBudget) {
+          if (selectedBudget === 'Under 50L') params.append('maxPrice', '5000000');
+          if (selectedBudget === '50L-1Cr') { params.append('minPrice', '5000000'); params.append('maxPrice', '10000000'); }
+          if (selectedBudget === '1Cr-2Cr') { params.append('minPrice', '10000000'); params.append('maxPrice', '20000000'); }
+          if (selectedBudget === 'Above 2Cr') params.append('minPrice', '20000000');
+        }
+        const res = await fetch(`${baseurl}api/public/properties?${params.toString()}`, { signal: controller.signal });
+        const data = await res.json();
+        const list = data?.data || [];
+        const mapped = list.map((p) => ({
+          id: p._id,
+          name: p.title || p.name,
+          image: p.images?.[0]?.url || "",
+          price: p.price?.amount || 0,
+          location: p.location || { city: "", area: "" },
+          bedrooms: p.bhk || p.bedrooms || 0,
+          bathrooms: p.bathrooms || 0,
+          area: p.area?.carpet || p.area || "",
+          type: p.propertyType || p.type || "",
+        }));
+        setFilteredProperties(mapped);
+        setTotalPages(data.totalPages || Math.ceil((data.total || mapped.length) / propertiesPerPage));
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        console.error('Error fetching sale properties', err);
+        setFilteredProperties([]);
+        setTotalPages(1);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProperties();
+    return () => controller.abort();
+  }, [currentPage, searchQuery, selectedType, selectedBudget]);
 
   return (
     <section className="py-8 sm:py-12 px-4 sm:px-6 lg:px-10 bg-gradient-to-b from-green-50/50 to-white min-h-screen">
@@ -225,63 +198,76 @@ const SaleListingPage = () => {
 
       {/* Property Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
-        {currentProperties.map((property, index) => (
-          <motion.div
-            key={property.id}
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-            whileHover={{ y: -8, scale: 1.03 }}
-            onClick={() => handlePropertyClick(property.id)}
-            className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl overflow-hidden cursor-pointer transition-all duration-500"
-          >
-            <div className="relative">
-              <img
-                src={property.image}
-                alt={property.name}
-                className="w-full h-60 object-cover group-hover:scale-110 transition-transform duration-700"
-              />
-              <div className="absolute top-4 left-4 bg-green-600 text-white px-4 py-2 rounded-full font-semibold text-sm shadow-lg">
-                ₹{(property.price / 100000).toFixed(1)}L
-              </div>
-              <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm text-gray-700 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
-                <Square size={14} />
-                {property.area}
+        {(loading ? Array.from({length: propertiesPerPage}) : filteredProperties).map((property, index) => (
+          !property ? (
+            <div key={index} className="bg-white rounded-2xl shadow-lg overflow-hidden">
+              <div className="w-full h-60 bg-gray-200 animate-pulse" />
+              <div className="p-6 space-y-4">
+                <div className="h-6 bg-gray-200 rounded animate-pulse" />
+                <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4" />
+                <div className="grid grid-cols-3 gap-4">
+                  {[1,2,3].map(i => <div key={i} className="h-12 bg-gray-200 rounded animate-pulse" />)}
+                </div>
               </div>
             </div>
-
-            <div className="p-6">
-              <h3 className="text-xl font-bold text-gray-900 line-clamp-1">
-                {property.name}
-              </h3>
-
-              <div className="flex items-center text-gray-600 mt-2">
-                <MapPin size={18} className="text-orange-500 mr-1" />
-                <span className="text-sm">
-                  {property.location.city}, {property.location.area}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4 mt-5 text-center text-gray-700">
-                <div>
-                  <BedDouble size={20} className="mx-auto text-orange-500" />
-                  <p className="text-sm mt-1">{property.bedrooms} Beds</p>
+          ) : (
+            <motion.div
+              key={property.id}
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+              whileHover={{ y: -8, scale: 1.03 }}
+              onClick={() => handlePropertyClick(property.id)}
+              className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl overflow-hidden cursor-pointer transition-all duration-500"
+            >
+              <div className="relative">
+                <img
+                  src={property.image}
+                  alt={property.name}
+                  className="w-full h-60 object-cover group-hover:scale-110 transition-transform duration-700"
+                />
+                <div className="absolute top-4 left-4 bg-green-600 text-white px-4 py-2 rounded-full font-semibold text-sm shadow-lg">
+                  ₹{(property.price / 100000).toFixed(1)}L
                 </div>
-                <div>
-                  <Bath size={20} className="mx-auto text-orange-500" />
-                  <p className="text-sm mt-1">{property.bathrooms} Baths</p>
-                </div>
-                <div>
-                  <CarFront size={20} className="mx-auto text-orange-500" />
-                  <p className="text-sm mt-1">Parking</p>
+                <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm text-gray-700 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
+                  <Square size={14} />
+                  {property.area}
                 </div>
               </div>
 
-              <p className="mt-4 text-sm font-medium text-green-600 uppercase tracking-wider">
-                {property.type}
-              </p>
-            </div>
-          </motion.div>
+              <div className="p-6">
+                <h3 className="text-xl font-bold text-gray-900 line-clamp-1">
+                  {property.name}
+                </h3>
+
+                <div className="flex items-center text-gray-600 mt-2">
+                  <MapPin size={18} className="text-orange-500 mr-1" />
+                  <span className="text-sm">
+                    {property.location.city}, {property.location.area}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4 mt-5 text-center text-gray-700">
+                  <div>
+                    <BedDouble size={20} className="mx-auto text-orange-500" />
+                    <p className="text-sm mt-1">{property.bedrooms} Beds</p>
+                  </div>
+                  <div>
+                    <Bath size={20} className="mx-auto text-orange-500" />
+                    <p className="text-sm mt-1">{property.bathrooms} Baths</p>
+                  </div>
+                  <div>
+                    <CarFront size={20} className="mx-auto text-orange-500" />
+                    <p className="text-sm mt-1">Parking</p>
+                  </div>
+                </div>
+
+                <p className="mt-4 text-sm font-medium text-green-600 uppercase tracking-wider">
+                  {property.type}
+                </p>
+              </div>
+            </motion.div>
+          )
         ))}
       </div>
 

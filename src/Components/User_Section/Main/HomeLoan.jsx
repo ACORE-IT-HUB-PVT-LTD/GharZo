@@ -10,7 +10,10 @@ import {
   FaCheckCircle,
   FaUniversity,
   FaWhatsapp,
-  FaSpinner
+  FaSpinner,
+  FaBriefcase,
+  FaDollarSign,
+  FaCreditCard
 } from 'react-icons/fa';
 import baseurl from '../../../../BaseUrl';
 import { toast, ToastContainer } from 'react-toastify';
@@ -33,7 +36,10 @@ const HomeLoanCalculator = () => {
     phone: '',
     address: '',
     propertyValue: '',
-    downPayment: ''
+    employmentType: 'Salaried',
+    monthlyIncome: '',
+    existingLoan: false,
+    creditScore: '750+'
   });
 
   const banks = [
@@ -76,9 +82,10 @@ const HomeLoanCalculator = () => {
   };
 
   const handleInquiryChange = (e) => {
+    const { name, value, type, checked } = e.target;
     setInquiryData({
       ...inquiryData,
-      [e.target.name]: e.target.value
+      [name]: type === 'checkbox' ? checked : value
     });
   };
 
@@ -93,34 +100,37 @@ const HomeLoanCalculator = () => {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`${baseurl}api/public/enquiries/home-loan`, {
+      const requestBody = {
+        contactInfo: {
+          name: inquiryData.name,
+          email: inquiryData.email,
+          phone: inquiryData.phone
+        },
+        message: `Home Loan Inquiry - Loan Amount: ₹${loanAmount.toLocaleString('en-IN')}, Property Value: ₹${inquiryData.propertyValue || 'N/A'}`,
+        loanDetails: {
+          loanAmount: loanAmount,
+          propertyValue: inquiryData.propertyValue ? parseInt(inquiryData.propertyValue) : 0,
+          employmentType: inquiryData.employmentType,
+          monthlyIncome: inquiryData.monthlyIncome ? parseInt(inquiryData.monthlyIncome) : 0,
+          existingLoan: inquiryData.existingLoan,
+          creditScore: inquiryData.creditScore
+        }
+      };
+
+      const response = await fetch(`${baseurl}api/v2/enquiries/home-loan`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contactInfo: {
-            name: inquiryData.name,
-            email: inquiryData.email,
-            phone: inquiryData.phone,
-          },
-          message: `Home Loan Inquiry - Property Value: ₹${inquiryData.propertyValue || 'N/A'}, Down Payment: ₹${inquiryData.downPayment || 'N/A'}`,
-          typeSpecificData: {
-            loanDetails: {
-              loanAmount: loanAmount,
-              tenure: tenure,
-              interestRate: interestRate,
-              monthlyEMI: emi,
-              selectedBank: selectedBank,
-              propertyValue: inquiryData.propertyValue,
-              downPayment: inquiryData.downPayment,
-              propertyAddress: inquiryData.address,
-            },
-          },
-        }),
+        headers: { 
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody),
       });
+
       const data = await response.json();
-      if (data.success) {
-        toast.success(data.message || 'Home loan inquiry submitted successfully!');
+      
+      if (response.ok && data.success) {
+        toast.success(data.message || 'Home loan enquiry submitted. Our loan partners will contact you soon!');
         setIsSubmitted(true);
+        
         setTimeout(() => {
           setIsSubmitted(false);
           setShowInquiry(false);
@@ -130,7 +140,10 @@ const HomeLoanCalculator = () => {
             phone: '',
             address: '',
             propertyValue: '',
-            downPayment: ''
+            employmentType: 'Salaried',
+            monthlyIncome: '',
+            existingLoan: false,
+            creditScore: '750+'
           });
         }, 3000);
       } else {
@@ -526,6 +539,7 @@ const HomeLoanCalculator = () => {
               <div className="p-6 overflow-y-auto flex-1">
                 {!isSubmitted ? (
                   <form onSubmit={handleInquirySubmit} className="space-y-4">
+                    {/* Personal Information */}
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -582,6 +596,100 @@ const HomeLoanCalculator = () => {
                       </div>
                     </div>
 
+                    {/* Property & Employment Details */}
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Property Value (₹)
+                        </label>
+                        <div className="relative">
+                          <FaHome className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                          <input
+                            type="number"
+                            name="propertyValue"
+                            value={inquiryData.propertyValue}
+                            onChange={handleInquiryChange}
+                            className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                            placeholder="7500000"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Employment Type
+                        </label>
+                        <div className="relative">
+                          <FaBriefcase className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                          <select
+                            name="employmentType"
+                            value={inquiryData.employmentType}
+                            onChange={handleInquiryChange}
+                            className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all appearance-none bg-white"
+                          >
+                            <option value="Salaried">Salaried</option>
+                            <option value="Self-Employed">Self-Employed</option>
+                            <option value="Business">Business</option>
+                            <option value="Professional">Professional</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Monthly Income (₹)
+                        </label>
+                        <div className="relative">
+                          <FaDollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                          <input
+                            type="number"
+                            name="monthlyIncome"
+                            value={inquiryData.monthlyIncome}
+                            onChange={handleInquiryChange}
+                            className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                            placeholder="150000"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Credit Score
+                        </label>
+                        <div className="relative">
+                          <FaCreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                          <select
+                            name="creditScore"
+                            value={inquiryData.creditScore}
+                            onChange={handleInquiryChange}
+                            className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all appearance-none bg-white"
+                          >
+                            <option value="750+">750+ (Excellent)</option>
+                            <option value="700-749">700-749 (Good)</option>
+                            <option value="650-699">650-699 (Fair)</option>
+                            <option value="Below 650">Below 650 (Poor)</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Existing Loan Checkbox */}
+                    <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                      <input
+                        type="checkbox"
+                        name="existingLoan"
+                        checked={inquiryData.existingLoan}
+                        onChange={handleInquiryChange}
+                        className="w-5 h-5 text-blue-500 rounded focus:ring-2 focus:ring-blue-200"
+                      />
+                      <label className="text-sm font-semibold text-gray-700">
+                        I have an existing loan
+                      </label>
+                    </div>
+
+                    {/* Property Address */}
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
                         Property Address
@@ -595,36 +703,6 @@ const HomeLoanCalculator = () => {
                           rows="3"
                           className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
                           placeholder="Enter property address"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Property Value (₹)
-                        </label>
-                        <input
-                          type="number"
-                          name="propertyValue"
-                          value={inquiryData.propertyValue}
-                          onChange={handleInquiryChange}
-                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
-                          placeholder="5000000"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Down Payment (₹)
-                        </label>
-                        <input
-                          type="number"
-                          name="downPayment"
-                          value={inquiryData.downPayment}
-                          onChange={handleInquiryChange}
-                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
-                          placeholder="1000000"
                         />
                       </div>
                     </div>
@@ -681,7 +759,7 @@ const HomeLoanCalculator = () => {
                   >
                     <FaCheckCircle className="text-6xl text-green-500 mx-auto mb-4" />
                     <h3 className="text-2xl font-bold text-gray-900 mb-2">Inquiry Submitted!</h3>
-                    <p className="text-gray-600">Our team will contact you within 24 hours.</p>
+                    <p className="text-gray-600">Our loan partners will contact you soon.</p>
                   </motion.div>
                 )}
               </div>

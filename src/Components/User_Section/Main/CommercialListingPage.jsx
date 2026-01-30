@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -13,6 +13,7 @@ import {
   Wifi,
   ArrowLeft,
 } from "lucide-react";
+import baseurl from "../../../../BaseUrl";
 
 const CommercialListingPage = () => {
   const navigate = useNavigate();
@@ -23,89 +24,61 @@ const CommercialListingPage = () => {
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [showBudgetDropdown, setShowBudgetDropdown] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [filteredProperties, setFilteredProperties] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [totalPages, setTotalPages] = useState(1);
   
   const propertiesPerPage = 9;
-
-  // Dummy Data for Rooms
-  const roomsProperties = [
-    {
-      id: 201,
-      name: "Single Private Room",
-      type: "Single",
-      price: 8000,
-      location: { city: "Indore", area: "Vijay Nagar" },
-      capacity: 1,
-      amenities: ["WiFi", "AC", "Attached Bath"],
-      area: "120 sq ft",
-      image: "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=500",
-    },
-    {
-      id: 202,
-      name: "Double Sharing Room",
-      type: "Double",
-      price: 6000,
-      location: { city: "Indore", area: "Palasia" },
-      capacity: 2,
-      amenities: ["WiFi", "Fan", "Common Bath"],
-      area: "150 sq ft",
-      image: "https://images.unsplash.com/photo-1540518614846-7eded433c457?w=500",
-    },
-    {
-      id: 203,
-      name: "Triple Sharing Room",
-      type: "Triple",
-      price: 5000,
-      location: { city: "Indore", area: "AB Road" },
-      capacity: 3,
-      amenities: ["WiFi", "Fan", "Common Bath"],
-      area: "180 sq ft",
-      image: "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=500",
-    },
-    {
-      id: 204,
-      name: "Luxury Single AC Room",
-      type: "Single",
-      price: 12000,
-      location: { city: "Indore", area: "MG Road" },
-      capacity: 1,
-      amenities: ["WiFi", "AC", "Attached Bath", "TV"],
-      area: "140 sq ft",
-      image: "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=500",
-    },
-    {
-      id: 205,
-      name: "Budget Double Room",
-      type: "Double",
-      price: 4500,
-      location: { city: "Indore", area: "Nipania" },
-      capacity: 2,
-      amenities: ["WiFi", "Fan"],
-      area: "130 sq ft",
-      image: "https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?w=500",
-    },
-    {
-      id: 206,
-      name: "Premium Single Room",
-      type: "Single",
-      price: 10000,
-      location: { city: "Indore", area: "Scheme 54" },
-      capacity: 1,
-      amenities: ["WiFi", "AC", "Attached Bath", "Geyser"],
-      area: "125 sq ft",
-      image: "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?w=500",
-    },
-  ];
-
-  const [filteredProperties] = useState(roomsProperties);
 
   const handlePropertyClick = (id) => {
     navigate(`/property/${id}`);
   };
 
-  const indexOfLast = currentPage * propertiesPerPage;
-  const indexOfFirst = indexOfLast - propertiesPerPage;
-  const currentProperties = filteredProperties.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.ceil(filteredProperties.length / propertiesPerPage);
+  useEffect(() => {
+    const controller = new AbortController();
+    const fetchProperties = async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams();
+        params.append('page', currentPage);
+        params.append('limit', propertiesPerPage);
+        params.append('propertyType', 'commercial');
+        if (searchQuery) params.append('search', searchQuery);
+        if (selectedBudget) {
+          if (selectedBudget === 'Under 50K') params.append('maxPrice', '50000');
+          if (selectedBudget === '50K-1L') { params.append('minPrice', '50000'); params.append('maxPrice', '100000'); }
+          if (selectedBudget === '1L-2L') { params.append('minPrice', '100000'); params.append('maxPrice', '200000'); }
+          if (selectedBudget === 'Above 2L') params.append('minPrice', '200000');
+        }
+        const res = await fetch(`${baseurl}api/public/properties?${params.toString()}`, { signal: controller.signal });
+        const data = await res.json();
+        const list = data?.data || [];
+        const mapped = list.map((p) => ({
+          id: p._id,
+          name: p.title || p.name,
+          image: p.images?.[0]?.url || "",
+          price: p.price?.amount || 0,
+          location: p.location || { city: "", area: "" },
+          capacity: p.capacity || 0,
+          amenities: p.amenities || [],
+          area: p.area?.carpet || p.area || "",
+          bathrooms: p.bathrooms || 0,
+          type: p.propertyType || p.type || "",
+        }));
+        setFilteredProperties(mapped);
+        setTotalPages(data.totalPages || Math.ceil((data.total || mapped.length) / propertiesPerPage));
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        console.error('Error fetching commercial properties', err);
+        setFilteredProperties([]);
+        setTotalPages(1);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProperties();
+    return () => controller.abort();
+  }, [currentPage, searchQuery, selectedBudget]);
 
   return (
     <section className="py-8 sm:py-12 px-4 sm:px-6 lg:px-10 bg-gradient-to-b from-purple-50/50 to-white min-h-screen">
@@ -225,45 +198,57 @@ const CommercialListingPage = () => {
 
       {/* Property Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
-        {currentProperties.map((property, index) => (
-          <motion.div
-            key={property.id}
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-            whileHover={{ y: -8, scale: 1.03 }}
-            onClick={() => handlePropertyClick(property.id)}
-            className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl overflow-hidden cursor-pointer transition-all duration-500"
-          >
-            <div className="relative">
-              <img
-                src={property.image}
-                alt={property.name}
-                className="w-full h-60 object-cover group-hover:scale-110 transition-transform duration-700"
-              />
-              <div className="absolute top-4 left-4 bg-purple-600 text-white px-4 py-2 rounded-full font-semibold text-sm shadow-lg">
-                ₹{property.price.toLocaleString()}/mo
+        {(loading ? Array.from({length: propertiesPerPage}) : filteredProperties).map((property, index) => (
+          !property ? (
+            <div key={index} className="bg-white rounded-2xl shadow-lg overflow-hidden">
+              <div className="w-full h-60 bg-gray-200 animate-pulse" />
+              <div className="p-6 space-y-4">
+                <div className="h-6 bg-gray-200 rounded animate-pulse" />
+                <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4" />
+                <div className="grid grid-cols-3 gap-4">
+                  {[1,2,3].map(i => <div key={i} className="h-12 bg-gray-200 rounded animate-pulse" />)}
+                </div>
               </div>
-              <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm text-gray-700 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
-                <Users size={14} />
-                {property.capacity} Person
+            </div>
+          ) : (
+            <motion.div
+              key={property.id}
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+              whileHover={{ y: -8, scale: 1.03 }}
+              onClick={() => handlePropertyClick(property.id)}
+              className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl overflow-hidden cursor-pointer transition-all duration-500"
+            >
+              <div className="relative">
+                <img
+                  src={property?.image}
+                  alt={property?.name}
+                  className="w-full h-60 object-cover group-hover:scale-110 transition-transform duration-700"
+                />
+              <div className="absolute top-4 left-4 bg-purple-600 text-white px-4 py-2 rounded-full font-semibold text-sm shadow-lg">
+                  ₹{(property?.price || 0).toLocaleString()}/mo
+                </div>
+                <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm text-gray-700 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
+                  <Users size={14} />
+                  {property?.capacity} Person
               </div>
             </div>
 
             <div className="p-6">
               <h3 className="text-xl font-bold text-gray-900 line-clamp-1">
-                {property.name}
+                {property?.name}
               </h3>
 
               <div className="flex items-center text-gray-600 mt-2">
                 <MapPin size={18} className="text-orange-500 mr-1" />
                 <span className="text-sm">
-                  {property.location.city}, {property.location.area}
+                  {property?.location?.city}, {property?.location?.area}
                 </span>
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
-                {property.amenities.slice(0, 3).map((amenity, i) => (
+                {(property?.amenities || []).slice(0, 3).map((amenity, i) => (
                   <span key={i} className="px-3 py-1 bg-purple-50 text-purple-700 text-xs rounded-full font-medium">
                     {amenity}
                   </span>
@@ -273,19 +258,20 @@ const CommercialListingPage = () => {
               <div className="grid grid-cols-2 gap-4 mt-5 text-center text-gray-700">
                 <div>
                   <BedDouble size={20} className="mx-auto text-orange-500" />
-                  <p className="text-sm mt-1">{property.area}</p>
+                  <p className="text-sm mt-1">{property?.area}</p>
                 </div>
                 <div>
-                  <Wifi size={20} className="mx-auto text-orange-500" />
-                  <p className="text-sm mt-1">WiFi</p>
+                  <Bath size={20} className="mx-auto text-orange-500" />
+                  <p className="text-sm mt-1">{property?.bathrooms} Baths</p>
                 </div>
               </div>
 
               <p className="mt-4 text-sm font-medium text-purple-600 uppercase tracking-wider">
-                {property.type} Sharing
+                {property?.type}
               </p>
             </div>
-          </motion.div>
+            </motion.div>
+          )
         ))}
       </div>
 
