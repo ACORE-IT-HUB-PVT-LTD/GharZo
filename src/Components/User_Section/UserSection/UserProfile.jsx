@@ -2,25 +2,28 @@ import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   FaUser,
-  FaEnvelope,
   FaPhone,
-  FaBirthdayCake,
-  FaVenusMars,
   FaMapMarkerAlt,
   FaEdit,
   FaSave,
   FaTimes,
+  FaIdBadge,
+  FaCheckCircle,
+  FaClock,
 } from "react-icons/fa";
 import axios from "axios";
-import profileBG from "../../../assets/Images/profileBG.jpg";
-import baseurl from "../../../../BaseUrl";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import ProfileTabs from './ProfileTabs';
+
+const API_BASE_URL = "https://api.gharzoreality.com";
 
 const ProfilePage = () => {
   const [profile, setProfile] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
   const [errors, setErrors] = useState({});
 
   const token = localStorage.getItem("usertoken");
@@ -29,26 +32,15 @@ const ProfilePage = () => {
   const validate = (data) => {
     const newErrors = {};
 
-    // Full Name
-    const fullName = String(data.fullName || '').trim();
-    if (!fullName) {
-      newErrors.fullName = "Full name is required";
-    } else if (!/^[A-Za-z\s]+$/.test(fullName) || fullName.split(/\s+/).filter(Boolean).length < 2) {
-      newErrors.fullName = "Full name must contain only letters and at least first and last name";
+    // Name
+    const name = String(data.name || '').trim();
+    if (!name) {
+      newErrors.name = "Name is required";
+    } else if (name.length < 2) {
+      newErrors.name = "Name must be at least 2 characters";
     }
 
-    // Email
-    const email = String(data.email || '').trim();
-    if (!email) {
-      newErrors.email = "Email is required";
-    } else {
-      const localPart = email.split('@')[0];
-      if (!/\S+@gmail\.com$/.test(email) || !/^[a-zA-Z]/.test(localPart) || !/[0-9]/.test(localPart)) {
-        newErrors.email = "Email must be a valid Gmail address starting with a letter, containing numbers, and ending with @gmail.com";
-      }
-    }
-
-    // Phone
+    // Phone (read-only but validate structure)
     const phone = String(data.phone || '').trim();
     if (!phone) {
       newErrors.phone = "Phone is required";
@@ -56,56 +48,22 @@ const ProfilePage = () => {
       newErrors.phone = "Phone must be exactly 10 digits";
     }
 
-    // Age
-    const age = String(data.age || '').trim();
-    if (!age) {
-      newErrors.age = "Age is required";
-    } else if (!/^\d{2}$/.test(age)) {
-      newErrors.age = "Age must be 2 digits";
-    }
+    // Address fields (optional but validate if provided)
+    if (data.address) {
+      const city = String(data.address.city || '').trim();
+      if (city && !/^[A-Za-z\s]+$/.test(city)) {
+        newErrors.city = "City must contain only letters";
+      }
 
-    // Gender
-    const gender = String(data.gender || '').trim();
-    if (!gender) {
-      newErrors.gender = "Gender is required";
-    } else if (!['Male', 'Female'].includes(gender)) {
-      newErrors.gender = "Please select Male or Female";
-    }
+      const state = String(data.address.state || '').trim();
+      if (state && !/^[A-Za-z\s]+$/.test(state)) {
+        newErrors.state = "State must contain only letters";
+      }
 
-    // Address fields
-    const street = String(data.address?.street || '').trim();
-    if (!street) {
-      newErrors.street = "Street is required";
-    } else if (!/^[A-Za-z0-9\s]+$/.test(street)) {
-      newErrors.street = "Street must contain letters and numbers only";
-    }
-
-    const city = String(data.address?.city || '').trim();
-    if (!city) {
-      newErrors.city = "City is required";
-    } else if (!/^[A-Za-z\s]+$/.test(city)) {
-      newErrors.city = "City must contain only letters";
-    }
-
-    const state = String(data.address?.state || '').trim();
-    if (!state) {
-      newErrors.state = "State is required";
-    } else if (!/^[A-Za-z\s]+$/.test(state)) {
-      newErrors.state = "State must contain only letters";
-    }
-
-    const postalCode = String(data.address?.postalCode || '').trim();
-    if (!postalCode) {
-      newErrors.postalCode = "Postal code is required";
-    } else if (!/^\d{6}$/.test(postalCode)) {
-      newErrors.postalCode = "Postal code must be exactly 6 digits";
-    }
-
-    const country = String(data.address?.country || '').trim();
-    if (!country) {
-      newErrors.country = "Country is required";
-    } else if (!/^[A-Za-z\s]+$/.test(country)) {
-      newErrors.country = "Country must contain only letters";
+      const pincode = String(data.address.pincode || '').trim();
+      if (pincode && !/^\d{6}$/.test(pincode)) {
+        newErrors.pincode = "Pincode must be exactly 6 digits";
+      }
     }
 
     return newErrors;
@@ -124,18 +82,29 @@ const ProfilePage = () => {
     const fetchProfile = async () => {
       try {
         const res = await axios.get(
-          `${baseurl}api/auth/user/profile`,
+          `${API_BASE_URL}/api/auth/me`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
-        setProfile(res.data);
-        setFormData({
-          ...res.data,
-          address: res.data.address || {}
-        });
+        
+        if (res.data.success) {
+          const userData = res.data.data.user;
+          setProfile(userData);
+          setFormData({
+            name: userData.name || '',
+            phone: userData.phone || '',
+            role: userData.role || '',
+            address: {
+              city: userData.address?.city || '',
+              state: userData.address?.state || '',
+              pincode: userData.address?.pincode || ''
+            }
+          });
+        }
       } catch (err) {
         console.error("Error fetching profile:", err);
+        toast.error("Failed to load profile");
       } finally {
         setLoading(false);
       }
@@ -145,34 +114,73 @@ const ProfilePage = () => {
 
   // Update Profile
   const handleUpdate = async () => {
-    if (Object.keys(errors).length > 0) {
-      alert("Please correct the errors in the form.");
+    const validationErrors = validate(formData);
+    if (Object.keys(validationErrors).length > 0) {
+      toast.error("Please correct the errors in the form");
       return;
     }
 
+    setUpdating(true);
     try {
       const res = await axios.put(
-        `${baseurl}api/auth/user/updateprofile`,
-        formData,
+        `${API_BASE_URL}/api/auth/update_profile`,
+        {
+          name: formData.name,
+          address: {
+            city: formData.address.city,
+            state: formData.address.state,
+            pincode: formData.address.pincode
+          }
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setProfile(res.data.updatedUser || res.data);
-      setFormData({
-        ... (res.data.updatedUser || res.data),
-        address: (res.data.updatedUser || res.data).address || {}
-      });
-      setErrors({});
-      setEditMode(false);
-      alert(res.data.message || "Profile updated successfully!");
+      if (res.data.success) {
+        const updatedUser = res.data.data;
+        setProfile(updatedUser);
+        setFormData({
+          name: updatedUser.name || '',
+          phone: updatedUser.phone || '',
+          role: updatedUser.role || '',
+          address: {
+            city: updatedUser.address?.city || '',
+            state: updatedUser.address?.state || '',
+            pincode: updatedUser.address?.pincode || ''
+          }
+        });
+        setErrors({});
+        setEditMode(false);
+        toast.success(res.data.message || "Profile updated successfully!");
+      }
     } catch (err) {
       console.error("Error updating profile:", err);
+      toast.error(err.response?.data?.message || "Failed to update profile");
+    } finally {
+      setUpdating(false);
     }
   };
 
   // Enter edit mode
   const handleEdit = () => {
     setEditMode(true);
+    setErrors({});
+  };
+
+  // Cancel edit mode
+  const handleCancel = () => {
+    if (profile) {
+      setFormData({
+        name: profile.name || '',
+        phone: profile.phone || '',
+        role: profile.role || '',
+        address: {
+          city: profile.address?.city || '',
+          state: profile.address?.state || '',
+          pincode: profile.address?.pincode || ''
+        }
+      });
+    }
+    setEditMode(false);
     setErrors({});
   };
 
@@ -187,7 +195,7 @@ const ProfilePage = () => {
                 <div className="h-64 bg-gray-200 rounded-2xl animate-pulse" />
               </div>
               <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-                {Array.from({ length: 10 }).map((_, i) => (
+                {Array.from({ length: 6 }).map((_, i) => (
                   <SkeletonField key={i} />
                 ))}
               </div>
@@ -212,8 +220,30 @@ const ProfilePage = () => {
     );
   }
 
+  // Format date
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-orange-50 py-12 px-4 sm:px-6 lg:px-8">
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
       
       <motion.div
         initial={{ opacity: 0, y: 30 }}
@@ -241,18 +271,34 @@ const ProfilePage = () => {
           ) : (
             <div className="flex gap-3">
               <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: updating ? 1 : 1.05 }}
+                whileTap={{ scale: updating ? 1 : 0.95 }}
                 onClick={handleUpdate}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-all"
+                disabled={updating || Object.keys(errors).length > 0}
+                className={`flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-all ${
+                  (updating || Object.keys(errors).length > 0) ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
               >
-                <FaSave />
-                Save
+                {updating ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <FaSave />
+                    Save
+                  </>
+                )}
               </motion.button>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setEditMode(false)}
+                onClick={handleCancel}
+                disabled={updating}
                 className="flex items-center gap-2 px-6 py-3 bg-gray-200 text-gray-700 rounded-full font-semibold hover:bg-gray-300 transition-all"
               >
                 <FaTimes />
@@ -283,16 +329,44 @@ const ProfilePage = () => {
                 <div className="relative inline-block mb-6">
                   <div className="w-40 h-40 rounded-full bg-gradient-to-br from-[#FF6B00] to-[#FF8C3A] p-1">
                     <div className="w-full h-full rounded-full bg-[#002B5C] flex items-center justify-center">
-                      <FaUser className="text-6xl text-[#FF6B00]" />
+                      {profile.profileImage ? (
+                        <img 
+                          src={profile.profileImage} 
+                          alt="Profile" 
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      ) : (
+                        <FaUser className="text-6xl text-[#FF6B00]" />
+                      )}
                     </div>
                   </div>
                   {/* Status Indicator */}
-                  <div className="absolute bottom-2 right-2 w-6 h-6 bg-emerald-400 rounded-full border-4 border-[#002B5C]" />
+                  {profile.isActive && (
+                    <div className="absolute bottom-2 right-2 w-6 h-6 bg-emerald-400 rounded-full border-4 border-[#002B5C]" />
+                  )}
                 </div>
 
                 {/* Name */}
-                <h2 className="text-2xl font-bold mb-2">{formData?.fullName || "User Name"}</h2>
-                <p className="text-blue-200 text-sm mb-6">{formData?.email || "email@example.com"}</p>
+                <h2 className="text-2xl font-bold mb-2">{formData?.name || "User Name"}</h2>
+                <p className="text-blue-200 text-sm mb-2 capitalize">
+                  <FaIdBadge className="inline mr-2" />
+                  {formData?.role || "User"}
+                </p>
+                
+                {/* Verification Status */}
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full mb-6">
+                  {profile.isVerified ? (
+                    <>
+                      <FaCheckCircle className="text-emerald-400" />
+                      <span className="text-sm">Verified Account</span>
+                    </>
+                  ) : (
+                    <>
+                      <FaClock className="text-yellow-400" />
+                      <span className="text-sm">Pending Verification</span>
+                    </>
+                  )}
+                </div>
 
                 {/* Stats Cards */}
                 <div className="space-y-4 mt-8">
@@ -311,11 +385,11 @@ const ProfilePage = () => {
                   <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 bg-[#FF6B00]/20 rounded-lg flex items-center justify-center">
-                        <FaBirthdayCake className="text-[#FF6B00] text-xl" />
+                        <FaClock className="text-[#FF6B00] text-xl" />
                       </div>
                       <div className="text-left flex-1">
-                        <p className="text-xs text-blue-200">Age</p>
-                        <p className="font-semibold">{formData?.age || "Not provided"} years</p>
+                        <p className="text-xs text-blue-200">Member Since</p>
+                        <p className="font-semibold text-xs">{formatDate(profile.createdAt)}</p>
                       </div>
                     </div>
                   </div>
@@ -323,11 +397,11 @@ const ProfilePage = () => {
                   <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 bg-[#FF6B00]/20 rounded-lg flex items-center justify-center">
-                        <FaVenusMars className="text-[#FF6B00] text-xl" />
+                        <FaClock className="text-[#FF6B00] text-xl" />
                       </div>
                       <div className="text-left flex-1">
-                        <p className="text-xs text-blue-200">Gender</p>
-                        <p className="font-semibold">{formData?.gender || "Not provided"}</p>
+                        <p className="text-xs text-blue-200">Last Login</p>
+                        <p className="font-semibold text-xs">{formatDate(profile.lastLogin)}</p>
                       </div>
                     </div>
                   </div>
@@ -352,28 +426,17 @@ const ProfilePage = () => {
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <Field
-                      label="Full Name"
+                      label="Name"
                       icon={<FaUser />}
-                      value={formData?.fullName}
-                      name="fullName"
+                      value={formData?.name}
+                      name="name"
                       onChange={(e) =>
-                        setFormData({ ...formData, fullName: e.target.value })
+                        setFormData({ ...formData, name: e.target.value })
                       }
                       editMode={editMode}
-                      error={errors.fullName}
+                      error={errors.name}
                     />
-                    <Field
-                      label="Email Address"
-                      icon={<FaEnvelope />}
-                      value={formData?.email}
-                      name="email"
-                      onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
-                      }
-                      editMode={editMode}
-                      type="email"
-                      error={errors.email}
-                    />
+                    
                     <Field
                       label="Phone Number"
                       icon={<FaPhone />}
@@ -382,33 +445,18 @@ const ProfilePage = () => {
                       onChange={(e) =>
                         setFormData({ ...formData, phone: e.target.value })
                       }
-                      editMode={editMode}
+                      editMode={false} // Phone is always read-only
                       type="tel"
-                      error={errors.phone}
+                      readOnly
                     />
+                    
                     <Field
-                      label="Age"
-                      icon={<FaBirthdayCake />}
-                      value={formData?.age}
-                      name="age"
-                      onChange={(e) =>
-                        setFormData({ ...formData, age: e.target.value })
-                      }
-                      editMode={editMode}
-                      type="number"
-                      error={errors.age}
-                    />
-                    <Field
-                      label="Gender"
-                      icon={<FaVenusMars />}
-                      value={formData?.gender}
-                      name="gender"
-                      onChange={(e) =>
-                        setFormData({ ...formData, gender: e.target.value })
-                      }
-                      editMode={editMode}
-                      dropdown
-                      error={errors.gender}
+                      label="Role"
+                      icon={<FaIdBadge />}
+                      value={formData?.role}
+                      name="role"
+                      editMode={false} // Role is always read-only
+                      readOnly
                     />
                   </div>
                 </div>
@@ -423,20 +471,6 @@ const ProfilePage = () => {
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <Field
-                      label="Street Address"
-                      icon={<FaMapMarkerAlt />}
-                      value={formData?.address?.street || ''}
-                      name="street"
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          address: { ...(formData.address || {}), street: e.target.value },
-                        })
-                      }
-                      editMode={editMode}
-                      error={errors.street}
-                    />
-                    <Field
                       label="City"
                       icon={<FaMapMarkerAlt />}
                       value={formData?.address?.city || ''}
@@ -450,6 +484,7 @@ const ProfilePage = () => {
                       editMode={editMode}
                       error={errors.city}
                     />
+                    
                     <Field
                       label="State"
                       icon={<FaMapMarkerAlt />}
@@ -464,39 +499,26 @@ const ProfilePage = () => {
                       editMode={editMode}
                       error={errors.state}
                     />
+                    
                     <Field
-                      label="Postal Code"
+                      label="Pincode"
                       icon={<FaMapMarkerAlt />}
-                      value={formData?.address?.postalCode || ''}
-                      name="postalCode"
+                      value={formData?.address?.pincode || ''}
+                      name="pincode"
                       onChange={(e) =>
                         setFormData({
                           ...formData,
                           address: {
                             ...(formData.address || {}),
-                            postalCode: e.target.value,
+                            pincode: e.target.value,
                           },
                         })
                       }
                       editMode={editMode}
-                      error={errors.postalCode}
+                      type="text"
+                      maxLength="6"
+                      error={errors.pincode}
                     />
-                    <div className="md:col-span-2">
-                      <Field
-                        label="Country"
-                        icon={<FaMapMarkerAlt />}
-                        value={formData?.address?.country || ''}
-                        name="country"
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            address: { ...(formData.address || {}), country: e.target.value },
-                          })
-                        }
-                        editMode={editMode}
-                        error={errors.country}
-                      />
-                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -528,42 +550,31 @@ function Field({
   onChange,
   editMode,
   type = "text",
-  dropdown,
   error,
+  readOnly = false,
+  maxLength
 }) {
   return (
     <div className="space-y-2">
       <label className="block text-sm font-semibold text-gray-700 mb-2">
-        {label}
+        {label} {readOnly && <span className="text-gray-400 text-xs">(Read-only)</span>}
       </label>
       
-      {editMode ? (
+      {editMode && !readOnly ? (
         <div className="space-y-1">
           <div className="relative">
             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
               {icon}
             </div>
-            {dropdown ? (
-              <select
-                name={name}
-                value={value || ""}
-                onChange={onChange}
-                className="w-full pl-12 pr-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-800 focus:border-[#FF6B00] focus:bg-white focus:outline-none transition-all"
-              >
-                <option value="">Select Gender</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-              </select>
-            ) : (
-              <input
-                type={type}
-                name={name}
-                value={value || ""}
-                onChange={onChange}
-                placeholder={`Enter ${label.toLowerCase()}`}
-                className="w-full pl-12 pr-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:border-[#FF6B00] focus:bg-white focus:outline-none transition-all"
-              />
-            )}
+            <input
+              type={type}
+              name={name}
+              value={value || ""}
+              onChange={onChange}
+              maxLength={maxLength}
+              placeholder={`Enter ${label.toLowerCase()}`}
+              className="w-full pl-12 pr-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:border-[#FF6B00] focus:bg-white focus:outline-none transition-all"
+            />
           </div>
           {error && (
             <motion.p
@@ -576,11 +587,13 @@ function Field({
           )}
         </div>
       ) : (
-        <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
-          <div className="text-[#FF6B00] text-lg">
+        <div className={`flex items-center gap-3 p-4 rounded-xl border ${
+          readOnly ? 'bg-gray-100 border-gray-300' : 'bg-gray-50 border-gray-200'
+        }`}>
+          <div className={`text-lg ${readOnly ? 'text-gray-400' : 'text-[#FF6B00]'}`}>
             {icon}
           </div>
-          <p className="text-gray-800 font-medium flex-1">
+          <p className={`font-medium flex-1 ${readOnly ? 'text-gray-500' : 'text-gray-800'}`}>
             {value || <span className="text-gray-400 italic">Not provided</span>}
           </p>
         </div>

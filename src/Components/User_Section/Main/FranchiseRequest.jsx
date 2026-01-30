@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { CheckCircle, TrendingUp, DollarSign, Headphones, Users, Phone, MessageCircle } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import baseurl from '../../../../BaseUrl';
 
 const FranchiseRequest = () => {
   const [formData, setFormData] = useState({
@@ -11,17 +10,19 @@ const FranchiseRequest = () => {
     mobile: '',
     email: '',
     city: '',
-    investment: ''
+    investment: '',
+    businessExperience: '',
+    message: ''
   });
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const investmentRanges = [
-    '₹5–10 Lakhs',
-    '₹10–25 Lakhs',
-    '₹25–50 Lakhs',
-    '₹50+ Lakhs'
+    { label: '₹5–10 Lakhs', value: 750000 },
+    { label: '₹10–25 Lakhs', value: 1750000 },
+    { label: '₹25–50 Lakhs', value: 3750000 },
+    { label: '₹50+ Lakhs', value: 5000000 }
   ];
 
   const benefits = [
@@ -74,7 +75,7 @@ const FranchiseRequest = () => {
     if (validateForm()) {
       setIsSubmitting(true);
       try {
-        const response = await fetch(`${baseurl}api/public/enquiries/franchise`, {
+        const response = await fetch('https://api.gharzoreality.com/api/v2/enquiries/franchise', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -82,17 +83,24 @@ const FranchiseRequest = () => {
           body: JSON.stringify({
             contactInfo: {
               name: formData.fullName,
-              email: formData.email,
+              email: formData.email || '',
               phone: formData.mobile,
             },
-            message: `Franchise enquiry - Investment Range: ${formData.investment}`,
+            message: formData.message || `Franchise enquiry for ${formData.city}. Investment capacity: ${investmentRanges.find(r => r.value === parseInt(formData.investment))?.label || formData.investment}`,
             typeSpecificData: {
               franchiseDetails: {
-                city: formData.city,
-                investmentCapacity: formData.investment,
-                experience: '',
+                investmentCapacity: parseInt(formData.investment),
+                location: formData.city,
+                businessExperience: formData.businessExperience || '',
+                preferredCities: [formData.city]
               },
+              channelPartnerDetails: {
+                operatingCities: []
+              }
             },
+            status: 'New',
+            priority: 'High',
+            source: 'Website'
           }),
         });
 
@@ -305,7 +313,7 @@ const FranchiseRequest = () => {
 
                   <div>
                     <label className="block text-gray-700 font-semibold mb-2">
-                      Investment Range <span className="text-red-500">*</span>
+                      Investment Capacity <span className="text-red-500">*</span>
                     </label>
                     <select
                       name="investment"
@@ -315,14 +323,42 @@ const FranchiseRequest = () => {
                         errors.investment ? 'border-red-500' : 'border-gray-200'
                       } focus:border-blue-500 focus:outline-none transition-colors text-lg bg-white`}
                     >
-                      <option value="">Select investment range</option>
+                      <option value="">Select investment capacity</option>
                       {investmentRanges.map((range, idx) => (
-                        <option key={idx} value={range}>{range}</option>
+                        <option key={idx} value={range.value}>{range.label}</option>
                       ))}
                     </select>
                     {errors.investment && (
                       <p className="text-red-500 text-sm mt-1">{errors.investment}</p>
                     )}
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-700 font-semibold mb-2">
+                      Business Experience
+                    </label>
+                    <input
+                      type="text"
+                      name="businessExperience"
+                      value={formData.businessExperience}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:outline-none transition-colors text-lg"
+                      placeholder="e.g., 5 years in real estate (optional)"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-700 font-semibold mb-2">
+                      Message
+                    </label>
+                    <textarea
+                      name="message"
+                      value={formData.message}
+                      onChange={handleChange}
+                      rows="4"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:outline-none transition-colors text-lg resize-none"
+                      placeholder="Tell us about your franchise interests (optional)"
+                    ></textarea>
                   </div>
 
                   <motion.button
@@ -378,6 +414,7 @@ const FranchiseRequest = () => {
                   <p className="text-gray-600">Name: {formData.fullName}</p>
                   <p className="text-gray-600">Mobile: {formData.mobile}</p>
                   <p className="text-gray-600">City: {formData.city}</p>
+                  <p className="text-gray-600">Investment: {investmentRanges.find(r => r.value === parseInt(formData.investment))?.label}</p>
                 </div>
               </motion.div>
             )}
