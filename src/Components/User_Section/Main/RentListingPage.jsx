@@ -26,6 +26,7 @@ const RentListingPage = () => {
   const [filteredProperties, setFilteredProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(1);
+  const [noProperties, setNoProperties] = useState(false);
   
   const propertiesPerPage = 9;
 
@@ -37,40 +38,76 @@ const RentListingPage = () => {
     const controller = new AbortController();
     const fetchProperties = async () => {
       setLoading(true);
+      setNoProperties(false);
       try {
         const params = new URLSearchParams();
         params.append("page", currentPage);
         params.append("limit", propertiesPerPage);
-        params.append("listingType", "rent");
-        if (searchQuery) params.append("search", searchQuery);
-        if (selectedType) params.append("propertyType", selectedType);
-        if (selectedBudget) {
-          if (selectedBudget === "Under 20K") params.append("maxPrice", "20000");
-          if (selectedBudget === "20K-40K") { params.append("minPrice", "20000"); params.append("maxPrice", "40000"); }
-          if (selectedBudget === "40K-60K") { params.append("minPrice", "40000"); params.append("maxPrice", "60000"); }
-          if (selectedBudget === "Above 60K") params.append("minPrice", "60000");
-        }
-        const res = await fetch(`https://api.gharzoreality.com/api/public/properties?${params.toString()}`, { signal: controller.signal });
+        
+        const res = await fetch(`https://api.gharzoreality.com/api/public/properties?${params.toString()}`, { 
+          signal: controller.signal 
+        });
         const data = await res.json();
-        const list = data?.data || [];
-        const mapped = list.map((p) => ({
-          id: p._id,
-          name: p.title || p.name,
-          image: p.images?.[0]?.url || "",
-          price: p.price?.amount || 0,
-          location: p.location || { city: "", area: "" },
-          bedrooms: p.bhk || p.bedrooms || 0,
-          bathrooms: p.bathrooms || 0,
-          area: p.area?.carpet || p.area || "",
-          type: p.propertyType || p.type || "",
-        }));
-        setFilteredProperties(mapped);
-        setTotalPages(data.totalPages || Math.ceil((data.total || mapped.length) / propertiesPerPage));
+        
+        // Filter only properties with listingType = "Rent"
+        let list = data?.data || [];
+        list = list.filter(p => p.listingType === "Rent");
+        
+        // Apply search filter
+        if (searchQuery) {
+          list = list.filter(p => 
+            p.location?.city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            p.location?.locality?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            p.location?.area?.toLowerCase().includes(searchQuery.toLowerCase())
+          );
+        }
+        
+        // Apply property type filter
+        if (selectedType) {
+          list = list.filter(p => p.propertyType === selectedType);
+        }
+        
+        // Apply budget filter
+        if (selectedBudget) {
+          list = list.filter(p => {
+            const price = p.price?.amount || 0;
+            if (selectedBudget === "Under 20K") return price < 20000;
+            if (selectedBudget === "20K-40K") return price >= 20000 && price <= 40000;
+            if (selectedBudget === "40K-60K") return price >= 40000 && price <= 60000;
+            if (selectedBudget === "Above 60K") return price > 60000;
+            return true;
+          });
+        }
+        
+        // Check if no properties found
+        if (list.length === 0) {
+          setNoProperties(true);
+          setFilteredProperties([]);
+          setTotalPages(1);
+        } else {
+          // Map properties to display format
+          const mapped = list.map((p) => ({
+            id: p._id,
+            name: p.title || p.name,
+            image: p.images?.[0]?.url || "",
+            price: p.price?.amount || 0,
+            location: p.location || { city: "", locality: "" },
+            bedrooms: p.bhk || p.bedrooms || 0,
+            bathrooms: p.bathrooms || 0,
+            area: p.area?.carpet || p.area || "",
+            type: p.propertyType || p.category || "",
+          }));
+          
+          setFilteredProperties(mapped);
+          setTotalPages(Math.ceil(list.length / propertiesPerPage));
+          setNoProperties(false);
+        }
       } catch (err) {
         if (err.name === 'AbortError') return;
         console.error('Error fetching rent properties', err);
         setFilteredProperties([]);
         setTotalPages(1);
+        setNoProperties(true);
       } finally {
         setLoading(false);
       }
@@ -82,7 +119,7 @@ const RentListingPage = () => {
 
   return (
     <section className="py-8 sm:py-12 px-4 sm:px-6 lg:px-10 bg-gradient-to-b from-blue-50/50 to-white min-h-screen">
-      {/* Back Button + Top Navigation Buttons */}
+      {/* Back Button */}
       <div className="mb-6 flex items-center gap-4">
         <button
           onClick={() => navigate(-1)}
@@ -91,41 +128,6 @@ const RentListingPage = () => {
           <ArrowLeft size={20} />
           <span>Back</span>
         </button>
-
-        {/* <div className="flex-1 text-center">
-          <div className="inline-flex flex-wrap justify-center gap-4 sm:gap-6">
-            <button 
-              onClick={() => navigate('/rent')}
-              className="group relative px-8 py-4 rounded-2xl font-semibold text-lg bg-gradient-to-br from-[#0b4f91] via-[#0c2344] to-[#1565c0] text-white shadow-2xl min-w-[120px]"
-            >
-              <span className="relative z-10 flex items-center justify-center gap-2">Rent</span>
-            </button>
-            <button 
-              onClick={() => navigate('/sale')}
-              className="group relative px-8 py-4 rounded-2xl font-semibold text-lg bg-white border-2 border-[#0b4f91] text-[#0b4f91] hover:bg-[#0b4f91] hover:text-white transition-all min-w-[120px]"
-            >
-              Sale
-            </button>
-            <button 
-              onClick={() => navigate('/rooms')}
-              className="group relative px-8 py-4 rounded-2xl font-semibold text-lg bg-white border-2 border-[#0b4f91] text-[#0b4f91] hover:bg-[#0b4f91] hover:text-white transition-all min-w-[120px]"
-            >
-              Rooms
-            </button>
-            <button 
-              onClick={() => navigate('/pg')}
-              className="group relative px-8 py-4 rounded-2xl font-semibold text-lg bg-white border-2 border-[#0b4f91] text-[#0b4f91] hover:bg-[#0b4f91] hover:text-white transition-all min-w-[120px]"
-            >
-              PG
-            </button>
-            <button 
-              onClick={() => navigate('/hostels')}
-              className="group relative px-8 py-4 rounded-2xl font-semibold text-lg bg-white border-2 border-[#0b4f91] text-[#0b4f91] hover:bg-[#0b4f91] hover:text-white transition-all min-w-[120px]"
-            >
-              Hostels
-            </button>
-          </div>
-        </div> */}
       </div>
 
       {/* Header with Add Listing Button */}
@@ -162,7 +164,7 @@ const RentListingPage = () => {
             <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500" size={20} />
             <input
               type="text"
-              placeholder="Search by city, area..."
+              placeholder="Search by city, locality..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-12 pr-4 py-3 sm:py-4 rounded-xl border border-gray-200 focus:border-orange-500 focus:outline-none"
@@ -182,7 +184,16 @@ const RentListingPage = () => {
             </button>
             {showTypeDropdown && (
               <div className="absolute z-50 mt-2 w-40 bg-white shadow-md rounded-lg border p-2">
-                {["Apartment", "Villa", "Studio", "Penthouse"].map((t) => (
+                <p
+                  onClick={() => {
+                    setSelectedType("");
+                    setShowTypeDropdown(false);
+                  }}
+                  className="p-2 cursor-pointer hover:bg-orange-50 rounded-md font-semibold text-gray-600"
+                >
+                  All Types
+                </p>
+                {["Apartment", "Villa", "Studio", "Penthouse", "Office", "Shop"].map((t) => (
                   <p
                     key={t}
                     onClick={() => {
@@ -209,6 +220,15 @@ const RentListingPage = () => {
             </button>
             {showBudgetDropdown && (
               <div className="absolute z-50 mt-2 w-48 bg-white shadow-md rounded-lg border p-2">
+                <p
+                  onClick={() => {
+                    setSelectedBudget("");
+                    setShowBudgetDropdown(false);
+                  }}
+                  className="p-2 cursor-pointer hover:bg-orange-50 rounded-md font-semibold text-gray-600"
+                >
+                  All Budgets
+                </p>
                 {["Under 20K", "20K-40K", "40K-60K", "Above 60K"].map((b) => (
                   <p
                     key={b}
@@ -227,66 +247,98 @@ const RentListingPage = () => {
         </div>
       </div>
 
-      {/* Property Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
-        {(loading ? Array.from({length: propertiesPerPage}) : filteredProperties).map((property, index) => (
+      {/* No Properties Message */}
+      {noProperties && !loading && (
+        <div className="flex flex-col items-center justify-center py-20">
           <motion.div
-            key={property?.id || `ph-${index}`}
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-            whileHover={{ y: -8, scale: 1.03 }}
-            onClick={() => !loading && handlePropertyClick(property?.id)}
-            className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl overflow-hidden cursor-pointer transition-all duration-500"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center"
           >
-            <div className="relative">
-              <img
-                src={property?.image || 'https://via.placeholder.com/800x600?text=Loading'}
-                alt={property?.name || 'Loading'}
-                className="w-full h-60 object-cover group-hover:scale-110 transition-transform duration-700"
-              />
-              <div className="absolute top-4 left-4 bg-blue-600 text-white px-4 py-2 rounded-full font-semibold text-sm shadow-lg">
-                ₹{(property?.price || 0).toLocaleString()}/mo
-              </div>
-            </div>
-
-            <div className="p-6">
-              <h3 className="text-xl font-bold text-gray-900 line-clamp-1">
-                {property?.name}
-              </h3>
-
-              <div className="flex items-center text-gray-600 mt-2">
-                <MapPin size={18} className="text-orange-500 mr-1" />
-                <span className="text-sm">
-                  {property?.location?.city}, {property?.location?.area}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4 mt-5 text-center text-gray-700">
-                <div>
-                  <BedDouble size={20} className="mx-auto text-orange-500" />
-                  <p className="text-sm mt-1">{property?.bedrooms} Beds</p>
-                </div>
-                <div>
-                  <Bath size={20} className="mx-auto text-orange-500" />
-                  <p className="text-sm mt-1">{property?.bathrooms} Baths</p>
-                </div>
-                <div>
-                  <CarFront size={20} className="mx-auto text-orange-500" />
-                  <p className="text-sm mt-1">Parking</p>
-                </div>
-              </div>
-
-              <p className="mt-4 text-sm font-medium text-blue-600 uppercase tracking-wider">
-                {property?.type}
-              </p>
-            </div>
+            <Home size={64} className="mx-auto text-gray-300 mb-4" />
+            <h3 className="text-2xl font-bold text-gray-800 mb-2">
+              No Properties Found
+            </h3>
+            <p className="text-gray-600 mb-6">
+              No rental properties match your search criteria at the moment.
+            </p>
+            <button
+              onClick={() => {
+                setSearchQuery("");
+                setSelectedType("");
+                setSelectedBudget("");
+                setCurrentPage(1);
+              }}
+              className="px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-all"
+            >
+              Clear Filters
+            </button>
           </motion.div>
-        ))}
-      </div>
+        </div>
+      )}
+
+      {/* Property Cards */}
+      {!noProperties && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+          {(loading ? Array.from({length: propertiesPerPage}) : filteredProperties).map((property, index) => (
+            <motion.div
+              key={property?.id || `ph-${index}`}
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+              whileHover={{ y: -8, scale: 1.03 }}
+              onClick={() => !loading && handlePropertyClick(property?.id)}
+              className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl overflow-hidden cursor-pointer transition-all duration-500"
+            >
+              <div className="relative">
+                <img
+                  src={property?.image || 'https://via.placeholder.com/800x600?text=Loading'}
+                  alt={property?.name || 'Loading'}
+                  className="w-full h-60 object-cover group-hover:scale-110 transition-transform duration-700"
+                />
+                <div className="absolute top-4 left-4 bg-blue-600 text-white px-4 py-2 rounded-full font-semibold text-sm shadow-lg">
+                  ₹{(property?.price || 0).toLocaleString()}/mo
+                </div>
+              </div>
+
+              <div className="p-6">
+                <h3 className="text-xl font-bold text-gray-900 line-clamp-1">
+                  {property?.name || 'Loading...'}
+                </h3>
+
+                <div className="flex items-center text-gray-600 mt-2">
+                  <MapPin size={18} className="text-orange-500 mr-1" />
+                  <span className="text-sm">
+                    {property?.location?.city || 'City'}, {property?.location?.locality || 'Locality'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4 mt-5 text-center text-gray-700">
+                  <div>
+                    <BedDouble size={20} className="mx-auto text-orange-500" />
+                    <p className="text-sm mt-1">{property?.bedrooms || 0} Beds</p>
+                  </div>
+                  <div>
+                    <Bath size={20} className="mx-auto text-orange-500" />
+                    <p className="text-sm mt-1">{property?.bathrooms || 0} Baths</p>
+                  </div>
+                  <div>
+                    <CarFront size={20} className="mx-auto text-orange-500" />
+                    <p className="text-sm mt-1">Parking</p>
+                  </div>
+                </div>
+
+                <p className="mt-4 text-sm font-medium text-blue-600 uppercase tracking-wider">
+                  {property?.type || 'Property'}
+                </p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {!noProperties && totalPages > 1 && (
         <div className="flex justify-center mt-12 gap-3 flex-wrap">
           <button
             onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}

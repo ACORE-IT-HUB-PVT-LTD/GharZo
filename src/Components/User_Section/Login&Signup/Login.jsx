@@ -21,7 +21,7 @@ function Login({ onClose }) {
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [name, setName] = useState("");
-  const [role, setRole] = useState("user");
+  const [role, setRole] = useState("tenant");
   const [otpSent, setOtpSent] = useState(false);
   const [isNewUser, setIsNewUser] = useState(false);
   const [resendAttempts, setResendAttempts] = useState(0);
@@ -33,12 +33,15 @@ function Login({ onClose }) {
   // Redirect after login
   const { from = "/user" } = location.state || {};
 
-  // Available roles for registration
+  // Available roles for registration (enum provided)
   const roles = [
-    { value: "user", label: "User" },
+    { value: "buyer", label: "Buyer" },
     { value: "owner", label: "Owner" },
-    { value: "tenant", label: "Tenant" },
-    { value: "agent", label: "Agent" }
+    { value: "agent", label: "Agent" },
+    { value: "sub-admin", label: "Sub Admin" },
+    { value: "admin", label: "Admin" },
+    { value: "landlord", label: "Landlord" },
+    { value: "tenant", label: "Tenant" }
   ];
 
   useEffect(() => {

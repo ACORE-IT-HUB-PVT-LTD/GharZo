@@ -307,7 +307,7 @@ function AllProperty() {
                       <div className="relative w-full h-56 overflow-hidden bg-gray-100">
                         <img
                           src={
-                            property.images?.[0] ||
+                            property.image || property.images?.[0]?.url ||
                             "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQCQILdjI6IvkmXukmIVc7iLEkoa_lt8vcUOyoE8SMWJebAiB_NUaWD_j-4m7Wls1v-fqk&usqp=CAU"
                           }
                           alt={property.name}

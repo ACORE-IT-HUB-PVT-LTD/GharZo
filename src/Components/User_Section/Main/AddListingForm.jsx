@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -18,11 +18,14 @@ import {
   Loader,
   Phone,
   Mail,
-  User
+  User,
+  Building,
+  Store
 } from 'lucide-react';
 import axios from 'axios';
 
 const API_BASE_URL = 'https://api.gharzoreality.com/api/v2';
+const MASTER_DATA_API = 'https://api.gharzoreality.com/api/master-data/v2';
 
 const AddListingForm = () => {
   const navigate = useNavigate();
@@ -32,34 +35,61 @@ const AddListingForm = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Master data states
+  const [cities, setCities] = useState([]);
+  const [localities, setLocalities] = useState([]);
+  const [amenitiesData, setAmenitiesData] = useState({
+    basic: [],
+    nearby: [],
+    society: []
+  });
+  const [loadingMasterData, setLoadingMasterData] = useState({
+    cities: false,
+    localities: false,
+    amenities: false
+  });
+
   const [formData, setFormData] = useState({
     // Step 1: Property Type
     category: '',
     propertyType: '',
-    listingType: 'Sale',
+    listingType: '',
     
     // Step 2: Basic Details
     title: '',
     description: '',
-    bhk: '',
-    bathrooms: '',
-    balconies: '',
+    bhk: '1',
+    bathrooms: '1',
+    balconies: '0',
     price: '',
     negotiable: true,
-    maintenanceCharges: '',
-    maintenanceFrequency: 'Monthly',
     securityDeposit: '',
     carpetArea: '',
     builtUpArea: '',
     areaUnit: 'sqft',
-    currentFloor: '',
-    totalFloors: '',
+    currentFloor: '0',
+    totalFloors: '1',
     propertyAge: '',
+    postedBy: 'Owner',
     availableFrom: '',
     
-    // Step 3: Features
+    // Step 3: Features (PG specific)
     furnishingType: 'Unfurnished',
     amenitiesList: [],
+    furnishingItems: [],
+    
+    // PG Details
+    roomType: '',
+    foodIncluded: false,
+    foodType: '',
+    genderPreference: 'Any',
+    totalBeds: '',
+    availableBeds: '',
+    commonWashroom: false,
+    attachedWashroom: false,
+    commonAreas: [],
+    
+    // Property Features
     powerBackup: '',
     waterSupply: '',
     gatedSecurity: false,
@@ -98,25 +128,189 @@ const AddListingForm = () => {
     { number: 6, title: 'Contact Info' }
   ];
 
+  // Backend Schema Enums
   const categoryOptions = ['Residential', 'Commercial'];
   
   const propertyTypeOptions = {
-    Residential: ['Apartment', 'Villa', 'House', 'Plot'],
-    Commercial: ['Shop', 'Office', 'Showroom', 'Warehouse'],
-    Agricultural: ['Farm Land', 'Farm House']
+    Residential: ['Flat', 'Villa', 'Independent House', 'Builder Floor', 'Studio', 'Plot'],
+    Commercial: ['Shop', 'Office', 'Warehouse']
   };
 
-  const amenitiesOptions = [
-    'CCTV', 'Power Backup', 'Visitor Parking', 'Security', 
-    'Gym', 'Swimming Pool', 'Club House', 'Garden',
-    'Kids Play Area', 'Lift', 'Water Purifier', 'Intercom'
+  const listingTypeOptions = ['Rent', 'Sale', 'PG'];
+
+  const areaUnitOptions = ['sqft', 'sqm', 'sqyd', 'acre', 'hectare'];
+  const roomTypeOptions = ['Single', 'Double Sharing', 'Triple Sharing', 'Dormitory'];
+  const foodTypeOptions = ['Veg', 'Non-Veg', 'Both'];
+  const genderPreferenceOptions = ['Male', 'Female', 'Any'];
+  const powerBackupOptions = ['None', 'Partial', 'Full'];
+  const waterSupplyOptions = ['Corporation', 'Borewell', 'Both'];
+
+  const commonAreasOptions = [
+    'Living Room', 'Kitchen', 'Terrace', 'Gym', 'Study Room', 'Parking'
   ];
+
+  const furnishingItemsOptions = [
+    'Bed', 'Mattress', 'Pillow', 'Blanket', 'Fan', 'Light', 
+    'Charging Point', 'Wardrobe', 'Study Desk', 'Chair'
+  ];
+
+  const postedByOptions = ['Owner', 'Agent', 'Builder', 'admin', 'landlord'];
+
+  const propertyAgeOptions = [
+    'Under Construction',
+    '0-1 year',
+    '1-5 years',
+    '5-10 years',
+    '10+ years'
+  ];
+
+  const preferredCallTimeOptions = [
+    'Anytime',
+    'Morning (9AM-12PM)',
+    'Afternoon (12PM-5PM)',
+    'Evening (5PM-9PM)'
+  ];
+
+  // Fetch master data
+  useEffect(() => {
+    fetchCities();
+    fetchAmenities();
+  }, []);
+
+  // Fetch localities when city changes
+  useEffect(() => {
+    if (formData.city) {
+      fetchLocalities(formData.city);
+    }
+  }, [formData.city]);
+
+  const fetchCities = async () => {
+    try {
+      setLoadingMasterData(prev => ({ ...prev, cities: true }));
+      const response = await axios.get(`${MASTER_DATA_API}/cities`);
+      if (response.data.success) {
+        setCities(response.data.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching cities:', err);
+    } finally {
+      setLoadingMasterData(prev => ({ ...prev, cities: false }));
+    }
+  };
+
+  const fetchLocalities = async (cityName) => {
+    try {
+      setLoadingMasterData(prev => ({ ...prev, localities: true }));
+      const response = await axios.get(`${MASTER_DATA_API}/localities/${cityName}`);
+      if (response.data.success) {
+        setLocalities(response.data.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching localities:', err);
+      setLocalities([]);
+    } finally {
+      setLoadingMasterData(prev => ({ ...prev, localities: false }));
+    }
+  };
+
+  const fetchAmenities = async () => {
+    try {
+      setLoadingMasterData(prev => ({ ...prev, amenities: true }));
+      const response = await axios.get(`${MASTER_DATA_API}/amenities`);
+      if (response.data.success) {
+        setAmenitiesData(response.data.data || {
+          basic: [],
+          nearby: [],
+          society: []
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching amenities:', err);
+    } finally {
+      setLoadingMasterData(prev => ({ ...prev, amenities: false }));
+    }
+  };
+
+  // Helper functions for conditional rendering
+  const isPGProperty = () => {
+    return formData.listingType === 'PG';
+  };
+
+  const needsResidentialFields = () => {
+    const residentialTypes = ['Flat', 'Villa', 'Independent House', 'Builder Floor', 'Studio'];
+    return residentialTypes.includes(formData.propertyType);
+  };
+
+  const isCommercialProperty = () => {
+    return formData.category === 'Commercial';
+  };
+
+  const isPlotProperty = () => {
+    return formData.propertyType === 'Plot';
+  };
+
+  const needsFloorDetails = () => {
+    const typesWithFloors = ['Flat', 'Builder Floor', 'Shop', 'Office'];
+    return typesWithFloors.includes(formData.propertyType);
+  };
+
+  const needsBHKDetails = () => {
+    const typesWithBHK = ['Flat', 'Villa', 'Independent House', 'Builder Floor', 'Studio'];
+    return typesWithBHK.includes(formData.propertyType) && !isPGProperty();
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    
+    if (name === 'category') {
+      setFormData(prev => ({
+        ...prev,
+        category: value,
+        propertyType: '',
+        listingType: ''
+      }));
+      return;
+    }
+
+    if (name === 'propertyType') {
+      setFormData(prev => ({
+        ...prev,
+        propertyType: value
+      }));
+      return;
+    }
+
+    if (name === 'city') {
+      setFormData(prev => ({
+        ...prev,
+        city: value,
+        locality: '',
+        subLocality: ''
+      }));
+      return;
+    }
+
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleCommonAreaToggle = (area) => {
+    setFormData(prev => ({
+      ...prev,
+      commonAreas: prev.commonAreas.includes(area)
+        ? prev.commonAreas.filter(a => a !== area)
+        : [...prev.commonAreas, area]
+    }));
+  };
+
+  const handleFurnishingItemToggle = (item) => {
+    setFormData(prev => ({
+      ...prev,
+      furnishingItems: prev.furnishingItems.includes(item)
+        ? prev.furnishingItems.filter(i => i !== item)
+        : [...prev.furnishingItems, item]
     }));
   };
 
@@ -129,12 +323,10 @@ const AddListingForm = () => {
     }));
   };
 
-  // Handle image input selection and create previews
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    // Optional: basic validation (size < 10MB)
     const validFiles = files.filter((f) => f.size <= 10 * 1024 * 1024);
 
     setFormData((prev) => ({
@@ -146,14 +338,12 @@ const AddListingForm = () => {
     setImagePreviews((prev) => [...prev, ...newPreviews]);
   };
 
-
   const removeImage = (index) => {
     setFormData(prev => ({
       ...prev,
       images: prev.images.filter((_, i) => i !== index)
     }));
     
-    // Revoke object URL to avoid memory leaks
     setImagePreviews(prev => {
       const url = prev[index];
       if (url) URL.revokeObjectURL(url);
@@ -161,12 +351,10 @@ const AddListingForm = () => {
     });
   };
 
-  // Get auth token from localStorage
   const getAuthToken = () => {
     return localStorage.getItem('usertoken') || localStorage.getItem('token');
   };
 
-  // Get auth headers
   const getAuthHeaders = () => {
     const token = getAuthToken();
     return {
@@ -217,31 +405,37 @@ const AddListingForm = () => {
       setLoading(true);
       setError('');
       
+      const areaPayload = {
+        carpet: parseFloat(formData.carpetArea) || 0,
+        unit: formData.areaUnit
+      };
+
+      if (!isPlotProperty()) {
+        areaPayload.builtUp = parseFloat(formData.builtUpArea) || 0;
+      }
+
+      if (isPlotProperty()) {
+        areaPayload.plotArea = parseFloat(formData.carpetArea) || 0;
+      }
+
       const payload = {
         title: formData.title,
         description: formData.description,
-        bhk: parseInt(formData.bhk),
-        bathrooms: parseInt(formData.bathrooms),
-        balconies: parseInt(formData.balconies),
+        bhk: parseInt(formData.bhk) || 1,
+        bathrooms: parseInt(formData.bathrooms) || 1,
+        balconies: parseInt(formData.balconies) || 0,
         price: {
           amount: parseFloat(formData.price),
           negotiable: formData.negotiable,
-          maintenanceCharges: {
-            amount: parseFloat(formData.maintenanceCharges) || 0,
-            frequency: formData.maintenanceFrequency
-          },
           securityDeposit: parseFloat(formData.securityDeposit) || 0
         },
-        area: {
-          carpet: parseFloat(formData.carpetArea),
-          builtUp: parseFloat(formData.builtUpArea),
-          unit: formData.areaUnit
-        },
+        area: areaPayload,
         floor: {
-          current: parseInt(formData.currentFloor),
-          total: parseInt(formData.totalFloors)
+          current: parseInt(formData.currentFloor) || 0,
+          total: parseInt(formData.totalFloors) || 1
         },
         propertyAge: formData.propertyAge,
+        postedBy: formData.postedBy,
         availableFrom: formData.availableFrom
       };
 
@@ -255,6 +449,7 @@ const AddListingForm = () => {
 
       return response.data.success;
     } catch (err) {
+      console.error('Error response:', err.response?.data);
       setError(err.response?.data?.message || 'Failed to update basic details');
       return false;
     } finally {
@@ -267,16 +462,94 @@ const AddListingForm = () => {
       setLoading(true);
       setError('');
       
-      const payload = {
-        furnishing: { type: formData.furnishingType },
-        amenitiesList: formData.amenitiesList,
-        propertyFeatures: {
-          powerBackup: formData.powerBackup,
-          waterSupply: formData.waterSupply,
-          gatedSecurity: formData.gatedSecurity,
-          liftAvailable: formData.liftAvailable
-        }
+      const safeParseInt = (v) => {
+        const n = parseInt(v);
+        return isNaN(n) ? undefined : n;
       };
+      const safeParseFloat = (v) => {
+        const n = parseFloat(v);
+        return isNaN(n) ? undefined : n;
+      };
+
+      const bhk = safeParseInt(formData.bhk);
+      const bathrooms = safeParseInt(formData.bathrooms);
+      const balconies = safeParseInt(formData.balconies);
+
+      const priceAmount = safeParseFloat(formData.price);
+      const maintenanceAmount = safeParseFloat(formData.maintenanceCharges) || 0;
+      const securityDeposit = safeParseFloat(formData.securityDeposit) || 0;
+
+      const carpetArea = safeParseFloat(formData.carpetArea);
+      const builtUpArea = safeParseFloat(formData.builtUpArea);
+
+      const floorCurrent = safeParseInt(formData.currentFloor);
+      const floorTotal = safeParseInt(formData.totalFloors);
+
+      const areaPayload = { unit: formData.areaUnit };
+      if (carpetArea !== undefined && carpetArea > 0) areaPayload.carpet = carpetArea;
+
+      if ((formData.propertyType || '').toLowerCase() === 'plot') {
+        if (carpetArea !== undefined && carpetArea > 0) {
+          areaPayload.plotArea = carpetArea;
+        }
+      } else {
+        if (builtUpArea !== undefined && builtUpArea > 0) areaPayload.builtUp = builtUpArea;
+      }
+
+      // Build amenities array from the amenitiesData
+      const selectedAmenities = formData.amenitiesList.map(amenityName => {
+        const amenity = allAmenitiesFlat.find(a => a.name === amenityName);
+        return {
+          name: amenityName,
+          icon: amenity?.icon || ''
+        };
+      });
+
+      const payload = {
+        title: formData.title,
+        description: formData.description,
+        ...(bhk !== undefined && { bhk }),
+        ...(bathrooms !== undefined && { bathrooms }),
+        ...(balconies !== undefined && { balconies }),
+        price: {
+          ...(priceAmount !== undefined && { amount: priceAmount }),
+          negotiable: formData.negotiable,
+          maintenanceCharges: {
+            amount: maintenanceAmount,
+            frequency: formData.maintenanceFrequency
+          },
+          securityDeposit: securityDeposit
+        },
+        area: areaPayload,
+        floor: {
+          ...(floorCurrent !== undefined && { current: floorCurrent }),
+          ...(floorTotal !== undefined && { total: floorTotal })
+        },
+        propertyAge: formData.propertyAge,
+        availableFrom: formData.availableFrom,
+        amenities: selectedAmenities,
+        furnishingType: formData.furnishingType,
+        furnishingItems: formData.furnishingItems,
+        powerBackup: formData.powerBackup,
+        waterSupply: formData.waterSupply,
+        gatedSecurity: formData.gatedSecurity,
+        liftAvailable: formData.liftAvailable
+      };
+
+      // PG specific fields
+      if (isPGProperty()) {
+        payload.pgDetails = {
+          roomType: formData.roomType,
+          foodIncluded: formData.foodIncluded,
+          foodType: formData.foodType,
+          genderPreference: formData.genderPreference,
+          totalBeds: parseInt(formData.totalBeds) || 0,
+          availableBeds: parseInt(formData.availableBeds) || 0,
+          commonWashroom: formData.commonWashroom,
+          attachedWashroom: formData.attachedWashroom,
+          commonAreas: formData.commonAreas
+        };
+      }
 
       const response = await axios.put(
         `${API_BASE_URL}/properties/${propertyId}/features`,
@@ -288,6 +561,7 @@ const AddListingForm = () => {
 
       return response.data.success;
     } catch (err) {
+      console.error('Error response:', err.response?.data);
       setError(err.response?.data?.message || 'Failed to update features');
       return false;
     } finally {
@@ -338,25 +612,11 @@ const AddListingForm = () => {
       setLoading(true);
       setError('');
       
-      // Create FormData
       const formDataToSend = new FormData();
       
-      // FIXED: Append each image with the correct field name
-      // Option 1: If backend expects 'photos' field (array)
       formData.images.forEach(image => {
         formDataToSend.append('images', image);
       });
-      
-      // Option 2: If backend expects 'images' field (array) - uncomment if needed
-      // formData.images.forEach(image => {
-      //   formDataToSend.append('images', image);
-      // });
-      
-      // Debug: Log FormData contents
-      console.log('Uploading images:');
-      for (let pair of formDataToSend.entries()) {
-        console.log(pair[0], pair[1]);
-      }
 
       const token = getAuthToken();
       const response = await axios.post(
@@ -364,8 +624,7 @@ const AddListingForm = () => {
         formDataToSend,
         {
           headers: {
-              Authorization: `Bearer ${token}`
-
+            Authorization: `Bearer ${token}`
           },
           onUploadProgress: (progressEvent) => {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -462,7 +721,6 @@ const AddListingForm = () => {
         if (formData.images.length > 0) {
           success = await uploadPhotos();
         } else {
-          // Skip if no images
           success = true;
         }
         break;
@@ -488,12 +746,24 @@ const AddListingForm = () => {
     }
   };
 
+  // Flatten amenities for easier lookup
+  const allAmenitiesFlat = [
+    ...amenitiesData.basic,
+    ...amenitiesData.nearby,
+    ...amenitiesData.society
+  ];
+
   const renderStepContent = () => {
     switch(currentStep) {
       case 1:
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Select Property Type</h2>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-gradient-to-br from-blue-600 to-orange-500 rounded-2xl shadow-lg">
+                <Home className="text-white" size={28} />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900">Select Property Type</h2>
+            </div>
             
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -514,7 +784,11 @@ const AddListingForm = () => {
             </div>
 
             {formData.category && (
-              <div>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Property Type *
                 </label>
@@ -530,31 +804,57 @@ const AddListingForm = () => {
                     <option key={type} value={type}>{type}</option>
                   ))}
                 </select>
-              </div>
+              </motion.div>
             )}
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Listing For *
-              </label>
-              <select
-                name="listingType"
-                value={formData.listingType}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none transition-colors"
+            {formData.propertyType && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
               >
-                <option value="Sale">Sale</option>
-                <option value="Rent">Rent</option>
-              </select>
-            </div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Listing Type *
+                </label>
+                <select
+                  name="listingType"
+                  value={formData.listingType}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none transition-colors"
+                >
+                  <option value="">Select Listing Type</option>
+                  {listingTypeOptions.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </motion.div>
+            )}
+
+            {formData.category && formData.propertyType && formData.listingType && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="p-4 bg-gradient-to-r from-blue-50 to-orange-50 border-2 border-blue-200 rounded-xl"
+              >
+                <p className="text-sm font-medium text-gray-800">
+                  <span className="font-bold">Selected:</span> {formData.propertyType} • {formData.category} • {formData.listingType}
+                </p>
+              </motion.div>
+            )}
           </div>
         );
 
       case 2:
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Basic Details</h2>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-gradient-to-br from-blue-600 to-orange-500 rounded-2xl shadow-lg">
+                <Building className="text-white" size={28} />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900">Basic Details</h2>
+            </div>
             
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -566,7 +866,12 @@ const AddListingForm = () => {
                 value={formData.title}
                 onChange={handleChange}
                 required
-                placeholder="e.g., Spacious 2BHK Flat in Vijay Nagar"
+                placeholder={
+                  isPlotProperty() ? "e.g., Prime Residential Plot in Vijay Nagar" :
+                  isCommercialProperty() ? "e.g., Commercial Space in Prime Location" :
+                  isPGProperty() ? "e.g., Comfortable PG for Students & Working Professionals" :
+                  "e.g., Spacious 2BHK Flat in Vijay Nagar"
+                }
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none transition-colors"
               />
             </div>
@@ -581,62 +886,74 @@ const AddListingForm = () => {
                 onChange={handleChange}
                 required
                 rows="4"
-                placeholder="Describe your property..."
+                placeholder="Describe your property, its features, nearby facilities..."
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none resize-none transition-colors"
               ></textarea>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  BHK *
-                </label>
-                <input
-                  type="number"
-                  name="bhk"
-                  value={formData.bhk}
-                  onChange={handleChange}
-                  required
-                  min="1"
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                />
-              </div>
+            {needsBHKDetails() && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="grid grid-cols-1 md:grid-cols-3 gap-4"
+              >
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <BedDouble className="inline mr-1" size={16} />
+                    BHK *
+                  </label>
+                  <input
+                    type="number"
+                    name="bhk"
+                    value={formData.bhk}
+                    onChange={handleChange}
+                    required
+                    min="1"
+                    placeholder="e.g., 2"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
+                  />
+                </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Bathrooms *
-                </label>
-                <input
-                  type="number"
-                  name="bathrooms"
-                  value={formData.bathrooms}
-                  onChange={handleChange}
-                  required
-                  min="1"
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                />
-              </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <Bath className="inline mr-1" size={16} />
+                    Bathrooms *
+                  </label>
+                  <input
+                    type="number"
+                    name="bathrooms"
+                    value={formData.bathrooms}
+                    onChange={handleChange}
+                    required
+                    min="1"
+                    placeholder="e.g., 2"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
+                  />
+                </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Balconies *
-                </label>
-                <input
-                  type="number"
-                  name="balconies"
-                  value={formData.balconies}
-                  onChange={handleChange}
-                  required
-                  min="0"
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                />
-              </div>
-            </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Balconies *
+                  </label>
+                  <input
+                    type="number"
+                    name="balconies"
+                    value={formData.balconies}
+                    onChange={handleChange}
+                    required
+                    min="0"
+                    placeholder="e.g., 1"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
+                  />
+                </div>
+              </motion.div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Price (₹) *
+                  <IndianRupee className="inline mr-1" size={16} />
+                  {isPGProperty() ? 'Monthly Rent (₹) *' : 'Price (₹) *'}
                 </label>
                 <input
                   type="number"
@@ -644,7 +961,7 @@ const AddListingForm = () => {
                   value={formData.price}
                   onChange={handleChange}
                   required
-                  placeholder="Enter price"
+                  placeholder={isPGProperty() ? "Monthly rent amount" : "Enter price"}
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
                 />
               </div>
@@ -664,99 +981,102 @@ const AddListingForm = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Maintenance Charges (₹)
-                </label>
-                <input
-                  type="number"
-                  name="maintenanceCharges"
-                  value={formData.maintenanceCharges}
-                  onChange={handleChange}
-                  placeholder="Enter maintenance charges"
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                />
-              </div>
+            {!isPGProperty() && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-4"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <Square className="inline mr-1" size={16} />
+                      {isPlotProperty() ? 'Plot Area *' : 'Carpet Area *'}
+                    </label>
+                    <input
+                      type="number"
+                      name="carpetArea"
+                      value={formData.carpetArea}
+                      onChange={handleChange}
+                      required
+                      placeholder="Enter area"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
+                    />
+                  </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Frequency
-                </label>
-                <select
-                  name="maintenanceFrequency"
-                  value={formData.maintenanceFrequency}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                >
-                  <option value="Monthly">Monthly</option>
-                  <option value="Quarterly">Quarterly</option>
-                  <option value="Yearly">Yearly</option>
-                </select>
-              </div>
-            </div>
+                  {!isPlotProperty() && (
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Built-up Area *
+                      </label>
+                      <input
+                        type="number"
+                        name="builtUpArea"
+                        value={formData.builtUpArea}
+                        onChange={handleChange}
+                        required
+                        placeholder="Enter area"
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
+                      />
+                    </div>
+                  )}
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Carpet Area (sqft) *
-                </label>
-                <input
-                  type="number"
-                  name="carpetArea"
-                  value={formData.carpetArea}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                />
-              </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Area Unit *</label>
+                  <select
+                    name="areaUnit"
+                    value={formData.areaUnit}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
+                  >
+                    {areaUnitOptions.map(u => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                </div>
+              </motion.div>
+            )}
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Built-up Area (sqft) *
-                </label>
-                <input
-                  type="number"
-                  name="builtUpArea"
-                  value={formData.builtUpArea}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                />
-              </div>
-            </div>
+            {needsFloorDetails() && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="grid grid-cols-1 md:grid-cols-2 gap-4"
+              >
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Current Floor *
+                  </label>
+                  <input
+                    type="number"
+                    name="currentFloor"
+                    value={formData.currentFloor}
+                    onChange={handleChange}
+                    required
+                    min="0"
+                    placeholder="e.g., 2"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
+                  />
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Current Floor *
-                </label>
-                <input
-                  type="number"
-                  name="currentFloor"
-                  value={formData.currentFloor}
-                  onChange={handleChange}
-                  required
-                  min="0"
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Total Floors *
-                </label>
-                <input
-                  type="number"
-                  name="totalFloors"
-                  value={formData.totalFloors}
-                  onChange={handleChange}
-                  required
-                  min="1"
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                />
-              </div>
-            </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Total Floors *
+                  </label>
+                  <input
+                    type="number"
+                    name="totalFloors"
+                    value={formData.totalFloors}
+                    onChange={handleChange}
+                    required
+                    min="1"
+                    placeholder="e.g., 5"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
+                  />
+                </div>
+              </motion.div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -771,11 +1091,9 @@ const AddListingForm = () => {
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
                 >
                   <option value="">Select Age</option>
-                  <option value="Under Construction">Under Construction</option>
-                  <option value="0-1 years">0-1 years</option>
-                  <option value="1-5 years">1-5 years</option>
-                  <option value="5-10 years">5-10 years</option>
-                  <option value="10+ years">10+ years</option>
+                  {propertyAgeOptions.map(age => (
+                    <option key={age} value={age}>{age}</option>
+                  ))}
                 </select>
               </div>
 
@@ -794,6 +1112,22 @@ const AddListingForm = () => {
               </div>
             </div>
 
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Posted By *
+              </label>
+              <select
+                name="postedBy"
+                value={formData.postedBy}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
+              >
+                {postedByOptions.map(p => (
+                  <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+                ))}
+              </select>
+            </div>
+
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -810,42 +1144,234 @@ const AddListingForm = () => {
       case 3:
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Property Features</h2>
-            
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Furnishing Type *
-              </label>
-              <select
-                name="furnishingType"
-                value={formData.furnishingType}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-              >
-                <option value="Unfurnished">Unfurnished</option>
-                <option value="Semi-Furnished">Semi-Furnished</option>
-                <option value="Fully-Furnished">Fully-Furnished</option>
-              </select>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-gradient-to-br from-blue-600 to-orange-500 rounded-2xl shadow-lg">
+                <Wifi className="text-white" size={28} />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900">Property Features</h2>
             </div>
+
+            {isPGProperty() && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-6 p-6 bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-2xl"
+              >
+                <h3 className="text-xl font-bold text-purple-900 flex items-center gap-2">
+                  <Users size={24} />
+                  PG/Hostel Details
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Room Type *</label>
+                    <select 
+                      name="roomType" 
+                      value={formData.roomType} 
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
+                    >
+                      <option value="">Select Room Type</option>
+                      {roomTypeOptions.map(r => (<option key={r} value={r}>{r}</option>))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Gender Preference *</label>
+                    <select 
+                      name="genderPreference" 
+                      value={formData.genderPreference} 
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
+                    >
+                      {genderPreferenceOptions.map(g => (<option key={g} value={g}>{g}</option>))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Total Beds *</label>
+                    <input
+                      type="number"
+                      name="totalBeds"
+                      value={formData.totalBeds}
+                      onChange={handleChange}
+                      required
+                      min="1"
+                      placeholder="e.g., 10"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Available Beds *</label>
+                    <input
+                      type="number"
+                      name="availableBeds"
+                      value={formData.availableBeds}
+                      onChange={handleChange}
+                      required
+                      min="0"
+                      placeholder="e.g., 3"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="flex items-center gap-2 cursor-pointer p-3 border-2 border-gray-200 rounded-xl hover:border-[#FF6B00] transition-colors bg-white">
+                    <input
+                      type="checkbox"
+                      name="foodIncluded"
+                      checked={formData.foodIncluded}
+                      onChange={handleChange}
+                      className="w-5 h-5 text-[#FF6B00] border-gray-300 rounded focus:ring-[#FF6B00]"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Food Included</span>
+                  </label>
+
+                  {formData.foodIncluded && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                    >
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Food Type *</label>
+                      <select 
+                        name="foodType" 
+                        value={formData.foodType} 
+                        onChange={handleChange}
+                        required={formData.foodIncluded}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
+                      >
+                        <option value="">Select Food Type</option>
+                        {foodTypeOptions.map(f => (<option key={f} value={f}>{f}</option>))}
+                      </select>
+                    </motion.div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer p-3 border-2 border-gray-200 rounded-xl hover:border-[#FF6B00] transition-colors bg-white">
+                    <input
+                      type="checkbox"
+                      name="commonWashroom"
+                      checked={formData.commonWashroom}
+                      onChange={handleChange}
+                      className="w-5 h-5 text-[#FF6B00] border-gray-300 rounded focus:ring-[#FF6B00]"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Common Washroom</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer p-3 border-2 border-gray-200 rounded-xl hover:border-[#FF6B00] transition-colors bg-white">
+                    <input
+                      type="checkbox"
+                      name="attachedWashroom"
+                      checked={formData.attachedWashroom}
+                      onChange={handleChange}
+                      className="w-5 h-5 text-[#FF6B00] border-gray-300 rounded focus:ring-[#FF6B00]"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Attached Washroom</span>
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">Common Areas</label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {commonAreasOptions.map(area => (
+                      <label key={area} className="flex items-center gap-2 cursor-pointer p-3 border-2 border-gray-200 rounded-xl hover:border-[#FF6B00] transition-colors bg-white">
+                        <input
+                          type="checkbox"
+                          checked={formData.commonAreas.includes(area)}
+                          onChange={() => handleCommonAreaToggle(area)}
+                          className="w-5 h-5 text-[#FF6B00] border-gray-300 rounded focus:ring-[#FF6B00]"
+                        />
+                        <span className="text-sm font-medium text-gray-700">{area}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {!isPlotProperty() && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-4"
+              >
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Furnishing Type *
+                  </label>
+                  <select
+                    name="furnishingType"
+                    value={formData.furnishingType}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
+                  >
+                    <option value="Unfurnished">Unfurnished</option>
+                    <option value="Semi-Furnished">Semi-Furnished</option>
+                    <option value="Fully-Furnished">Fully-Furnished</option>
+                  </select>
+                </div>
+
+                {(formData.furnishingType === 'Semi-Furnished' || formData.furnishingType === 'Fully-Furnished') && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                  >
+                    <label className="block text-sm font-semibold text-gray-700 mb-3">Furnishing Items</label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {furnishingItemsOptions.map(item => (
+                        <label key={item} className="flex items-center gap-2 cursor-pointer p-3 border-2 border-gray-200 rounded-xl hover:border-[#FF6B00] transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={formData.furnishingItems.includes(item)}
+                            onChange={() => handleFurnishingItemToggle(item)}
+                            className="w-5 h-5 text-[#FF6B00] border-gray-300 rounded focus:ring-[#FF6B00]"
+                          />
+                          <span className="text-sm font-medium text-gray-700">{item}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </motion.div>
+            )}
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-3">
                 Amenities
               </label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {amenitiesOptions.map(amenity => (
-                  <label key={amenity} className="flex items-center gap-2 cursor-pointer p-3 border-2 border-gray-200 rounded-xl hover:border-[#FF6B00] transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={formData.amenitiesList.includes(amenity)}
-                      onChange={() => handleAmenityToggle(amenity)}
-                      className="w-5 h-5 text-[#FF6B00] border-gray-300 rounded focus:ring-[#FF6B00]"
-                    />
-                    <span className="text-sm font-medium text-gray-700">{amenity}</span>
-                  </label>
-                ))}
-              </div>
+              {loadingMasterData.amenities ? (
+                <div className="flex items-center gap-2 text-gray-500">
+                  <Loader className="animate-spin" size={20} />
+                  Loading amenities...
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {allAmenitiesFlat.length > 0 ? (
+                    allAmenitiesFlat.map(amenity => (
+                      <label key={amenity.name} className="flex items-center gap-2 cursor-pointer p-3 border-2 border-gray-200 rounded-xl hover:border-[#FF6B00] transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={formData.amenitiesList.includes(amenity.name)}
+                          onChange={() => handleAmenityToggle(amenity.name)}
+                          className="w-5 h-5 text-[#FF6B00] border-gray-300 rounded focus:ring-[#FF6B00]"
+                        />
+                        <span className="text-lg">{amenity.icon}</span>
+                        <span className="text-sm font-medium text-gray-700">{amenity.name}</span>
+                      </label>
+                    ))
+                  ) : (
+                    <p className="text-gray-500">No amenities available</p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -860,9 +1386,9 @@ const AddListingForm = () => {
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
                 >
                   <option value="">Select</option>
-                  <option value="None">None</option>
-                  <option value="Partial">Partial</option>
-                  <option value="Full">Full</option>
+                  {powerBackupOptions.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
                 </select>
               </div>
 
@@ -877,9 +1403,9 @@ const AddListingForm = () => {
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
                 >
                   <option value="">Select</option>
-                  <option value="Corporation">Corporation</option>
-                  <option value="Borewell">Borewell</option>
-                  <option value="Both">Both</option>
+                  {waterSupplyOptions.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -913,7 +1439,12 @@ const AddListingForm = () => {
       case 4:
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Location Details</h2>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-gradient-to-br from-blue-600 to-orange-500 rounded-2xl shadow-lg">
+                <MapPin className="text-white" size={28} />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900">Location Details</h2>
+            </div>
             
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -935,15 +1466,27 @@ const AddListingForm = () => {
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   City *
                 </label>
-                <input
-                  type="text"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleChange}
-                  required
-                  placeholder="e.g., Indore"
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                />
+                {loadingMasterData.cities ? (
+                  <div className="flex items-center gap-2 text-gray-500 py-3">
+                    <Loader className="animate-spin" size={20} />
+                    Loading cities...
+                  </div>
+                ) : (
+                  <select
+                    name="city"
+                    value={formData.city}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
+                  >
+                    <option value="">Select City</option>
+                    {cities.map(city => (
+                      <option key={city._id} value={city.name}>
+                        {city.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div>
@@ -967,15 +1510,27 @@ const AddListingForm = () => {
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Locality *
                 </label>
-                <input
-                  type="text"
-                  name="locality"
-                  value={formData.locality}
-                  onChange={handleChange}
-                  required
-                  placeholder="e.g., Vijay Nagar"
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                />
+                {loadingMasterData.localities ? (
+                  <div className="flex items-center gap-2 text-gray-500 py-3">
+                    <Loader className="animate-spin" size={20} />
+                    Loading localities...
+                  </div>
+                ) : (
+                  <select
+                    name="locality"
+                    value={formData.locality}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
+                  >
+                    <option value="">Select Locality</option>
+                    {localities.map(loc => (
+                      <option key={loc._id} value={loc.name}>
+                        {loc.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div>
@@ -1064,10 +1619,15 @@ const AddListingForm = () => {
       case 5:
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Upload Photos</h2>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-gradient-to-br from-blue-600 to-orange-500 rounded-2xl shadow-lg">
+                <Upload className="text-white" size={28} />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900">Upload Photos</h2>
+            </div>
             
             <div>
-              <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-[#FF6B00] transition-colors">
+              <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-[#FF6B00] transition-colors cursor-pointer">
                 <input
                   type="file"
                   multiple
@@ -1080,12 +1640,16 @@ const AddListingForm = () => {
                   <Upload className="mx-auto text-gray-400 mb-3" size={48} />
                   <p className="text-lg text-gray-600 font-semibold">Click to upload images</p>
                   <p className="text-sm text-gray-500 mt-2">PNG, JPG up to 10MB each</p>
-                  <p className="text-xs text-gray-400 mt-1">You can upload multiple images</p>
+                  <p className="text-xs text-gray-400 mt-1">Upload multiple high-quality images</p>
                 </label>
               </div>
 
               {imagePreviews.length > 0 && (
-                <div className="mt-6">
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-6"
+                >
                   <p className="text-sm font-semibold text-gray-700 mb-3">
                     Uploaded Images ({imagePreviews.length})
                   </p>
@@ -1107,7 +1671,7 @@ const AddListingForm = () => {
                       </div>
                     ))}
                   </div>
-                </div>
+                </motion.div>
               )}
             </div>
           </div>
@@ -1116,7 +1680,12 @@ const AddListingForm = () => {
       case 6:
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Contact Information</h2>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-gradient-to-br from-blue-600 to-orange-500 rounded-2xl shadow-lg">
+                <Phone className="text-white" size={28} />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900">Contact Information</h2>
+            </div>
             
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -1194,10 +1763,9 @@ const AddListingForm = () => {
                 onChange={handleChange}
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
               >
-                <option value="Morning (9AM-12PM)">Morning (9AM-12PM)</option>
-                <option value="Afternoon (12PM-5PM)">Afternoon (12PM-5PM)</option>
-                <option value="Evening (5PM-9PM)">Evening (5PM-9PM)</option>
-                <option value="Anytime">Anytime</option>
+                {preferredCallTimeOptions.map(time => (
+                  <option key={time} value={time}>{time}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -1270,9 +1838,13 @@ const AddListingForm = () => {
         {/* Form Card */}
         <div className="bg-white rounded-3xl shadow-2xl p-6 md:p-8">
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700"
+            >
               {error}
-            </div>
+            </motion.div>
           )}
 
           <AnimatePresence mode="wait">

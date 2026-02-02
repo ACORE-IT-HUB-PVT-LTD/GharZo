@@ -33,64 +33,76 @@ const PG = () => {
 
   const [pgData, setPgData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [noProperties, setNoProperties] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
   const [selectedPg, setSelectedPg] = useState(null);
 
-  // Enhanced PG data with better sample properties
-  const enhancedPGData = [
-    {
-      id: "1",
-      name: "Sunshine PG - Premium Boys Hostel",
-      type: "PG",
-      lowestPrice: 6500,
-      totalBeds: 24,
-      totalRooms: 6,
-      images: ["https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&h=600&fit=crop"],
-      location: {
-        city: "Indore",
-        state: "Madhya Pradesh",
-        area: "Vijay Nagar",
-        landmark: "Near IIM Indore",
-      },
-      amenities: ["AC", "Wifi", "Food", "Laundry", "Parking", "Security"],
-      rating: 4.8,
-      reviews: 127,
-      landlordInfo: { name: "Rajesh Sharma" },
-      isVerified: true,
-      distance: "2.5 km from city center",
-    },
-    {
-      id: "2",
-      name: "Prestige Girls PG - Luxury Stay",
-      type: "PG",
-      lowestPrice: 8500,
-      totalBeds: 18,
-      totalRooms: 5,
-      images: ["https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&h=600&fit=crop"],
-      location: {
-        city: "Indore",
-        state: "Madhya Pradesh",
-        area: "Palasia",
-        landmark: "Near Sarafa Bazaar",
-      },
-      amenities: ["AC", "Wifi", "Food", "Gym", "Parking", "Security", "Power Backup"],
-      rating: 4.9,
-      reviews: 89,
-      landlordInfo: { name: "Priya Patel" },
-      isVerified: true,
-      distance: "1.8 km from city center",
-    },
-    // ... rest of your data remains unchanged ...
-  ];
-
   useEffect(() => {
     AOS.init({ duration: 800, once: true });
     window.scrollTo({ top: 0, behavior: "smooth" });
-
-    setPgData(enhancedPGData);
-    setFilteredData(enhancedPGData);
+    fetchPGProperties();
   }, []);
+
+  const fetchPGProperties = async () => {
+    setLoading(true);
+    setNoProperties(false);
+    try {
+      const res = await fetch(`https://api.gharzoreality.com/api/public/properties?page=1&limit=100`);
+      const data = await res.json();
+      
+      // Filter only properties with listingType = "PG"
+      let list = data?.data || [];
+      list = list.filter(p => p.listingType === "PG");
+      
+      if (list.length === 0) {
+        setNoProperties(true);
+        setPgData([]);
+        setFilteredData([]);
+      } else {
+        // Map API data to component format
+        const mapped = list.map((p) => ({
+          id: p._id,
+          name: p.title || p.name || "PG Property",
+          type: "PG",
+          lowestPrice: p.price?.amount || 0,
+          totalBeds: p.pgDetails?.totalBeds || 1,
+          totalRooms: Math.ceil((p.pgDetails?.totalBeds || 1) / 2), // Estimate rooms
+          images: p.images?.map(img => img.url) || [],
+          location: {
+            city: p.location?.city || "",
+            state: p.location?.state || "",
+            area: p.location?.locality || p.location?.area || "",
+            landmark: p.location?.landmark || "",
+          },
+          amenities: p.amenitiesList || [],
+          rating: 4.5, // Default rating
+          reviews: Math.floor(Math.random() * 100) + 20, // Random reviews
+          landlordInfo: { 
+            name: p.ownerId?.name || p.contactInfo?.name || "Property Owner" 
+          },
+          isVerified: p.verificationStatus === "Verified",
+          distance: "City location",
+          roomType: p.pgDetails?.roomType || "Sharing",
+          foodIncluded: p.pgDetails?.foodIncluded || false,
+          genderPreference: p.pgDetails?.genderPreference || "Any",
+          bathrooms: p.bathrooms || 1,
+        }));
+        
+        setPgData(mapped);
+        setFilteredData(mapped);
+        setNoProperties(false);
+      }
+    } catch (err) {
+      console.error('Error fetching PG properties', err);
+      setPgData([]);
+      setFilteredData([]);
+      setNoProperties(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
@@ -99,9 +111,11 @@ const PG = () => {
 
   const handleSearch = (e) => {
     if (e) e.preventDefault();
-    const filtered = enhancedPGData.filter((pg) => {
+    
+    const filtered = pgData.filter((pg) => {
       const cityMatch = formData.city
-        ? pg.location?.city?.toLowerCase().includes(formData.city.toLowerCase())
+        ? pg.location?.city?.toLowerCase().includes(formData.city.toLowerCase()) ||
+          pg.location?.area?.toLowerCase().includes(formData.city.toLowerCase())
         : true;
 
       const bedrooms = Math.round(pg.totalBeds / pg.totalRooms);
@@ -129,7 +143,7 @@ const PG = () => {
 
   const handleReset = () => {
     setFormData({ city: "", bedrooms: "", priceRange: "" });
-    setFilteredData(enhancedPGData);
+    setFilteredData(pgData);
   };
 
   const handlePgClick = (pg) => {
@@ -140,14 +154,14 @@ const PG = () => {
       setSelectedPg(pg);
       setShowSignup(true);
     } else {
-      navigate(`/pg/${pg.id}`, { state: pg });
+      navigate(`/property/${pg.id}`, { state: pg });
     }
   };
 
   const handleSignupComplete = () => {
     setShowSignup(false);
     if (selectedPg) {
-      navigate(`/pg/${selectedPg.id}`, { state: selectedPg });
+      navigate(`/property/${selectedPg.id}`, { state: selectedPg });
     }
   };
 
@@ -158,9 +172,11 @@ const PG = () => {
   const handleLandlordLogin = () => {
     navigate("/landlord_login");
   };
+  
   const handleSubowerLogin = () => {
     navigate("/sub_owner_login");
   };
+  
   const handleworkerLogin = () => {
     navigate("/dr_worker_login");
   };
@@ -181,9 +197,11 @@ const PG = () => {
     const iconMap = {
       AC: <FaHome className="text-blue-500" />,
       Wifi: <FaWifi className="text-purple-500" />,
+      "Wi-Fi": <FaWifi className="text-purple-500" />,
       Food: <FaUtensils className="text-green-500" />,
       Laundry: <FaShower className="text-pink-500" />,
       Parking: <FaCar className="text-orange-500" />,
+      "Visitor Parking": <FaCar className="text-orange-500" />,
       Security: <FaShieldAlt className="text-red-500" />,
       Gym: <FaRulerCombined className="text-indigo-500" />,
     };
@@ -220,15 +238,13 @@ const PG = () => {
           <span>Back</span>
         </button>
 
-         <button
-              onClick={handleLandlordLogin}
-              className="px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white transition-all duration-300 transform hover:-translate-y-1 flex items-center gap-2 rounded-2xl"
-              
-              data-aos-delay="200"
-            >
-              <FaPlus className="w-5 h-5" />
-               Add Your Properties
-            </button>
+        <button
+          onClick={handleLandlordLogin}
+          className="px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white transition-all duration-300 transform hover:-translate-y-1 flex items-center gap-2 rounded-2xl"
+        >
+          <FaPlus className="w-5 h-5" />
+          Add Your Properties
+        </button>
       </div>
 
       {/* Header with Action Buttons */}
@@ -241,16 +257,13 @@ const PG = () => {
             >
               Discover Premium PG And Hostel
             </h2>
-            {/* <p className="text-lg text-gray-600 max-w-2xl mx-auto lg:mx-0">
-              Find your perfect PG stay with modern amenities, prime locations, and exceptional comfort
-            </p> */}
           </div>
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4">
             <button
               onClick={handleTenantLogin}
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-800 to-blue-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:from-orange-600 hover:to-blue-700  transition-all duration-300 transform hover:-translate-y-1 flex items-center gap-2"
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-800 to-blue-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:from-orange-600 hover:to-blue-700 transition-all duration-300 transform hover:-translate-y-1 flex items-center gap-2"
               data-aos="zoom-in"
               data-aos-delay="100"
             >
@@ -258,7 +271,6 @@ const PG = () => {
               Login as Tenant
             </button>
 
-           
             <button
               onClick={handleSubowerLogin}
               className="px-6 py-3 bg-gradient-to-r from-blue-800 to-blue-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:from-orange-600 hover:to-blue-700 transition-all duration-300 transform hover:-translate-y-1 flex items-center gap-2"
@@ -268,8 +280,9 @@ const PG = () => {
               <FaUser className="w-5 h-5" />
               Sub Owner
             </button>
+            
             <button
-              onClick={handleSubowerLogin}
+              onClick={handleworkerLogin}
               className="px-6 py-3 bg-gradient-to-r from-blue-800 to-blue-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:from-orange-600 hover:to-blue-700 transition-all duration-300 transform hover:-translate-y-1 flex items-center gap-2"
               data-aos="zoom-in"
               data-aos-delay="200"
@@ -282,10 +295,7 @@ const PG = () => {
       </div>
 
       {/* Enhanced Filter Section */}
-      <div
-        className="max-w-6xl mx-auto mb-12"
-        data-aos="fade-up"
-      >
+      <div className="max-w-6xl mx-auto mb-12" data-aos="fade-up">
         <div className="bg-white/80 backdrop-blur-md border border-blue-200/50 shadow-xl rounded-2xl p-6 flex flex-col lg:flex-row items-center gap-4 justify-center">
           <input
             type="text"
@@ -339,18 +349,45 @@ const PG = () => {
         </div>
       </div>
 
+      {/* No Properties Message */}
+      {noProperties && !loading && (
+        <div className="max-w-6xl mx-auto">
+          <div className="col-span-full text-center py-12">
+            <FaHome className="mx-auto text-6xl text-gray-300 mb-4" />
+            <h3 className="text-2xl font-semibold text-gray-600 mb-2">No PG Properties Found</h3>
+            <p className="text-gray-500">No PG listings available at the moment. Please check back later.</p>
+          </div>
+        </div>
+      )}
+
       {/* Enhanced PG Cards Grid */}
       <div className="max-w-6xl mx-auto">
-        <div
-          className="grid gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-          data-aos="fade-up"
-          data-aos-delay="100"
-        >
-          {filteredData.length === 0 ? (
+        <div className="grid gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" data-aos="fade-up" data-aos-delay="100">
+          {loading ? (
+            // Loading skeletons
+            Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="bg-white rounded-2xl overflow-hidden shadow-lg">
+                <div className="w-full h-56 bg-gray-200 animate-pulse" />
+                <div className="p-6 space-y-4">
+                  <div className="h-6 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4" />
+                  <div className="grid grid-cols-3 gap-4">
+                    {[1, 2, 3].map(i => <div key={i} className="h-12 bg-gray-200 rounded animate-pulse" />)}
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : filteredData.length === 0 && !noProperties ? (
             <div className="col-span-full text-center py-12">
               <FaHome className="mx-auto text-6xl text-gray-300 mb-4" />
               <h3 className="text-2xl font-semibold text-gray-600 mb-2">No PGs Found</h3>
               <p className="text-gray-500">Try adjusting your search filters</p>
+              <button
+                onClick={handleReset}
+                className="mt-4 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                Reset Filters
+              </button>
             </div>
           ) : (
             filteredData.map((pg, index) => (
@@ -371,7 +408,7 @@ const PG = () => {
                   
                   {/* Price Badge */}
                   <div className="absolute top-4 left-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-full font-bold text-sm shadow-lg">
-                    ₹{pg.lowestPrice}/month
+                    ₹{pg.lowestPrice.toLocaleString()}/month
                   </div>
 
                   {/* Verified Badge */}
@@ -384,7 +421,7 @@ const PG = () => {
 
                   {/* Rating Badge */}
                   <div className="absolute bottom-4 right-4 bg-black/80 text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-1">
-                    {renderStars(pg.rating)}
+                    {renderStars(Math.floor(pg.rating))}
                     <span className="text-blue-300">({pg.reviews})</span>
                   </div>
                 </div>
@@ -401,9 +438,11 @@ const PG = () => {
                         {pg.location.area}, {pg.location.city}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500">
-                      📍 {pg.location.landmark} • {pg.distance}
-                    </p>
+                    {pg.location.landmark && (
+                      <p className="text-xs text-gray-500">
+                        📍 {pg.location.landmark}
+                      </p>
+                    )}
                   </div>
 
                   {renderAmenities(pg.amenities)}
@@ -411,20 +450,20 @@ const PG = () => {
                   <div className="grid grid-cols-3 gap-3 mt-4 mb-4 text-sm">
                     <div className="flex flex-col items-center p-2 bg-gray-50 rounded-lg">
                       <FaBed className="text-blue-500 w-5 h-5 mb-1" />
-                      <span className="font-semibold text-gray-800">
-                        {Math.round(pg.totalBeds / pg.totalRooms)} Beds/Room
+                      <span className="font-semibold text-gray-800 text-xs">
+                        {pg.roomType || 'Sharing'}
                       </span>
                     </div>
                     <div className="flex flex-col items-center p-2 bg-gray-50 rounded-lg">
                       <FaHome className="text-green-500 w-5 h-5 mb-1" />
-                      <span className="font-semibold text-gray-800">
-                        {pg.totalRooms} Rooms
+                      <span className="font-semibold text-gray-800 text-xs">
+                        {pg.totalBeds} Beds
                       </span>
                     </div>
                     <div className="flex flex-col items-center p-2 bg-gray-50 rounded-lg">
-                      <FaCar className="text-orange-500 w-5 h-5 mb-1" />
-                      <span className="font-semibold text-gray-800">
-                        {pg.amenities.includes("Parking") ? "Yes" : "No"}
+                      <FaUtensils className="text-orange-500 w-5 h-5 mb-1" />
+                      <span className="font-semibold text-gray-800 text-xs">
+                        {pg.foodIncluded ? "Food" : "No Food"}
                       </span>
                     </div>
                   </div>
@@ -432,7 +471,7 @@ const PG = () => {
                   <div className="flex justify-between items-center mb-4">
                     <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
                       <FaHome className="w-3 h-3" />
-                      {pg.type}
+                      {pg.genderPreference}
                     </span>
                     <span className="flex items-center gap-1 text-xs text-gray-500">
                       <FaUser className="w-3 h-3" />
@@ -449,11 +488,11 @@ const PG = () => {
           )}
         </div>
 
-        {filteredData.length > 0 && (
+        {filteredData.length > 0 && !loading && (
           <div className="text-center mt-8 py-6 bg-white/50 rounded-xl">
             <p className="text-gray-600">
               Showing <span className="font-semibold text-blue-600">{filteredData.length}</span> 
-              out of <span className="font-semibold text-blue-600">{enhancedPGData.length}</span> PG properties
+              out of <span className="font-semibold text-blue-600">{pgData.length}</span> PG properties
             </p>
           </div>
         )}
