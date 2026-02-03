@@ -3,61 +3,79 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaChevronLeft, FaChevronRight, FaPause, FaPlay } from 'react-icons/fa';
 
 const AdsCarousel = () => {
+  const [advertisements, setAdvertisements] = useState([]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [direction, setDirection] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [currentX, setCurrentX] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const autoPlayRef = useRef(null);
 
-  // Advertisement data with dummy images
-  const advertisements = [
-    {
-      id: 1,
-      title: 'Luxury Apartments in Vijay Nagar',
-      description: 'Premium 3BHK & 4BHK apartments starting from ₹75 Lakhs',
-      image: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1200',
-      cta: 'View Details',
-      badge: 'New Launch'
-    },
-    {
-      id: 2,
-      title: 'Commercial Spaces Available',
-      description: 'Prime office spaces in MG Road from ₹40,000/month',
-      image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200',
-      cta: 'Book Now',
-      badge: 'Limited Offer'
-    },
-    {
-      id: 3,
-      title: 'Dream Villas in Indore',
-      description: 'Spacious 4BHK villas with modern amenities',
-      image: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=1200',
-      cta: 'Schedule Visit',
-      badge: 'Hot Deal'
-    },
-    {
-      id: 4,
-      title: 'Smart Home Solutions',
-      description: 'Get 20% off on home automation packages',
-      image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200',
-      cta: 'Learn More',
-      badge: 'Save 20%'
-    },
-    {
-      id: 5,
-      title: 'Property Legal Services',
-      description: 'Expert legal consultation for your property deals',
-      image: 'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=1200',
-      cta: 'Contact Us',
-      badge: 'Trusted'
-    }
-  ];
+  // Fetch advertisements from API
+  useEffect(() => {
+    const fetchAdvertisements = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(
+          'https://api.gharzoreality.com/api/v2/advertisements/public/placement/homepage_hero'
+        );
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch advertisements');
+        }
+        
+        const data = await response.json();
+        
+        // Filter only banner type ads and format them
+        const bannerAds = (data.data || [])
+          .filter((ad) => ad.adType === 'banner' || ad.adType === 'video')
+          .map((ad) => ({
+            id: ad.id,
+            title: ad.title,
+            description: ad.title, // Using title as description since API doesn't provide it
+            image: window.innerWidth < 768 ? ad.media.mobileImage.url : ad.media.desktopImage.url,
+            cta: 'View Details',
+            badge: ad.priority ? `Priority: ${ad.priority}` : 'Featured',
+            clickUrl: ad.clickAction?.url,
+            openInNewTab: ad.clickAction?.openInNewTab || true
+          }));
+
+        if (bannerAds.length === 0) {
+          throw new Error('No banner ads available');
+        }
+
+        setAdvertisements(bannerAds);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching advertisements:', err);
+        setError(err.message);
+        // Fallback to dummy data if API fails
+        setAdvertisements([
+          {
+            id: 1,
+            title: 'Luxury Apartments in Vijay Nagar',
+            description: 'Premium 3BHK & 4BHK apartments starting from ₹75 Lakhs',
+            image: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1200',
+            cta: 'View Details',
+            badge: 'New Launch',
+            clickUrl: '#',
+            openInNewTab: true
+          }
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAdvertisements();
+  }, []);
 
   // Auto-play functionality
   useEffect(() => {
-    if (isAutoPlaying) {
+    if (isAutoPlaying && advertisements.length > 0) {
       autoPlayRef.current = setInterval(() => {
         handleNext();
       }, 5000); // Change slide every 5 seconds
@@ -68,25 +86,39 @@ const AdsCarousel = () => {
         clearInterval(autoPlayRef.current);
       }
     };
-  }, [currentSlide, isAutoPlaying]);
+  }, [currentSlide, isAutoPlaying, advertisements.length]);
 
   const handlePrevious = () => {
+    if (advertisements.length === 0) return;
     setDirection(-1);
     setCurrentSlide((prev) => (prev === 0 ? advertisements.length - 1 : prev - 1));
   };
 
   const handleNext = () => {
+    if (advertisements.length === 0) return;
     setDirection(1);
     setCurrentSlide((prev) => (prev === advertisements.length - 1 ? 0 : prev + 1));
   };
 
   const goToSlide = (index) => {
+    if (advertisements.length === 0) return;
     setDirection(index > currentSlide ? 1 : -1);
     setCurrentSlide(index);
   };
 
   const toggleAutoPlay = () => {
     setIsAutoPlaying(!isAutoPlaying);
+  };
+
+  // Handle CTA button click
+  const handleCtaClick = () => {
+    const currentAd = advertisements[currentSlide];
+    if (currentAd?.clickUrl) {
+      window.open(
+        currentAd.clickUrl,
+        currentAd.openInNewTab ? '_blank' : '_self'
+      );
+    }
   };
 
   // Mouse drag handlers
@@ -160,6 +192,38 @@ const AdsCarousel = () => {
     })
   };
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="relative bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl overflow-hidden shadow-xl">
+          <div className="relative h-[200px] sm:h-[280px] md:h-[340px] lg:h-[400px] flex items-center justify-center">
+            <div className="text-center">
+              <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-white border-t-blue-600"></div>
+              <p className="text-white mt-4">Loading advertisements...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state with fallback
+  if (advertisements.length === 0) {
+    return (
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="relative bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl overflow-hidden shadow-xl">
+          <div className="relative h-[200px] sm:h-[280px] md:h-[340px] lg:h-[400px] flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-white text-lg">No advertisements available</p>
+              {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
       {/* Carousel Container */}
@@ -196,6 +260,9 @@ const AdsCarousel = () => {
                   alt={advertisements[currentSlide].title}
                   className="w-full h-full object-cover"
                   draggable="false"
+                  onError={(e) => {
+                    e.target.src = 'https://via.placeholder.com/1200x400?text=Ad+Image';
+                  }}
                 />
                 {/* Gradient Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
@@ -241,7 +308,8 @@ const AdsCarousel = () => {
                     transition={{ delay: 0.5 }}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    className="px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-sm sm:text-base rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+                    onClick={handleCtaClick}
+                    className="px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-sm sm:text-base rounded-full shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer"
                   >
                     {advertisements[currentSlide].cta}
                   </motion.button>
@@ -320,6 +388,9 @@ const AdsCarousel = () => {
               alt={ad.title}
               className="w-full h-full object-cover"
               draggable="false"
+              onError={(e) => {
+                e.target.src = 'https://via.placeholder.com/1200x400?text=Ad';
+              }}
             />
             {index === currentSlide && (
               <div className="absolute inset-0 bg-blue-600/30" />
@@ -345,6 +416,9 @@ const AdsCarousel = () => {
               alt={ad.title}
               className="w-full h-full object-cover"
               draggable="false"
+              onError={(e) => {
+                e.target.src = 'https://via.placeholder.com/1200x400?text=Ad';
+              }}
             />
             {index === currentSlide && (
               <div className="absolute inset-0 bg-blue-600/30" />
