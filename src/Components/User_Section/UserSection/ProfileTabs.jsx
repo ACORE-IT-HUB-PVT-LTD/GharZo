@@ -66,7 +66,7 @@ const ProfileTabs = () => {
     },
     {
       id: 2,
-      title: 'Commercial Office Space',
+      title: 'Commercial Office Space .....npm u',
       type: 'Office',
       price: '₹45,000/month',
       location: 'MG Road, Indore',
