@@ -10,6 +10,8 @@ import {
   FaEdit,
   FaDoorOpen,
   FaEye,
+  FaHome,
+  FaCalendarAlt,
 } from "react-icons/fa";
 import { motion } from "framer-motion";
 import axios from "axios";
@@ -25,7 +27,13 @@ const ImageSlider = ({ images }) => {
   const prevSlide = () =>
     setCurrent((prev) => (prev - 1 + images.length) % images.length);
 
-  if (!images || images.length === 0) return null;
+  if (!images || images.length === 0) {
+    return (
+      <div className="w-full h-48 bg-gray-800/50 flex items-center justify-center rounded-t-2xl">
+        <span className="text-gray-400 text-lg">No Images</span>
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-full h-48 bg-gradient-to-b from-black/30 to-transparent overflow-hidden rounded-t-2xl group">
@@ -33,11 +41,12 @@ const ImageSlider = ({ images }) => {
         src={images[current]}
         alt="property"
         className="w-full h-full object-cover transition-all duration-500 ease-in-out"
+        onError={(e) => {
+          e.target.src = "https://via.placeholder.com/400x300?text=No+Image";
+        }}
       />
-      {/* Subtle Overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
 
-      {/* Arrows - smaller & subtle */}
       <button
         onClick={prevSlide}
         className="absolute top-1/2 left-3 -translate-y-1/2 bg-white/20 text-white p-2 rounded-full hover:bg-white/30 backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100"
@@ -51,7 +60,6 @@ const ImageSlider = ({ images }) => {
         ❯
       </button>
 
-      {/* Dots - compact */}
       {images.length > 1 && (
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
           {images.map((_, i) => (
@@ -82,7 +90,7 @@ const Property = () => {
   const [deletingId, setDeletingId] = useState(null);
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
 
-  // Detect sidebar hover state
+  // Sidebar hover detection
   useEffect(() => {
     const sidebar = document.querySelector(".sidebar");
     if (sidebar) {
@@ -99,45 +107,54 @@ const Property = () => {
     }
   }, []);
 
-  // Fetch properties
+  // Fetch my properties using new endpoint
   useEffect(() => {
     const fetchProperties = async () => {
       setLoading(true);
-      const token = localStorage.getItem("token");
+      const token =
+        localStorage.token ||
+        localStorage.usertoken ||
+        localStorage.landlordtoken ||
+        localStorage.tenanttoken ||
+        sessionStorage.token ||
+        null;
+
       if (!token) {
         toast.error("Not authenticated. Please login.");
         setProperties([]);
         setLoading(false);
         return;
       }
+
       try {
-        const response = await axios.get(`${baseurl}api/landlord/properties`, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        const data = response.data;
-        if (Array.isArray(data.properties)) {
-          setProperties(data.properties);
-        } else if (Array.isArray(data)) {
-          setProperties(data);
+        const response = await axios.get(
+          `${baseurl}api/v2/properties/my-properties`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (response.data.success && Array.isArray(response.data.data)) {
+          setProperties(response.data.data);
         } else {
           setProperties([]);
-          toast.error("No properties found.");
+          toast.info("No properties found.");
         }
       } catch (err) {
-        console.error("Fetch error:", err);
-        toast.error("Failed to fetch properties.");
+        console.error("Fetch my-properties error:", err);
+        toast.error(err.response?.data?.message || "Failed to load properties.");
         setProperties([]);
       } finally {
         setLoading(false);
       }
     };
+
     fetchProperties();
   }, []);
 
-  // Handle scroll for filter bar visibility
+  // Scroll behavior for filter bar
   useEffect(() => {
     const handleScroll = () => {
       if (window.scrollY > lastScrollY) {
@@ -152,13 +169,19 @@ const Property = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [lastScrollY]);
 
-  // Delete property
+  // Delete property (assuming same endpoint structure — adjust if needed)
   const handleDelete = async (propertyId) => {
-    if (!window.confirm("Are you sure you want to delete this property?"))
-      return;
+    if (!window.confirm("Are you sure you want to delete this property?")) return;
 
     setDeletingId(propertyId);
-    const token = localStorage.getItem("token");
+    const token =
+      localStorage.token ||
+      localStorage.usertoken ||
+      localStorage.landlordtoken ||
+      localStorage.tenanttoken ||
+      sessionStorage.token ||
+      null;
+
     if (!token) {
       toast.error("Not authenticated. Please login.");
       setDeletingId(null);
@@ -167,38 +190,42 @@ const Property = () => {
 
     try {
       const response = await axios.delete(
-        `${baseurl}api/landlord/properties/${propertyId}`,
+        `${baseurl}api/v2/properties/${propertyId}`, // ← update if delete endpoint is different
         {
           headers: {
-            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
         }
       );
+
       if (response.status === 200 || response.status === 204) {
-        setProperties((prev) => prev.filter((prop) => prop._id !== propertyId));
+        setProperties((prev) => prev.filter((p) => p._id !== propertyId));
         toast.success("Property deleted successfully!");
       } else {
         toast.error("Failed to delete property.");
       }
     } catch (err) {
       console.error("Delete error:", err);
-      toast.error("Error deleting property.");
+      toast.error(err.response?.data?.message || "Error deleting property.");
     } finally {
       setDeletingId(null);
     }
   };
 
-  // Filter properties
+  // Basic client-side filtering (you can expand later)
   const filteredProperties = properties.filter((prop) => {
+    const location = prop.location || {};
+    const price = prop.price || {};
+
     return (
       (!filters.city ||
-        prop.city?.toLowerCase().includes(filters.city.toLowerCase()) ||
-        prop.name?.toLowerCase().includes(filters.city.toLowerCase())) &&
-      (!filters.type || prop.type === filters.type) &&
+        location.city?.toLowerCase().includes(filters.city.toLowerCase()) ||
+        location.locality?.toLowerCase().includes(filters.city.toLowerCase())) &&
+      (!filters.type || prop.propertyType === filters.type) &&
       (!filters.maxRent ||
-        (prop.rent && prop.rent <= Number(filters.maxRent))) &&
-      (!filters.furnished || prop.furnished?.toString() === filters.furnished)
+        (price.amount && price.amount <= Number(filters.maxRent))) &&
+      // furnished not present in your sample → skipping or adapt if added later
+      true
     );
   });
 
@@ -222,7 +249,7 @@ const Property = () => {
       }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        {/* Header - Compact */}
+        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -232,11 +259,11 @@ const Property = () => {
             My Properties
           </h2>
           <p className="text-gray-400 text-base mt-2">
-            Manage your real estate portfolio
+            Manage your listed properties
           </p>
         </motion.div>
 
-        {/* Property Cards */}
+        {/* Properties Grid */}
         {loading ? (
           <div className="flex items-center justify-center min-h-[50vh]">
             <motion.div
@@ -260,69 +287,69 @@ const Property = () => {
               </p>
               <p className="text-gray-400">
                 {properties.length === 0
-                  ? "Add your first property to get started"
-                  : "Try different filters"}
+                  ? "You haven't listed any properties yet"
+                  : "No matches for current filters"}
               </p>
             </div>
           </motion.div>
         ) : (
           <div className="grid gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredProperties.map((property, index) => (
-              <motion.div
-                key={property._id}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.08 }}
-                whileHover={{ y: -8, scale: 1.02 }}
-                className="bg-white/10 backdrop-blur-xl rounded-2xl overflow-hidden flex flex-col border border-white/20 shadow-xl hover:shadow-orange-500/30 transition-all duration-400 relative"
-              >
-                {/* Deactivated Overlay */}
-                {!property.isActive && (
-                  <div className="absolute inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-30 rounded-2xl">
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-red-400">DEACTIVATED</p>
-                      <p className="text-sm text-gray-300 mt-2">
-                        Admin has deactivated this property
+            {filteredProperties.map((property, index) => {
+              const loc = property.location || {};
+              const priceInfo = property.price || {};
+              const area = property.area || {};
+              const images = property.images?.map((img) => img.url) || [];
+
+              return (
+                <motion.div
+                  key={property._id}
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.08 }}
+                  whileHover={{ y: -8, scale: 1.02 }}
+                  className="bg-white/10 backdrop-blur-xl rounded-2xl overflow-hidden flex flex-col border border-white/20 shadow-xl hover:shadow-orange-500/30 transition-all duration-400 relative"
+                >
+                  <ImageSlider images={images} />
+
+                  <div className="p-6 flex flex-col gap-4 flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <h5 className="text-xl font-bold text-white line-clamp-2">
+                        {property.title || "Untitled Property"}
+                      </h5>
+                      <span className="bg-orange-600/80 text-white px-3 py-1 rounded-full text-xs font-medium shrink-0">
+                        {property.propertyType || "—"} • {property.bhk || "?"} BHK
+                      </span>
+                    </div>
+
+                    <div className="flex items-center text-gray-300 text-sm">
+                      <FaMapMarkerAlt className="mr-2 text-orange-400 flex-shrink-0" />
+                      <p className="truncate">
+                        {loc.locality || loc.city || "—"}, {loc.city || loc.state || "—"}
                       </p>
                     </div>
-                  </div>
-                )}
 
-                <ImageSlider images={property.images} />
+                    {/* Price & Key Info */}
+                    <div className="grid grid-cols-2 gap-3 text-center">
+                      <div className="bg-white/10 backdrop-blur-md rounded-xl py-3 px-4 border border-white/20">
+                        <FaRupeeSign className="mx-auto text-lg text-green-400 mb-1" />
+                        <p className="text-xl font-bold text-white">
+                          {priceInfo.amount ? `₹${priceInfo.amount}` : "—"}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {priceInfo.per ? `/ ${priceInfo.per}` : "Rent"}
+                        </p>
+                      </div>
 
-                <div className="p-6 flex flex-col gap-4 flex-1">
-                  <div className="flex items-start justify-between">
-                    <h5 className="text-xl font-bold text-white line-clamp-2">
-                      {property.name}
-                    </h5>
-                    <span className="bg-orange-600/80 text-white px-3 py-1 rounded-full text-xs font-medium">
-                      {property.type}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center text-gray-300 text-sm">
-                    <FaMapMarkerAlt className="mr-2 text-orange-400 flex-shrink-0" />
-                    <p className="truncate">
-                      {property.address}, {property.city}
-                    </p>
-                  </div>
-
-                  {/* Compact Stats */}
-                  <div className="grid grid-cols-2 gap-3 text-center">
-                    <div className="bg-white/10 backdrop-blur-md rounded-xl py-3 px-4 border border-white/20">
-                      <FaDoorOpen className="mx-auto text-lg text-indigo-300 mb-1" />
-                      <p className="text-xl font-bold text-white">{property.totalRooms}</p>
-                      <p className="text-xs text-gray-400">Rooms</p>
+                      <div className="bg-white/10 backdrop-blur-md rounded-xl py-3 px-4 border border-white/20">
+                        <FaHome className="mx-auto text-lg text-cyan-300 mb-1" />
+                        <p className="text-xl font-bold text-white">
+                          {area.carpet || area.builtUp || "—"} {area.unit || "sqft"}
+                        </p>
+                        <p className="text-xs text-gray-400">Area</p>
+                      </div>
                     </div>
-                    <div className="bg-white/10 backdrop-blur-md rounded-xl py-3 px-4 border border-white/20">
-                      <FaBed className="mx-auto text-lg text-indigo-300 mb-1" />
-                      <p className="text-xl font-bold text-white">{property.totalBeds}</p>
-                      <p className="text-xs text-gray-400">Beds</p>
-                    </div>
-                  </div>
 
-                  {/* Compact Action Buttons */}
-                  {property.isActive && (
+                    {/* Action Buttons */}
                     <div className="grid grid-cols-3 gap-3 mt-4">
                       <Link
                         to={`/landlord/property/${property._id}`}
@@ -330,17 +357,19 @@ const Property = () => {
                       >
                         <FaEye className="text-base" />
                       </Link>
+
                       <Link
                         to={`/landlord/property/edit/${property._id}`}
                         className="bg-gradient-to-r from-orange-600/80 to-amber-600/80 backdrop-blur-md text-white py-3 rounded-xl text-center hover:from-orange-500 hover:to-amber-500 transition font-medium shadow-lg flex items-center justify-center"
                       >
                         <FaEdit className="text-base" />
                       </Link>
+
                       <button
                         onClick={() => handleDelete(property._id)}
                         disabled={deletingId === property._id}
                         className={`bg-gradient-to-r from-red-600/80 to-rose-600/80 backdrop-blur-md text-white py-3 rounded-xl text-center hover:from-red-500 hover:to-rose-500 transition font-medium shadow-lg flex items-center justify-center ${
-                          deletingId === property._id ? "opacity-60" : ""
+                          deletingId === property._id ? "opacity-60 cursor-not-allowed" : ""
                         }`}
                       >
                         {deletingId === property._id ? (
@@ -350,10 +379,25 @@ const Property = () => {
                         )}
                       </button>
                     </div>
-                  )}
-                </div>
-              </motion.div>
-            ))}
+
+                    {/* Status badge */}
+                    <div className="mt-2 text-center">
+                      <span
+                        className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                          property.status === "Active"
+                            ? "bg-green-600/70"
+                            : property.status === "Pending"
+                            ? "bg-yellow-600/70"
+                            : "bg-red-600/70"
+                        }`}
+                      >
+                        {property.status || property.verificationStatus || "Unknown"}
+                      </span>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         )}
       </div>

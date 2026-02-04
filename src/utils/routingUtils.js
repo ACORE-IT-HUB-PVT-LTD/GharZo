@@ -1,27 +1,27 @@
 /**
  * Routing utility for role-based navigation
- * Single source of truth for redirect rules
+ * SINGLE SOURCE OF TRUTH
  */
 
 export const redirectByRole = (navigate, role) => {
   if (!role) return;
 
+  const normalizeRole = (r) =>
+    r.replace(/_/g, "").toLowerCase();
+
   const roleMap = {
-    tenant: '/tenant',
-    Tenant: '/tenant',
-    landlord: '/landlord/add-property',
-    Landlord: '/landlord/add-property',
-    sub_owner: '/sub_owner',
-    subOwner: '/sub_owner',
-    worker: '/dr_worker',
-    Worker: '/dr_worker',
-    dr_worker: '/dr_worker',
+    tenant: "/tenant",
+    landlord: "/landlord/add-property",
+    subowner: "/sub_owner",
+    worker: "/dr_worker",
   };
 
-  const targetPath = roleMap[role];
+  const normalizedRole = normalizeRole(role);
+  const targetPath = roleMap[normalizedRole];
+
   if (targetPath) {
     navigate(targetPath, { replace: true });
   } else {
-    console.warn(`No redirect path defined for role: ${role}`);
+    console.warn("No redirect path defined for role:", role);
   }
 };

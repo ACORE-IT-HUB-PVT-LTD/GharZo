@@ -150,65 +150,52 @@ const PG = () => {
   };
 
   // Unified role-based redirect function
-  const redirectBasedOnRole = (targetRole, pg = null) => {
-    // Not logged in - show login modal
-    if (!user) {
-      // Store the target role so we can redirect after login
-      sessionStorage.setItem('pendingRole', targetRole);
-      setShowLogin(true);
-      return;
-    }
+ const redirectBasedOnRole = (targetRole, pg = null) => {
+  if (loading) return;
 
-    const userRole = user.role?.toLowerCase?.();
+  if (!user) {
+    sessionStorage.setItem("pendingRole", targetRole);
+    setShowLogin(true);
+    return;
+  }
 
-    // Role-based navigation logic
-    switch (targetRole) {
-      case 'tenant':
-        if (userRole === 'tenant') {
-          redirectByRole(navigate, userRole);
-        } else {
-          setRoleModalMessage(`You are not a tenant. Your current role is: ${user.role}`);
-          setShowRoleModal(true);
-        }
-        break;
+  switch (targetRole) {
+    case "tenant":
+      redirectByRole(navigate, user.role);
+      break;
 
-      case 'landlord':
-        if (userRole === 'landlord') {
-          redirectByRole(navigate, userRole);
-        } else {
-          setRoleModalMessage(`Access Denied! You need a landlord account to add properties. Your current role is: ${user.role}`);
-          setShowRoleModal(true);
-        }
-        break;
+    case "landlord":
+      redirectByRole(navigate, user.role);
+      break;
 
-      case 'subOwner':
-        if (userRole === 'sub_owner') {
-          redirectByRole(navigate, userRole);
-        } else {
-          setRoleModalMessage(`You are not a sub owner. Your current role is: ${user.role}`);
-          setShowRoleModal(true);
-        }
-        break;
+    case "subOwner":
+      redirectByRole(navigate, user.role);
+      break;
 
-      case 'worker':
-        if (userRole === 'worker') {
-          redirectByRole(navigate, userRole);
-        } else {
-          setRoleModalMessage(`You are not a worker. Your current role is: ${user.role}`);
-          setShowRoleModal(true);
-        }
-        break;
+    case "worker":
+      redirectByRole(navigate, user.role);
+      break;
 
-      case 'viewProperty':
-        if (pg) {
-          navigate(`/property/${pg.id}`, { state: pg });
-        }
-        break;
+    case "viewProperty":
+      if (pg) {
+        navigate(`/property/${pg.id}`, { state: pg });
+      }
+      break;
 
-      default:
-        console.error('Unknown target role:', targetRole);
-    }
-  };
+    default:
+      setRoleModalMessage(`Invalid role: ${user.role}`);
+      setShowRoleModal(true);
+  }
+};
+
+
+const showRoleError = () => {
+  setRoleModalMessage(
+    `Access denied. Your role: ${user.role}`
+  );
+  setShowRoleModal(true);
+};
+
 
   // Simplified handlers - just call redirectBasedOnRole
   const handleTenantLogin = () => {
@@ -234,16 +221,6 @@ const PG = () => {
   // Handle successful login
   const handleLoginSuccess = async () => {
     setShowLogin(false);
-    
-    // Check if there was a pending role action
-    const pendingRole = sessionStorage.getItem('pendingRole');
-    if (pendingRole) {
-      sessionStorage.removeItem('pendingRole');
-      // Wait a moment for auth state to update
-      setTimeout(() => {
-        redirectBasedOnRole(pendingRole);
-      }, 300);
-    }
   };
 
   const handleSignupComplete = async () => {

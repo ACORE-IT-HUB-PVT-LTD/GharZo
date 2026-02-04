@@ -1,1141 +1,601 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  Home, MapPin, DollarSign, Calendar, AlertCircle, User, Phone, 
+  Building2, CheckCircle, Clock, FileText, Star, LogOut, Menu, X,
+  Badge, Briefcase, Shield, Zap, Droplet, Hammer, Camera, ChevronRight,
+  TrendingUp, AlertTriangle, Download
+} from 'lucide-react';
 
-// import React, { useEffect, useState } from "react";
-// import { Link } from "react-router-dom";
-// import axios from "axios";
-// import {
-//   FaBuilding,
-//   FaRupeeSign,
-//   FaExclamationTriangle,
-//   FaBullhorn,
-//   FaHandHoldingUsd,
-//   FaFileAlt,
-//   FaCouch,
-//   FaExchangeAlt,
-//   FaUserCircle,
-//   FaBell,
-//   FaSearch,
-//   FaFileContract,
-//   FaShieldAlt,
-//   FaHome,
-//   FaCalendarAlt,
-//   FaReceipt,FaArrowRight ,FaTools , FaClock ,FaChevronRight ,
-// } from "react-icons/fa";
-
-// const TenantDashboard = () => {
-//   const [tenantInfo, setTenantInfo] = useState({ name: "", property: "" });
-//   const [totalDue, setTotalDue] = useState(0);
-//   const [openComplaints, setOpenComplaints] = useState(0);
-//   const [announcementsCount, setAnnouncementsCount] = useState(0);
-//   const [loading, setLoading] = useState(true);
-//   const [error, setError] = useState(null);
-//   const [tenantId, setTenantId] = useState(
-//     localStorage.getItem("tenantId") ||
-//       JSON.parse(localStorage.getItem("tenant"))?.tenantId ||
-//       ""
-//   );
-
-//   // === API Fetching (FIXED URL SPACING) ===
-//   useEffect(() => {
-//     const fetchData = async () => {
-//       try {
-//         const token = localStorage.getItem("tenanttoken");
-//         if (!token) {
-//           setError("No authentication token found. Please log in.");
-//           return;
-//         }
-
-//         const profileRes = await axios.get(
-//           "https://api.gharzoreality.com/api/tenant/profile", // ✅ Fixed
-//           { headers: { Authorization: `Bearer ${token}` } }
-//         );
-
-//         const accRes = await axios.get(
-//           "https://api.gharzoreality.com/api/tenant/accommodations", // ✅ Fixed
-//           { headers: { Authorization: `Bearer ${token}` } }
-//         );
-
-//         if (profileRes.data.success && accRes.data.success) {
-//           setTenantInfo({
-//             name: profileRes.data.tenant.name || "",
-//             property:
-//               accRes.data.accommodations?.[0]?.propertyName || "Not Assigned",
-//           });
-
-//           const fetchedTenantId = accRes.data.accommodations?.[0]?.tenantId;
-//           if (fetchedTenantId && fetchedTenantId !== tenantId) {
-//             localStorage.setItem("tenantId", fetchedTenantId);
-//             setTenantId(fetchedTenantId);
-//             return;
-//           }
-
-//           // Fetch dues
-//           const accommodation = accRes.data.accommodations?.[0];
-//           if (accommodation) {
-//             const lId = accommodation.landlordId;
-//             const duesRes = await axios.get(
-//               `https://api.gharzoreality.com/api/dues/tenant/${tenantId}/${lId}`, // ✅ Fixed
-//               { headers: { Authorization: `Bearer ${token}` } }
-//             );
-//             const pendingBills = (duesRes.data || []).filter(
-//               (bill) => bill.status === "Unpaid"
-//             );
-//             setTotalDue(
-//               pendingBills.reduce((sum, bill) => sum + bill.amount, 0)
-//             );
-//           }
-
-//           // Fetch complaints
-//           const complaintsRes = await axios.get(
-//             `https://api.gharzoreality.com/api/landlord/tenant/${tenantId}/complaints`, // ✅ Fixed
-//             { headers: { Authorization: `Bearer ${token}` } }
-//           );
-//           const activeComplaints = (
-//             complaintsRes.data?.complaints || []
-//           ).filter(
-//             (c) => c.status !== "Resolved" && c.status !== "Rejected"
-//           ).length;
-//           setOpenComplaints(activeComplaints);
-
-//           // Fetch announcements
-//           const annRes = await axios.get(
-//             `https://api.gharzoreality.com/api/announcement/tenant/${tenantId}`, // ✅ Fixed
-//             { headers: { Authorization: `Bearer ${token}` } }
-//           );
-//           setAnnouncementsCount(annRes.data?.announcements?.length || 0);
-//         }
-//       } catch (error) {
-//         console.error("Error:", error);
-//         setError("Failed to load dashboard data. Please try again.");
-//       } finally {
-//         setLoading(false);
-//       }
-//     };
-
-//     if (tenantId) fetchData();
-//   }, [tenantId]);
-
-//   // === Card Data with Brand Colors ===
-//   const dashboardData = [
-//     {
-//       icon: <FaBuilding className="text-white text-2xl" />,
-//       title: "My Property",
-//       subtitle: tenantInfo.property,
-//       link: "/tenant/property",
-//       bg: "bg-gradient-to-br from-[#1E3A8A] to-[#1E40AF]",
-//     },
-//     {
-//       icon: <FaHandHoldingUsd className="text-white text-2xl" />,
-//       title: "Pay Rent",
-//       subtitle: `₹${totalDue.toLocaleString()} Due`,
-//       link: `/tenant/rent-payments/${tenantId}`,
-//       bg: "bg-gradient-to-br from-[#FF6B00] to-[#FF8C00]",
-//     },
-//     {
-//       icon: <FaExclamationTriangle className="text-white text-2xl" />,
-//       title: "Complaints",
-//       subtitle: `${openComplaints} Active`,
-//       link: `/tenant/complaints/${tenantId}`,
-//       bg: "bg-gradient-to-br from-[#F59E0B] to-[#D97706]",
-//     },
-//     {
-//       icon: <FaBullhorn className="text-white text-2xl" />,
-//       title: "Announcements",
-//       subtitle: `${announcementsCount} New`,
-//       link: `/tenant/announcements/${tenantId}`,
-//       bg: "bg-gradient-to-br from-[#8B5CF6] to-[#7C3AED]",
-//     },
-//     {
-//       icon: <FaFileAlt className="text-white text-2xl" />,
-//       title: "Documents",
-//       subtitle: "Lease & Bills",
-//       link: "/tenant/documents",
-//       bg: "bg-gradient-to-br from-[#0D9488] to-[#0F766E]",
-//     },
-//     {
-//       icon: <FaCouch className="text-white text-2xl" />,
-//       title: "Facilities",
-//       subtitle: "Book Amenities",
-//       link: "/tenant/facilities",
-//       bg: "bg-gradient-to-br from-[#EC4899] to-[#DB2777]",
-//     },
-//     {
-//       icon: <FaExchangeAlt className="text-white text-2xl" />,
-//       title: "Room Switch",
-//       subtitle: "Request Change",
-//       link: "/tenant/room-switch",
-//       bg: "bg-gradient-to-br from-[#7C2D12] to-[#9A3412]",
-//     },
-//     {
-//       icon: <FaFileContract className="text-white text-2xl" />,
-//       title: "Rent Agreement",
-//       subtitle: "View & Download",
-//       link: "/tenant/rent-agreement",
-//       bg: "bg-gradient-to-br from-[#1E40AF] to-[#1D4ED8]",
-//     },
-//   ];
-
-//   // === Loading State ===
-//   if (loading) {
-//     return (
-//       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-//         <div className="text-center">
-//           <div className="w-16 h-16 border-4 border-[#1E3A8A] border-t-transparent rounded-full animate-spin mx-auto"></div>
-//           <p className="mt-4 text-lg font-medium text-gray-700">
-//             Loading your dashboard...
-//           </p>
-//         </div>
-//       </div>
-//     );
-//   }
-
-//   // === Main UI ===
-//  // === Main UI ===
-// return (
-//   <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30">
-//     {/* Enhanced Header */}
-//     <header className="bg-white border-b border-gray-100 shadow-sm z-40">
-//       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
-//         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-//           <div className="flex items-center gap-5">
-//             <div className="relative">
-//               <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
-//                 <FaUserCircle className="text-2xl text-white" />
-//               </div>
-//               <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-gradient-to-r from-green-400 to-emerald-500 border-[3px] border-white rounded-full flex items-center justify-center">
-//                 <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-//               </div>
-//             </div>
-//             <div className="space-y-1">
-//               <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 bg-clip-text text-transparent">
-//                 Welcome back,{" "}
-//                 <span className="text-gray-900">
-//                   {tenantInfo.name || "Tenant"}! 👋
-//                 </span>
-//               </h1>
-//               <div className="flex items-center gap-3">
-//                 <div className="flex items-center gap-2 text-gray-600 font-medium">
-//                   <FaHome className="text-blue-500" />
-//                   <span>{tenantInfo.property || "No property assigned"}</span>
-//                 </div>
-//                 <div className="h-4 w-px bg-gray-300"></div>
-//                 <div className="flex items-center gap-2 text-sm text-gray-500">
-//                   <FaCalendarAlt className="text-blue-400" />
-//                   <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
-//                 </div>
-//               </div>
-//             </div>
-//           </div>
-
-       
-//         </div>
-//       </div>
-//     </header>
-
-//     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-//       {/* Enhanced Stats Cards */}
-//       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-//         {[
-//           {
-//             title: "Total Due Amount",
-//             value: `₹${totalDue.toLocaleString()}`,
-//             icon: <FaRupeeSign />,
-//             change: "+₹2,500",
-//             trend: "up",
-//             color: "from-orange-500 to-amber-500",
-//             bg: "bg-gradient-to-br from-orange-50 to-amber-50",
-//             border: "border-orange-200"
-//           },
-//           {
-//             title: "Open Complaints",
-//             value: openComplaints,
-//             icon: <FaExclamationTriangle />,
-//             change: "-2 this week",
-//             trend: "down",
-//             color: "from-red-500 to-rose-500",
-//             bg: "bg-gradient-to-br from-red-50 to-rose-50",
-//             border: "border-red-200"
-//           },
-//           {
-//             title: "Active Announcements",
-//             value: announcementsCount,
-//             icon: <FaBullhorn />,
-//             change: "3 new today",
-//             trend: "up",
-//             color: "from-blue-600 to-indigo-600",
-//             bg: "bg-gradient-to-br from-blue-50 to-indigo-50",
-//             border: "border-blue-200"
-//           },
-//         ].map((stat, i) => (
-//           <div
-//             key={i}
-//             className={`relative group overflow-hidden rounded-2xl border ${stat.border} ${stat.bg} p-6 transition-all duration-500 hover:scale-[1.02] hover:shadow-xl`}
-//           >
-//             <div className="relative flex items-center justify-between">
-//               <div className="space-y-3">
-//                 <p className="text-sm font-semibold uppercase tracking-wide text-gray-600">
-//                   {stat.title}
-//                 </p>
-//                 <div className="flex items-baseline gap-2">
-//                   <p className="text-3xl font-bold text-gray-900">
-//                     {stat.value}
-//                   </p>
-//                   <span className={`text-sm font-semibold px-2 py-1 rounded-full ${stat.trend === 'up' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-//                     {stat.change}
-//                   </span>
-//                 </div>
-//               </div>
-
-//               <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-lg shadow-black/10`}>
-//                 <span className="text-2xl text-white">{stat.icon}</span>
-//               </div>
-//             </div>
-            
-//             {/* Progress indicator */}
-//             <div className="relative mt-6 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-//               <div className="absolute inset-y-0 left-0 w-3/4 bg-gradient-to-r from-orange-500 to-amber-500 rounded-full"></div>
-//             </div>
-//           </div>
-//         ))}
-//       </div>
-
-//       {/* Enhanced Quick Actions Section with Clean White Design */}
-//       <section className="mb-12">
-//         <div className="relative overflow-hidden rounded-3xl bg-white border border-gray-200 shadow-lg">
-          
-//           {/* Section Header */}
-//           <div className="px-8 pt-8 pb-6 border-b border-gray-100">
-//             <div className="flex items-center gap-4 mb-2">
-//               <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-500 shadow-md flex items-center justify-center">
-//                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-//                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-//                 </svg>
-//               </div>
-//               <div>
-//                 <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-700 to-purple-700 bg-clip-text text-transparent">
-//                   Quick Actions
-//                 </h2>
-//                 <p className="text-gray-600">Everything you need, just a click away</p>
-//               </div>
-//             </div>
-//           </div>
-
-//           {/* Cards Grid */}
-//           <div className="p-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-//             {dashboardData.map((item, index) => {
-//               // Define color themes for each card
-//               const colorThemes = [
-//                 { from: "#3b82f6", to: "#1d4ed8", text: "#2563eb", bg: "#eff6ff", border: "#dbeafe" }, // Blue
-//                 { from: "#10b981", to: "#059669", text: "#059669", bg: "#f0fdf4", border: "#dcfce7" }, // Green
-//                 { from: "#8b5cf6", to: "#7c3aed", text: "#7c3aed", bg: "#f5f3ff", border: "#ede9fe" }, // Purple
-//                 { from: "#f59e0b", to: "#d97706", text: "#d97706", bg: "#fffbeb", border: "#fef3c7" }  // Amber
-//               ];
-
-//               const theme = colorThemes[index % colorThemes.length];
-
-//               return (
-//                 <Link
-//                   key={index}
-//                   to={item.link}
-//                   className="group relative overflow-hidden rounded-2xl transition-all duration-500 hover:-translate-y-2 hover:shadow-xl"
-//                   style={{
-//                     background: `linear-gradient(135deg, ${theme.bg} 0%, white 100%)`,
-//                     border: `2px solid ${theme.border}`,
-//                     boxShadow: '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
-//                   }}
-//                 >
-//                   {/* Hover gradient overlay */}
-//                   <div 
-//                     className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500"
-//                     style={{
-//                       background: `linear-gradient(135deg, ${theme.from} 0%, ${theme.to} 100%)`
-//                     }}
-//                   ></div>
-
-//                   {/* Card content */}
-//                   <div className="relative p-6">
-//                     {/* Icon section */}
-//                     <div className="flex items-start justify-between mb-6">
-//                       <div 
-//                         className="w-14 h-14 rounded-xl flex items-center justify-center shadow-md transition-transform duration-300 group-hover:scale-110"
-//                         style={{
-//                           background: `linear-gradient(135deg, ${theme.from} 0%, ${theme.to} 100%)`,
-//                         }}
-//                       >
-//                         <div className="text-white text-2xl">{item.icon}</div>
-//                       </div>
-
-//                       {/* Animated arrow */}
-//                       <div className="opacity-0 group-hover:opacity-100 transform translate-x-4 group-hover:translate-x-0 transition-all duration-300">
-//                         <svg className="w-6 h-6" style={{ color: theme.text }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-//                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-//                         </svg>
-//                       </div>
-//                     </div>
-
-//                     {/* Text content */}
-//                     <div className="space-y-2">
-//                       <h3 
-//                         className="text-xl font-bold transition-colors duration-300 group-hover:text-gray-900"
-//                         style={{ color: theme.text }}
-//                       >
-//                         {item.title}
-//                       </h3>
-//                       <p className="text-gray-600 text-sm leading-relaxed">
-//                         {item.subtitle}
-//                       </p>
-//                     </div>
-
-//                     {/* Progress indicator on hover */}
-//                     <div 
-//                       className="absolute bottom-0 left-0 right-0 h-1 scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-500"
-//                       style={{
-//                         background: `linear-gradient(90deg, ${theme.from} 0%, ${theme.to} 100%)`,
-//                       }}
-//                     ></div>
-//                   </div>
-
-//                   {/* Floating particles */}
-//                   <div 
-//                     className="absolute top-3 right-3 w-2 h-2 rounded-full opacity-0 group-hover:opacity-100 animate-ping"
-//                     style={{
-//                       backgroundColor: theme.from,
-//                       animationDelay: '200ms'
-//                     }}
-//                   ></div>
-
-//                   {/* Corner accent */}
-//                   <div 
-//                     className="absolute top-0 right-0 w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-//                     style={{
-//                       background: `linear-gradient(135deg, ${theme.from} 0%, ${theme.to} 100%)`,
-//                       clipPath: 'polygon(100% 0, 0 0, 100% 100%)'
-//                     }}
-//                   ></div>
-//                 </Link>
-//               );
-//             })}
-//           </div>
-
-//           {/* Footer */}
-//           <div className="px-8 pb-8">
-//             <div className="flex items-center justify-between pt-6 border-t border-gray-100">
-//               <div className="flex items-center gap-4">
-//                 <div className="flex items-center gap-2 text-sm text-gray-500">
-//                   <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-//                   <span>All services active</span>
-//                 </div>
-//                 <div className="w-px h-4 bg-gray-200"></div>
-//                 <div className="text-sm text-gray-500">
-//                   Last updated: Just now
-//                 </div>
-//               </div>
-//               <div className="text-sm text-gray-500">
-//                 Click any card to get started
-//               </div>
-//             </div>
-//           </div>
-//         </div>
-//       </section>
-
-//       {/* Enhanced Recent Activity Section */}
-//       <section className="mb-10">
-//         <div className="flex items-center justify-between mb-6">
-//           <div className="space-y-1">
-//             <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 bg-clip-text text-transparent">
-//               Recent Activity
-//             </h2>
-//             <p className="text-gray-600">Your latest updates and notifications</p>
-//           </div>
-//           <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-gray-100 to-gray-50 hover:from-gray-200 hover:to-gray-100 text-gray-700 border border-gray-200 transition-all hover:shadow-md">
-//             View All
-//             <FaArrowRight className="text-xs" />
-//           </button>
-//         </div>
-
-//         <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
-//           <div className="p-6">
-//             <div className="space-y-4">
-//               {[
-//                 {
-//                   icon: <FaCalendarAlt className="text-blue-500" />,
-//                   title: "Property Inspection Scheduled",
-//                   desc: "Annual inspection scheduled for October 15th at 2:00 PM",
-//                   time: "2 hours ago",
-//                   status: "upcoming",
-//                   color: "bg-blue-100 border-blue-200"
-//                 },
-//                 {
-//                   icon: <FaReceipt className="text-green-500" />,
-//                   title: "Rent Payment Confirmed",
-//                   desc: "October rent payment of ₹15,000 successfully processed",
-//                   time: "1 day ago",
-//                   status: "completed",
-//                   color: "bg-green-100 border-green-200"
-//                 },
-//                 {
-//                   icon: <FaShieldAlt className="text-purple-500" />,
-//                   title: "Police Verification Updated",
-//                   desc: "Documents have been verified and updated in the system",
-//                   time: "3 days ago",
-//                   status: "verified",
-//                   color: "bg-purple-100 border-purple-200"
-//                 },
-//                 {
-//                   icon: <FaTools className="text-amber-500" />,
-//                   title: "Maintenance Request",
-//                   desc: "Plumbing issue reported - Technician assigned",
-//                   time: "5 days ago",
-//                   status: "in-progress",
-//                   color: "bg-amber-100 border-amber-200"
-//                 }
-//               ].map((act, i) => (
-//                 <div
-//                   key={i}
-//                   className="group flex items-start gap-5 p-4 rounded-xl hover:bg-white hover:shadow-md transition-all duration-300 border border-gray-100"
-//                 >
-//                   <div className="relative">
-//                     <div className={`p-3 rounded-xl ${act.color} shadow-sm group-hover:scale-110 transition-transform duration-300`}>
-//                       {act.icon}
-//                     </div>
-//                     <div className="absolute -top-1 -right-1 w-4 h-4 bg-white border-2 border-gray-300 rounded-full"></div>
-//                   </div>
-                  
-//                   <div className="flex-1 min-w-0">
-//                     <div className="flex items-start justify-between gap-4">
-//                       <div className="space-y-1">
-//                         <h4 className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors">
-//                           {act.title}
-//                         </h4>
-//                         <p className="text-sm text-gray-600">{act.desc}</p>
-//                       </div>
-//                       <div className="flex flex-col items-end gap-2">
-//                         <span className="text-xs font-medium px-3 py-1 rounded-full bg-gray-100 text-gray-700">
-//                           {act.status}
-//                         </span>
-//                         <span className="text-xs text-gray-500 flex items-center gap-1">
-//                           <FaClock className="text-gray-400" />
-//                           {act.time}
-//                         </span>
-//                       </div>
-//                     </div>
-                    
-//                     {act.status === "in-progress" && (
-//                       <div className="mt-3">
-//                         <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-//                           <div className="h-full w-3/4 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full"></div>
-//                         </div>
-//                         <p className="text-xs text-gray-500 mt-1">75% complete</p>
-//                       </div>
-//                     )}
-//                   </div>
-                  
-//                   <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-//                     <FaChevronRight className="text-gray-400 group-hover:text-blue-500 transition-colors" />
-//                   </div>
-//                 </div>
-//               ))}
-//             </div>
-//           </div>
-          
-//           <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-white border-t border-gray-200">
-//             <div className="flex items-center justify-between text-sm text-gray-600">
-//               <div className="flex items-center gap-4">
-//                 <div className="flex items-center gap-2">
-//                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-//                   <span>Completed</span>
-//                 </div>
-//                 <div className="flex items-center gap-2">
-//                   <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
-//                   <span>In Progress</span>
-//                 </div>
-//               </div>
-//               <div className="flex items-center gap-2">
-//                 <span>Showing 4 of 12 activities</span>
-//               </div>
-//             </div>
-//           </div>
-//         </div>
-//       </section>
-//     </main>
-//   </div>
-// );
-// };
-
-// export default TenantDashboard;
-
-
-
-
-
-
-
-
-
-import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-// import axios from "axios"; // ✅ Commented out
-import {
-  FaBuilding,
-  FaRupeeSign,
-  FaExclamationTriangle,
-  FaBullhorn,
-  FaHandHoldingUsd,
-  FaFileAlt,
-  FaCouch,
-  FaExchangeAlt,
-  FaUserCircle,
-  FaBell,
-  FaSearch,
-  FaFileContract,
-  FaShieldAlt,
-  FaHome,
-  FaCalendarAlt,
-  FaReceipt,FaArrowRight ,FaTools , FaClock ,FaChevronRight ,
-} from "react-icons/fa";
-
-const TenantDashboard = () => {
-  // ✅ Dummy data initialized directly
-  const [tenantInfo, setTenantInfo] = useState({ 
-    name: "John Doe", 
-    property: "Sunrise Apartments, Tower A - 401" 
-  });
-  const [totalDue, setTotalDue] = useState(15000);
-  const [openComplaints, setOpenComplaints] = useState(3);
-  const [announcementsCount, setAnnouncementsCount] = useState(5);
-  const [loading, setLoading] = useState(false); // ✅ Set to false to skip loading
+const TenancyDashboard = () => {
+  const [tenancyData, setTenancyData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [tenantId, setTenantId] = useState("TENANT123"); // ✅ Dummy tenant ID
+  const [activeTab, setActiveTab] = useState('overview');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
 
-  // === API Fetching (COMMENTED OUT) ===
   useEffect(() => {
-    // ✅ All API calls commented out
-    /*
     const fetchData = async () => {
       try {
-        const token = localStorage.getItem("tenanttoken");
+        setLoading(true);
+        
+        // Get token from localStorage
+        const token = localStorage.token || localStorage.usertoken || sessionStorage.token;
+        
         if (!token) {
-          setError("No authentication token found. Please log in.");
+          setError('Authentication required. Please login first.');
+          setLoading(false);
           return;
         }
-
-        const profileRes = await axios.get(
-          "https://api.gharzoreality.com/api/tenant/profile",
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-
-        const accRes = await axios.get(
-          "https://api.gharzoreality.com/api/tenant/accommodations",
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-
-        if (profileRes.data.success && accRes.data.success) {
-          setTenantInfo({
-            name: profileRes.data.tenant.name || "",
-            property:
-              accRes.data.accommodations?.[0]?.propertyName || "Not Assigned",
-          });
-
-          const fetchedTenantId = accRes.data.accommodations?.[0]?.tenantId;
-          if (fetchedTenantId && fetchedTenantId !== tenantId) {
-            localStorage.setItem("tenantId", fetchedTenantId);
-            setTenantId(fetchedTenantId);
-            return;
+        
+        // Fetch tenancy data from single API with authentication
+        const response = await fetch('https://api.gharzoreality.com/api/tenancies/tenant/my-tenancies', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
           }
+        });
+        const data = await response.json();
 
-          // Fetch dues
-          const accommodation = accRes.data.accommodations?.[0];
-          if (accommodation) {
-            const lId = accommodation.landlordId;
-            const duesRes = await axios.get(
-              `https://api.gharzoreality.com/api/dues/tenant/${tenantId}/${lId}`,
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
-            const pendingBills = (duesRes.data || []).filter(
-              (bill) => bill.status === "Unpaid"
-            );
-            setTotalDue(
-              pendingBills.reduce((sum, bill) => sum + bill.amount, 0)
-            );
-          }
-
-          // Fetch complaints
-          const complaintsRes = await axios.get(
-            `https://api.gharzoreality.com/api/landlord/tenant/${tenantId}/complaints`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          const activeComplaints = (
-            complaintsRes.data?.complaints || []
-          ).filter(
-            (c) => c.status !== "Resolved" && c.status !== "Rejected"
-          ).length;
-          setOpenComplaints(activeComplaints);
-
-          // Fetch announcements
-          const annRes = await axios.get(
-            `https://api.gharzoreality.com/api/announcement/tenant/${tenantId}`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          setAnnouncementsCount(annRes.data?.announcements?.length || 0);
+        if (data.success && data.data && data.data.length > 0) {
+          setTenancyData(data.data[0]);
+          setError(null);
+        } else {
+          setError('No tenancy data found');
         }
-      } catch (error) {
-        console.error("Error:", error);
-        setError("Failed to load dashboard data. Please try again.");
+      } catch (err) {
+        setError('Failed to load data. Please try again later.');
+        console.error('Error fetching data:', err);
       } finally {
         setLoading(false);
       }
     };
 
-    if (tenantId) fetchData();
-    */
+    fetchData();
+  }, []);
 
-    // ✅ Dummy data is already set in useState, so no need to fetch
-    setLoading(false);
-  }, [tenantId]);
-
-  // === Card Data with Brand Colors ===
-  const dashboardData = [
-    {
-      icon: <FaBuilding className="text-white text-2xl" />,
-      title: "My Property",
-      subtitle: tenantInfo.property,
-      link: "/tenant/property",
-      bg: "bg-gradient-to-br from-[#1E3A8A] to-[#1E40AF]",
-    },
-    {
-      icon: <FaHandHoldingUsd className="text-white text-2xl" />,
-      title: "Pay Rent",
-      subtitle: `₹${totalDue.toLocaleString()} Due`,
-      link: `/tenant/rent-payments/${tenantId}`,
-      bg: "bg-gradient-to-br from-[#FF6B00] to-[#FF8C00]",
-    },
-    {
-      icon: <FaExclamationTriangle className="text-white text-2xl" />,
-      title: "Complaints",
-      subtitle: `${openComplaints} Active`,
-      link: `/tenant/complaints/${tenantId}`,
-      bg: "bg-gradient-to-br from-[#F59E0B] to-[#D97706]",
-    },
-    {
-      icon: <FaBullhorn className="text-white text-2xl" />,
-      title: "Announcements",
-      subtitle: `${announcementsCount} New`,
-      link: `/tenant/announcements/${tenantId}`,
-      bg: "bg-gradient-to-br from-[#8B5CF6] to-[#7C3AED]",
-    },
-    {
-      icon: <FaFileAlt className="text-white text-2xl" />,
-      title: "Documents",
-      subtitle: "Lease & Bills",
-      link: "/tenant/documents",
-      bg: "bg-gradient-to-br from-[#0D9488] to-[#0F766E]",
-    },
-    {
-      icon: <FaCouch className="text-white text-2xl" />,
-      title: "Facilities",
-      subtitle: "Book Amenities",
-      link: "/tenant/facilities",
-      bg: "bg-gradient-to-br from-[#EC4899] to-[#DB2777]",
-    },
-    {
-      icon: <FaExchangeAlt className="text-white text-2xl" />,
-      title: "Room Switch",
-      subtitle: "Request Change",
-      link: "/tenant/room-switch",
-      bg: "bg-gradient-to-br from-[#7C2D12] to-[#9A3412]",
-    },
-    {
-      icon: <FaFileContract className="text-white text-2xl" />,
-      title: "Rent Agreement",
-      subtitle: "View & Download",
-      link: "/tenant/rent-agreement",
-      bg: "bg-gradient-to-br from-[#1E40AF] to-[#1D4ED8]",
-    },
-  ];
-
-  // === Loading State ===
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#1E3A8A] border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="mt-4 text-lg font-medium text-gray-700">
-            Loading your dashboard...
-          </p>
+          <div className="w-16 h-16 rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Loading your tenancy details...</p>
         </div>
       </div>
     );
   }
 
-  // === Main UI ===
-return (
-  <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30">
-    {/* Enhanced Header */}
-    <header className="bg-white border-b border-gray-100 shadow-sm z-40">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div className="flex items-center gap-5">
-            <div className="relative">
-              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <FaUserCircle className="text-2xl text-white" />
-              </div>
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-gradient-to-r from-green-400 to-emerald-500 border-[3px] border-white rounded-full flex items-center justify-center">
-                <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-              </div>
-            </div>
-            <div className="space-y-1">
-              <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 bg-clip-text text-transparent">
-                Welcome back,{" "}
-                <span className="text-gray-900">
-                  {tenantInfo.name || "Tenant"}! 👋
-                </span>
-              </h1>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 text-gray-600 font-medium">
-                  <FaHome className="text-blue-500" />
-                  <span>{tenantInfo.property || "No property assigned"}</span>
-                </div>
-                <div className="h-4 w-px bg-gray-300"></div>
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <FaCalendarAlt className="text-blue-400" />
-                  <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-       
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
+        <div className="backdrop-blur-md bg-white/30 border border-white/50 rounded-3xl p-8 text-center max-w-md">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <p className="text-gray-800 font-semibold">{error}</p>
         </div>
       </div>
-    </header>
+    );
+  }
 
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Enhanced Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        {[
-          {
-            title: "Total Due Amount",
-            value: `₹${totalDue.toLocaleString()}`,
-            icon: <FaRupeeSign />,
-            change: "+₹2,500",
-            trend: "up",
-            color: "from-orange-500 to-amber-500",
-            bg: "bg-gradient-to-br from-orange-50 to-amber-50",
-            border: "border-orange-200"
-          },
-          {
-            title: "Open Complaints",
-            value: openComplaints,
-            icon: <FaExclamationTriangle />,
-            change: "-2 this week",
-            trend: "down",
-            color: "from-red-500 to-rose-500",
-            bg: "bg-gradient-to-br from-red-50 to-rose-50",
-            border: "border-red-200"
-          },
-          {
-            title: "Active Announcements",
-            value: announcementsCount,
-            icon: <FaBullhorn />,
-            change: "3 new today",
-            trend: "up",
-            color: "from-blue-600 to-indigo-600",
-            bg: "bg-gradient-to-br from-blue-50 to-indigo-50",
-            border: "border-blue-200"
-          },
-        ].map((stat, i) => (
-          <div
-            key={i}
-            className={`relative group overflow-hidden rounded-2xl border ${stat.border} ${stat.bg} p-6 transition-all duration-500 hover:scale-[1.02] hover:shadow-xl`}
-          >
-            <div className="relative flex items-center justify-between">
-              <div className="space-y-3">
-                <p className="text-sm font-semibold uppercase tracking-wide text-gray-600">
-                  {stat.title}
-                </p>
-                <div className="flex items-baseline gap-2">
-                  <p className="text-3xl font-bold text-gray-900">
-                    {stat.value}
-                  </p>
-                  <span className={`text-sm font-semibold px-2 py-1 rounded-full ${stat.trend === 'up' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {stat.change}
-                  </span>
-                </div>
+  const property = tenancyData?.propertyId;
+  const financials = tenancyData?.financials;
+  const agreement = tenancyData?.agreement;
+  const tenantInfo = tenancyData?.tenantInfo;
+  const occupancy = tenancyData?.occupancy;
+  const landlord = tenancyData?.landlordId;
+  const notice = tenancyData?.notice;
+  const ratings = tenancyData?.ratings;
+  const roomId = tenancyData?.roomId;
+
+  const formatDate = (date) => {
+    return new Date(date).toLocaleDateString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const getDaysRemaining = () => {
+    const end = new Date(agreement?.endDate);
+    const now = new Date();
+    const days = Math.ceil((end - now) / (1000 * 60 * 60 * 24));
+    return days > 0 ? days : 0;
+  };
+
+  const getTotalMonthlyOutgoing = () => {
+    return (financials?.monthlyRent || 0) + (financials?.maintenanceCharges || 0);
+  };
+
+  const getStatusColor = (status) => {
+    switch(status?.toLowerCase()) {
+      case 'active': return 'from-emerald-400 to-green-500';
+      case 'terminated': return 'from-red-400 to-pink-500';
+      default: return 'from-blue-400 to-purple-500';
+    }
+  };
+
+  const getConditionColor = (condition) => {
+    switch(condition?.toLowerCase()) {
+      case 'good': return 'bg-green-200 text-green-800';
+      case 'fair': return 'bg-yellow-200 text-yellow-800';
+      case 'poor': return 'bg-red-200 text-red-800';
+      default: return 'bg-gray-200 text-gray-800';
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+      {/* Header */}
+      <header className="sticky top-0 z-50 backdrop-blur-md bg-white/30 border-b border-white/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-20">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600">
+                <Home className="w-6 h-6 text-white" />
               </div>
-
-              <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-lg shadow-black/10`}>
-                <span className="text-2xl text-white">{stat.icon}</span>
+              <div>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  GharZo
+                </h1>
+                <p className="text-xs text-gray-600">Tenant Portal</p>
               </div>
             </div>
             
-            {/* Progress indicator */}
-            <div className="relative mt-6 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-              <div className="absolute inset-y-0 left-0 w-3/4 bg-gradient-to-r from-orange-500 to-amber-500 rounded-full"></div>
-            </div>
+            <button 
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 hover:bg-white/50 rounded-lg transition"
+            >
+              {mobileMenuOpen ? <X /> : <Menu />}
+            </button>
           </div>
-        ))}
-      </div>
+        </div>
+      </header>
 
-      {/* Enhanced Quick Actions Section with Clean White Design */}
-      <section className="mb-12">
-        <div className="relative overflow-hidden rounded-3xl bg-white border border-gray-200 shadow-lg">
-          
-          {/* Section Header */}
-          <div className="px-8 pt-8 pb-6 border-b border-gray-100">
-            <div className="flex items-center gap-4 mb-2">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-500 shadow-md flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Status and Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          {/* Status Badge */}
+          <div className={`backdrop-blur-md bg-gradient-to-r ${getStatusColor(tenancyData?.status)} p-0.5 rounded-2xl`}>
+            <div className="bg-white rounded-2xl px-6 py-4 flex items-center space-x-3">
+              <div className={`w-4 h-4 rounded-full bg-gradient-to-r ${getStatusColor(tenancyData?.status)}`}></div>
               <div>
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-700 to-purple-700 bg-clip-text text-transparent">
-                  Quick Actions
-                </h2>
-                <p className="text-gray-600">Everything you need, just a click away</p>
+                <p className="text-xs text-gray-600 uppercase font-semibold">Status</p>
+                <p className="font-bold text-gray-800">{tenancyData?.status || 'Active'}</p>
               </div>
             </div>
           </div>
 
-          {/* Cards Grid */}
-          <div className="p-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {dashboardData.map((item, index) => {
-              // Define color themes for each card
-              const colorThemes = [
-                { from: "#3b82f6", to: "#1d4ed8", text: "#2563eb", bg: "#eff6ff", border: "#dbeafe" }, // Blue
-                { from: "#10b981", to: "#059669", text: "#059669", bg: "#f0fdf4", border: "#dcfce7" }, // Green
-                { from: "#8b5cf6", to: "#7c3aed", text: "#7c3aed", bg: "#f5f3ff", border: "#ede9fe" }, // Purple
-                { from: "#f59e0b", to: "#d97706", text: "#d97706", bg: "#fffbeb", border: "#fef3c7" }  // Amber
-              ];
-
-              const theme = colorThemes[index % colorThemes.length];
-
-              return (
-                <Link
-                  key={index}
-                  to={item.link}
-                  className="group relative overflow-hidden rounded-2xl transition-all duration-500 hover:-translate-y-2 hover:shadow-xl"
-                  style={{
-                    background: `linear-gradient(135deg, ${theme.bg} 0%, white 100%)`,
-                    border: `2px solid ${theme.border}`,
-                    boxShadow: '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
-                  }}
-                >
-                  {/* Hover gradient overlay */}
-                  <div 
-                    className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500"
-                    style={{
-                      background: `linear-gradient(135deg, ${theme.from} 0%, ${theme.to} 100%)`
-                    }}
-                  ></div>
-
-                  {/* Card content */}
-                  <div className="relative p-6">
-                    {/* Icon section */}
-                    <div className="flex items-start justify-between mb-6">
-                      <div 
-                        className="w-14 h-14 rounded-xl flex items-center justify-center shadow-md transition-transform duration-300 group-hover:scale-110"
-                        style={{
-                          background: `linear-gradient(135deg, ${theme.from} 0%, ${theme.to} 100%)`,
-                        }}
-                      >
-                        <div className="text-white text-2xl">{item.icon}</div>
-                      </div>
-
-                      {/* Animated arrow */}
-                      <div className="opacity-0 group-hover:opacity-100 transform translate-x-4 group-hover:translate-x-0 transition-all duration-300">
-                        <svg className="w-6 h-6" style={{ color: theme.text }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                        </svg>
-                      </div>
-                    </div>
-
-                    {/* Text content */}
-                    <div className="space-y-2">
-                      <h3 
-                        className="text-xl font-bold transition-colors duration-300 group-hover:text-gray-900"
-                        style={{ color: theme.text }}
-                      >
-                        {item.title}
-                      </h3>
-                      <p className="text-gray-600 text-sm leading-relaxed">
-                        {item.subtitle}
-                      </p>
-                    </div>
-
-                    {/* Progress indicator on hover */}
-                    <div 
-                      className="absolute bottom-0 left-0 right-0 h-1 scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-500"
-                      style={{
-                        background: `linear-gradient(90deg, ${theme.from} 0%, ${theme.to} 100%)`,
-                      }}
-                    ></div>
-                  </div>
-
-                  {/* Floating particles */}
-                  <div 
-                    className="absolute top-3 right-3 w-2 h-2 rounded-full opacity-0 group-hover:opacity-100 animate-ping"
-                    style={{
-                      backgroundColor: theme.from,
-                      animationDelay: '200ms'
-                    }}
-                  ></div>
-
-                  {/* Corner accent */}
-                  <div 
-                    className="absolute top-0 right-0 w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                    style={{
-                      background: `linear-gradient(135deg, ${theme.from} 0%, ${theme.to} 100%)`,
-                      clipPath: 'polygon(100% 0, 0 0, 100% 100%)'
-                    }}
-                  ></div>
-                </Link>
-              );
-            })}
+          {/* Rent Card */}
+          <div className="backdrop-blur-md bg-white/40 border border-white/60 rounded-2xl p-4 hover:shadow-lg transition">
+            <div className="flex items-center space-x-3 mb-2">
+              <div className="p-2 rounded-lg bg-gradient-to-br from-green-400 to-green-600">
+                <DollarSign className="w-5 h-5 text-white" />
+              </div>
+              <p className="text-xs text-gray-600 font-semibold">Monthly Rent</p>
+            </div>
+            <p className="text-2xl font-bold text-green-600">₹{financials?.monthlyRent?.toLocaleString('en-IN')}</p>
+            <p className="text-xs text-gray-600 mt-1">Due on {financials?.rentDueDay}th</p>
           </div>
 
-          {/* Footer */}
-          <div className="px-8 pb-8">
-            <div className="flex items-center justify-between pt-6 border-t border-gray-100">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                  <span>All services active</span>
+          {/* Remaining Days */}
+          <div className="backdrop-blur-md bg-white/40 border border-white/60 rounded-2xl p-4 hover:shadow-lg transition">
+            <div className="flex items-center space-x-3 mb-2">
+              <div className="p-2 rounded-lg bg-gradient-to-br from-purple-400 to-purple-600">
+                <Clock className="w-5 h-5 text-white" />
+              </div>
+              <p className="text-xs text-gray-600 font-semibold">Days Left</p>
+            </div>
+            <p className="text-2xl font-bold text-purple-600">{getDaysRemaining()}</p>
+            <p className="text-xs text-gray-600 mt-1">Till {formatDate(agreement?.endDate)}</p>
+          </div>
+
+          {/* Total Outgoing */}
+          <div className="backdrop-blur-md bg-white/40 border border-white/60 rounded-2xl p-4 hover:shadow-lg transition">
+            <div className="flex items-center space-x-3 mb-2">
+              <div className="p-2 rounded-lg bg-gradient-to-br from-orange-400 to-orange-600">
+                <TrendingUp className="w-5 h-5 text-white" />
+              </div>
+              <p className="text-xs text-gray-600 font-semibold">Monthly Cost</p>
+            </div>
+            <p className="text-2xl font-bold text-orange-600">₹{getTotalMonthlyOutgoing().toLocaleString('en-IN')}</p>
+            <p className="text-xs text-gray-600 mt-1">Rent + Maintenance</p>
+          </div>
+        </div>
+
+        {/* Notice Alert */}
+        {notice?.isUnderNotice && (
+          <div className="mb-8 backdrop-blur-md bg-yellow-50/50 border-2 border-yellow-300 rounded-2xl p-6">
+            <div className="flex items-start space-x-4">
+              <AlertTriangle className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-1" />
+              <div className="flex-1">
+                <h3 className="font-bold text-yellow-800 mb-2">⚠️ Notice Given</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-xs text-yellow-700 font-semibold">Given By</p>
+                    <p className="text-sm text-yellow-800">{notice?.noticeGivenBy}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-yellow-700 font-semibold">Notice Date</p>
+                    <p className="text-sm text-yellow-800">{formatDate(notice?.noticeDate)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-yellow-700 font-semibold">Vacate By</p>
+                    <p className="text-sm font-bold text-red-700">{formatDate(notice?.vacateByDate)}</p>
+                  </div>
                 </div>
-                <div className="w-px h-4 bg-gray-200"></div>
-                <div className="text-sm text-gray-500">
-                  Last updated: Just now
+                <p className="text-xs text-yellow-600 mt-3">Reason: {notice?.reason}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Main Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column - Main Content */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Property Card with Image Carousel */}
+            <div className="backdrop-blur-md bg-white/40 border border-white/60 rounded-3xl overflow-hidden hover:shadow-2xl transition">
+              {property?.images?.[0]?.url && (
+                <div className="relative">
+                  <img 
+                    src={property.images[0].url} 
+                    alt={property?.title}
+                    className="w-full h-64 object-cover"
+                  />
+                  <div className="absolute top-4 right-4 flex space-x-2">
+                    {property?.images?.map((img, idx) => (
+                      <button
+                        key={idx}
+                        className={`w-2 h-2 rounded-full transition ${idx === 0 ? 'bg-white' : 'bg-white/50'}`}
+                        onClick={() => setSelectedImage(idx)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="p-6">
+                <div className="mb-4">
+                  <h2 className="text-2xl font-bold text-gray-800 mb-2">{property?.title}</h2>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start space-x-2 text-gray-600">
+                      <MapPin className="w-5 h-5 text-pink-500 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-semibold">{property?.location?.address}</p>
+                        <p className="text-xs text-gray-500">
+                          {property?.location?.locality}, {property?.location?.city}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs font-semibold text-gray-600 uppercase">Room</p>
+                      <p className="text-3xl font-bold text-purple-600">#{roomId?.roomNumber}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4 pt-4 border-t border-white/50">
+                  <div className="text-center">
+                    <p className="text-xs text-gray-600 mb-1">Type</p>
+                    <p className="font-bold text-gray-800 flex items-center justify-center space-x-1">
+                      <Building2 className="w-4 h-4 text-blue-500" />
+                      <span>{roomId?.roomType}</span>
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-gray-600 mb-1">Bed</p>
+                    <p className="font-bold text-gray-800">{tenancyData?.bedNumber}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-gray-600 mb-1">State</p>
+                    <p className="font-bold text-gray-800 text-sm">{property?.location?.state}</p>
+                  </div>
                 </div>
               </div>
-              <div className="text-sm text-gray-500">
-                Click any card to get started
+            </div>
+
+            {/* Financial Details */}
+            <div className="backdrop-blur-md bg-white/40 border border-white/60 rounded-3xl p-8">
+              <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center space-x-2">
+                <DollarSign className="w-6 h-6 text-green-500" />
+                <span>Financial Summary</span>
+              </h3>
+              
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 backdrop-blur-sm bg-white/40 rounded-xl border border-white/60">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 rounded-lg bg-green-100">
+                      <DollarSign className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Monthly Rent</p>
+                      <p className="font-bold text-gray-800">Due on {financials?.rentDueDay}th</p>
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold text-green-600">₹{financials?.monthlyRent?.toLocaleString('en-IN')}</p>
+                </div>
+
+                <div className="flex items-center justify-between p-4 backdrop-blur-sm bg-white/40 rounded-xl border border-white/60">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 rounded-lg bg-purple-100">
+                      <Hammer className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Maintenance Charge</p>
+                      <p className="font-bold text-gray-800">Monthly</p>
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold text-purple-600">₹{financials?.maintenanceCharges?.toLocaleString('en-IN')}</p>
+                </div>
+
+                <div className="flex items-center justify-between p-4 backdrop-blur-sm bg-white/40 rounded-xl border border-white/60">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 rounded-lg bg-blue-100">
+                      <Shield className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Security Deposit</p>
+                      <div className="flex items-center space-x-1">
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                        <p className="font-bold text-gray-800 text-sm">Paid</p>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold text-blue-600">₹{financials?.securityDeposit?.toLocaleString('en-IN')}</p>
+                </div>
+
+                <div className="flex items-center justify-between p-4 backdrop-blur-sm bg-white/40 rounded-xl border border-white/60">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 rounded-lg bg-red-100">
+                      <AlertCircle className="w-5 h-5 text-red-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Late Fee</p>
+                      <p className="font-bold text-gray-800 text-sm">Grace: {financials?.gracePeriodDays} days</p>
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold text-red-600">₹{financials?.lateFeePerDay}/day</p>
+                </div>
+              </div>
+
+              {/* Total Summary */}
+              <div className="mt-6 pt-6 border-t border-white/50">
+                <div className="flex items-center justify-between">
+                  <p className="text-lg font-bold text-gray-800">Total Monthly Outgoing</p>
+                  <p className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                    ₹{getTotalMonthlyOutgoing().toLocaleString('en-IN')}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Agreement & Dates */}
+            <div className="backdrop-blur-md bg-white/40 border border-white/60 rounded-3xl p-8">
+              <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center space-x-2">
+                <FileText className="w-6 h-6 text-orange-500" />
+                <span>Agreement Details</span>
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="backdrop-blur-sm bg-gradient-to-br from-blue-50/50 to-blue-100/50 rounded-xl p-6 border border-blue-200/50">
+                  <p className="text-sm text-gray-600 mb-2">Duration</p>
+                  <p className="text-3xl font-bold text-blue-600 mb-3">{agreement?.durationMonths} months</p>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="w-4 h-4 text-blue-500" />
+                      <p className="text-sm text-gray-700">From: {formatDate(agreement?.startDate)}</p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="w-4 h-4 text-blue-500" />
+                      <p className="text-sm text-gray-700">Till: {formatDate(agreement?.endDate)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="backdrop-blur-sm bg-gradient-to-br from-purple-50/50 to-purple-100/50 rounded-xl p-6 border border-purple-200/50">
+                  <p className="text-sm text-gray-600 mb-2">Renewal</p>
+                  <p className="text-3xl font-bold text-purple-600 mb-3">{agreement?.renewalOption ? '✓ Yes' : '✗ No'}</p>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Zap className="w-4 h-4 text-purple-500" />
+                      <p className="text-sm text-gray-700">Auto Renew: {agreement?.autoRenew ? 'Enabled' : 'Disabled'}</p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Shield className="w-4 h-4 text-purple-500" />
+                      <p className="text-sm text-gray-700">Status: {agreement?.signedByLandlord && agreement?.signedByTenant ? 'Signed' : 'Pending'}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Move In/Out Checklist */}
+            <div className="backdrop-blur-md bg-white/40 border border-white/60 rounded-3xl p-8">
+              <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center space-x-2">
+                <Camera className="w-6 h-6 text-indigo-500" />
+                <span>Property Condition Report</span>
+              </h3>
+
+              <div className="space-y-8">
+                {/* Move In */}
+                <div>
+                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/50">
+                    <h4 className="font-bold text-gray-800 text-sm uppercase tracking-wide">Move-In ({formatDate(occupancy?.moveInDate)})</h4>
+                    <span className="text-xs bg-green-200 text-green-800 px-3 py-1 rounded-full font-semibold">Good Condition</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {occupancy?.moveInChecklist?.map((item, idx) => (
+                      <div key={idx} className="backdrop-blur-sm bg-white/40 rounded-xl p-4 border border-white/60">
+                        <div className="flex items-start justify-between mb-2">
+                          <p className="font-semibold text-gray-800">{item.item}</p>
+                          <span className={`text-xs font-bold px-3 py-1 rounded-full ${getConditionColor(item.condition)}`}>
+                            {item.condition}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600 italic">"{item.notes}"</p>
+                        {item.photo && (
+                          <button className="text-xs text-blue-600 mt-2 hover:underline flex items-center space-x-1">
+                            <Camera className="w-3 h-3" />
+                            <span>View Photo</span>
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Move Out */}
+                <div>
+                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/50">
+                    <h4 className="font-bold text-gray-800 text-sm uppercase tracking-wide">Move-Out ({formatDate(occupancy?.moveOutDate)})</h4>
+                    <span className="text-xs bg-yellow-200 text-yellow-800 px-3 py-1 rounded-full font-semibold">Minor Issue</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {occupancy?.moveOutChecklist?.map((item, idx) => (
+                      <div key={idx} className={`backdrop-blur-sm rounded-xl p-4 border ${
+                        item.condition === 'Poor' 
+                          ? 'bg-red-50/40 border-red-200/50' 
+                          : 'bg-white/40 border-white/60'
+                      }`}>
+                        <div className="flex items-start justify-between mb-2">
+                          <p className="font-semibold text-gray-800">{item.item}</p>
+                          <span className={`text-xs font-bold px-3 py-1 rounded-full ${getConditionColor(item.condition)}`}>
+                            {item.condition}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600 italic">"{item.notes}"</p>
+                        {item.condition === 'Poor' && (
+                          <div className="mt-2 p-2 bg-red-100 rounded-lg flex items-start space-x-2">
+                            <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                            <p className="text-xs text-red-700 font-semibold">Requires attention before vacating</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Sidebar */}
+          <div className="space-y-8">
+            {/* Landlord Card */}
+            <div className="backdrop-blur-md bg-white/40 border border-white/60 rounded-3xl p-8">
+              <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center space-x-2">
+                <User className="w-5 h-5 text-orange-500" />
+                <span>Landlord</span>
+              </h3>
+              
+              <div className="space-y-3">
+                <div className="backdrop-blur-sm bg-gradient-to-br from-orange-50/50 to-amber-50/50 rounded-xl p-4 border border-orange-200/50">
+                  <p className="text-xs text-gray-600 mb-1 font-semibold">Name</p>
+                  <p className="font-bold text-gray-800">{landlord?.name}</p>
+                </div>
+
+                <div className="backdrop-blur-sm bg-gradient-to-br from-blue-50/50 to-cyan-50/50 rounded-xl p-4 border border-blue-200/50">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <Phone className="w-4 h-4 text-blue-500" />
+                    <p className="text-xs text-gray-600 font-semibold">Contact</p>
+                  </div>
+                  <a href={`tel:${landlord?.phone}`} className="font-bold text-blue-600 hover:text-blue-700">
+                    {landlord?.phone}
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* Tenant Information */}
+            <div className="backdrop-blur-md bg-white/40 border border-white/60 rounded-3xl p-8">
+              <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center space-x-2">
+                <Badge className="w-5 h-5 text-purple-500" />
+                <span>Tenant Info</span>
+              </h3>
+              
+              <div className="space-y-3">
+                <div className="backdrop-blur-sm bg-gradient-to-br from-pink-50/50 to-rose-50/50 rounded-xl p-4 border border-pink-200/50">
+                  <p className="text-xs text-gray-600 mb-1 font-semibold">Emergency Contact</p>
+                  <p className="font-bold text-gray-800">{tenantInfo?.emergencyContact?.name}</p>
+                  <p className="text-xs text-gray-600 mt-1">({tenantInfo?.emergencyContact?.relation})</p>
+                  <a href={`tel:${tenantInfo?.emergencyContact?.phone}`} className="text-xs text-blue-600 hover:underline mt-1 block">
+                    📞 {tenantInfo?.emergencyContact?.phone}
+                  </a>
+                </div>
+
+                <div className="backdrop-blur-sm bg-gradient-to-br from-green-50/50 to-emerald-50/50 rounded-xl p-4 border border-green-200/50">
+                  <p className="text-xs text-gray-600 mb-1 font-semibold">ID Proof</p>
+                  <p className="font-bold text-gray-800">{tenantInfo?.idProof?.type}</p>
+                  <p className="text-xs text-gray-600 mt-1">●●●●●●●890</p>
+                </div>
+
+                <div className="backdrop-blur-sm bg-gradient-to-br from-blue-50/50 to-indigo-50/50 rounded-xl p-4 border border-blue-200/50">
+                  <p className="text-xs text-gray-600 mb-1 font-semibold">Employment</p>
+                  <p className="font-bold text-gray-800">{tenantInfo?.employmentDetails?.designation}</p>
+                  <p className="text-xs text-gray-600 mt-1">{tenantInfo?.employmentDetails?.companyName}</p>
+                </div>
+
+                <div className="backdrop-blur-sm bg-gradient-to-br from-green-50/50 to-teal-50/50 rounded-xl p-4 border border-green-200/50">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-gray-600 mb-1 font-semibold">Police Verification</p>
+                      <p className="font-bold text-green-700">✓ Verified</p>
+                    </div>
+                    <Shield className="w-6 h-6 text-green-600" />
+                  </div>
+                  <p className="text-xs text-gray-600 mt-2">{formatDate(tenantInfo?.policeVerification?.verifiedOn)}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Ratings */}
+            {ratings?.byTenant?.rating && (
+              <div className="backdrop-blur-md bg-white/40 border border-white/60 rounded-3xl p-8">
+                <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center space-x-2">
+                  <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
+                  <span>Your Rating</span>
+                </h3>
+                
+                <div className="backdrop-blur-sm bg-gradient-to-br from-yellow-50/50 to-orange-50/50 rounded-xl p-6 border border-yellow-200/50">
+                  <div className="flex items-center space-x-1 mb-4">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`w-5 h-5 ${i < ratings.byTenant.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-sm text-gray-700 italic">"{ratings.byTenant.review}"</p>
+                  <p className="text-xs text-gray-600 mt-3">Rated on {formatDate(ratings.byTenant.givenAt)}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Quick Actions */}
+            <div className="backdrop-blur-md bg-white/40 border border-white/60 rounded-3xl p-8">
+              <h3 className="text-lg font-bold text-gray-800 mb-4">Quick Actions</h3>
+              <div className="space-y-2">
+                <button className="w-full px-4 py-3 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold hover:shadow-lg transition flex items-center justify-center space-x-2">
+                  <Download className="w-4 h-4" />
+                  <span>Download Agreement</span>
+                </button>
+                <button className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 text-gray-800 font-semibold hover:bg-white/50 transition">
+                  Contact Landlord
+                </button>
               </div>
             </div>
           </div>
         </div>
-      </section>
 
-      {/* Enhanced Recent Activity Section */}
-      <section className="mb-10">
-        <div className="flex items-center justify-between mb-6">
-          <div className="space-y-1">
-            <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 bg-clip-text text-transparent">
-              Recent Activity
-            </h2>
-            <p className="text-gray-600">Your latest updates and notifications</p>
-          </div>
-          <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-gray-100 to-gray-50 hover:from-gray-200 hover:to-gray-100 text-gray-700 border border-gray-200 transition-all hover:shadow-md">
-            View All
-            <FaArrowRight className="text-xs" />
+        {/* Footer */}
+        <div className="mt-12 backdrop-blur-md bg-white/40 border border-white/60 rounded-3xl p-8 text-center">
+          <p className="text-sm text-gray-600 mb-4">
+            Questions about your tenancy? Reach out to your landlord or GharZo support.
+          </p>
+          <button className="px-6 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold hover:shadow-lg transition">
+            Contact Support
           </button>
         </div>
-
-        <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
-          <div className="p-6">
-            <div className="space-y-4">
-              {[
-                {
-                  icon: <FaCalendarAlt className="text-blue-500" />,
-                  title: "Property Inspection Scheduled",
-                  desc: "Annual inspection scheduled for October 15th at 2:00 PM",
-                  time: "2 hours ago",
-                  status: "upcoming",
-                  color: "bg-blue-100 border-blue-200"
-                },
-                {
-                  icon: <FaReceipt className="text-green-500" />,
-                  title: "Rent Payment Confirmed",
-                  desc: "October rent payment of ₹15,000 successfully processed",
-                  time: "1 day ago",
-                  status: "completed",
-                  color: "bg-green-100 border-green-200"
-                },
-                {
-                  icon: <FaShieldAlt className="text-purple-500" />,
-                  title: "Police Verification Updated",
-                  desc: "Documents have been verified and updated in the system",
-                  time: "3 days ago",
-                  status: "verified",
-                  color: "bg-purple-100 border-purple-200"
-                },
-                {
-                  icon: <FaTools className="text-amber-500" />,
-                  title: "Maintenance Request",
-                  desc: "Plumbing issue reported - Technician assigned",
-                  time: "5 days ago",
-                  status: "in-progress",
-                  color: "bg-amber-100 border-amber-200"
-                }
-              ].map((act, i) => (
-                <div
-                  key={i}
-                  className="group flex items-start gap-5 p-4 rounded-xl hover:bg-white hover:shadow-md transition-all duration-300 border border-gray-100"
-                >
-                  <div className="relative">
-                    <div className={`p-3 rounded-xl ${act.color} shadow-sm group-hover:scale-110 transition-transform duration-300`}>
-                      {act.icon}
-                    </div>
-                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-white border-2 border-gray-300 rounded-full"></div>
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-1">
-                        <h4 className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors">
-                          {act.title}
-                        </h4>
-                        <p className="text-sm text-gray-600">{act.desc}</p>
-                      </div>
-                      <div className="flex flex-col items-end gap-2">
-                        <span className="text-xs font-medium px-3 py-1 rounded-full bg-gray-100 text-gray-700">
-                          {act.status}
-                        </span>
-                        <span className="text-xs text-gray-500 flex items-center gap-1">
-                          <FaClock className="text-gray-400" />
-                          {act.time}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    {act.status === "in-progress" && (
-                      <div className="mt-3">
-                        <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                          <div className="h-full w-3/4 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full"></div>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">75% complete</p>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                    <FaChevronRight className="text-gray-400 group-hover:text-blue-500 transition-colors" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-white border-t border-gray-200">
-            <div className="flex items-center justify-between text-sm text-gray-600">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span>Completed</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
-                  <span>In Progress</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span>Showing 4 of 12 activities</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-    </main>
-  </div>
-);
+      </main>
+    </div>
+  );
 };
 
-export default TenantDashboard;
+export default TenancyDashboard;

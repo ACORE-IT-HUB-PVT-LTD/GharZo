@@ -2,107 +2,79 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useAuth } from "../../User_Section/Context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  LogOut, 
-  Edit2, 
-  Save, 
-  X, 
-  User, 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Briefcase, 
-  Heart, 
-  Calendar, 
-  Shield, 
-  Upload, 
-  Trash2,
+import {
+  LogOut,
+  Edit2,
+  Save,
+  X,
+  User,
+  Mail,
+  Phone,
   CheckCircle,
   AlertCircle,
   Loader2,
   Clock,
-  ChevronRight
+  Shield,
+  Calendar,
+  Briefcase,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const TenantProfile = () => {
   const { logout } = useAuth();
   const navigate = useNavigate();
-  const [tenant, setTenant] = useState(null);
+
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editing, setEditing] = useState(false);
-  const [signatureUrl, setSignatureUrl] = useState("");
-  const [signatureFile, setSignatureFile] = useState(null);
-  const [uploading, setUploading] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("personal");
 
   const [formData, setFormData] = useState({
     name: "",
-    email: "",
-    mobile: "",
-    permanentAddress: "",
-    work: "",
-    maritalStatus: "",
-    dob: "",
-    emergencyContact: { name: "", phone: "", relation: "" },
+    phone: "",
   });
 
-  // Fetch tenant profile and signature
+  // Fetch user profile from /api/auth/me
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem("tenanttoken");
+        setLoading(true);
+        
+        // Get token from localStorage or sessionStorage
+        const token = localStorage.token || localStorage.usertoken || sessionStorage.token;
+        
         if (!token) {
           setError("No authentication token found. Please log in.");
-          navigate("/login", { replace: true });
+          setTimeout(() => navigate("/login", { replace: true }), 1000);
           return;
         }
 
-        const profileRes = await axios.get("https://api.gharzoreality.com/api/tenant/profile", {
+        const res = await axios.get("https://api.gharzoreality.com/api/auth/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        if (profileRes.data.success) {
-          const tenantData = profileRes.data.tenant;
-          setTenant(tenantData);
+        if (res.data.success && res.data.data?.user) {
+          const userData = res.data.data.user;
+          setUser(userData);
           setFormData({
-            name: tenantData.name || "",
-            email: tenantData.email || "",
-            mobile: tenantData.mobile || "",
-            permanentAddress: tenantData.permanentAddress || "",
-            work: tenantData.work || "",
-            maritalStatus: tenantData.maritalStatus || "",
-            dob: tenantData.dob ? new Date(tenantData.dob).toISOString().split("T")[0] : "",
-            emergencyContact: tenantData.emergencyContact || { name: "", phone: "", relation: "" },
+            name: userData.name || "",
+            phone: userData.phone || "",
           });
-
-          // Fetch signature using tenantId from profile response
-          if (tenantData.tenantId) {
-            try {
-              const sigRes = await axios.get(
-                `https://api.gharzoreality.com/api/landlord/tenant/signature/${tenantData.tenantId}`,
-                { headers: { Authorization: `Bearer ${token}` } }
-              );
-              if (sigRes.data.success && sigRes.data.signatureUrl) {
-                setSignatureUrl(`https://api.gharzoreality.com${sigRes.data.signatureUrl}`);
-              }
-            } catch (sigError) {
-              console.log("No signature found:", sigError.response?.data);
-            }
-          }
+          setError(null);
         } else {
-          setError(profileRes.data.message || "Failed to fetch profile.");
-          if (profileRes.data.error === "User is not a registered tenant") {
-            navigate("/login", { replace: true });
-          }
+          setError(res.data.message || "Failed to load profile.");
+          setTimeout(() => navigate("/login", { replace: true }), 1000);
         }
-      } catch (error) {
-        console.error("Error fetching profile:", error);
-        setError(error.response?.data?.message || "An error occurred while fetching profile.");
-        if (error.response?.data?.error === "User is not a registered tenant") {
-          navigate("/login", { replace: true });
+      } catch (err) {
+        console.error("Profile fetch error:", err);
+        
+        if (err.response?.status === 401 || err.response?.status === 403) {
+          setError("Session expired. Redirecting to login...");
+          setTimeout(() => navigate("/login", { replace: true }), 1000);
+        } else {
+          setError(err.response?.data?.message || "Could not load profile.");
         }
       } finally {
         setLoading(false);
@@ -117,105 +89,28 @@ const TenantProfile = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleEmergencyContactChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      emergencyContact: {
-        ...prev.emergencyContact,
-        [field]: value
-      }
-    }));
-  };
-
-  const handleSignatureChange = (e) => {
-    const file = e.target.files[0];
-    if (file && file.type.startsWith("image/")) {
-      setSignatureFile(file);
-    }
-  };
-
-  const uploadSignature = async () => {
-    if (!signatureFile || !tenant?.tenantId) return;
-
-    const token = localStorage.getItem("tenanttoken");
-    if (!token) {
-      setError("Authentication required.");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("profilePhoto", signatureFile);
-
+  const handleSave = async () => {
     try {
-      setUploading(true);
-      const res = await axios.post(
-        "https://api.gharzoreality.com/api/landlord/tenant/signature",
+      setSaveLoading(true);
+      
+      const token = localStorage.token || localStorage.usertoken || sessionStorage.token;
+      
+      if (!token) {
+        setError("Authentication required.");
+        return;
+      }
+
+      // Update profile via API
+      const res = await axios.put(
+        "https://api.gharzoreality.com/api/auth/profile",
         formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-
-      if (res.data.success) {
-        setSignatureUrl(`https://api.gharzoreality.com${res.data.filePath}`);
-        setSignatureFile(null);
-        document.getElementById("signatureInput").value = "";
-      }
-    } catch (error) {
-      console.error("Upload error:", error);
-      setError(error.response?.data?.message || "Failed to upload signature.");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const deleteSignature = async () => {
-    if (!tenant?.tenantId) return;
-
-    const token = localStorage.getItem("tenanttoken");
-    if (!token) {
-      setError("Authentication required.");
-      return;
-    }
-
-    try {
-      setDeleting(true);
-      const res = await axios.delete(
-        `https://api.gharzoreality.com/api/landlord/tenant/signature/${tenant.tenantId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
 
       if (res.data.success) {
-        setSignatureUrl("");
-      }
-    } catch (error) {
-      console.error("Delete error:", error);
-      setError(error.response?.data?.message || "Failed to delete signature.");
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  const handleSave = async () => {
-    try {
-      const token = localStorage.getItem("tenanttoken");
-      if (!token) {
-        setError("No authentication token found. Please log in.");
-        navigate("/login", { replace: true });
-        return;
-      }
-
-      const res = await axios.put("https://api.gharzoreality.com/api/tenant/profile", formData, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (res.data.success) {
-        setTenant((prev) => ({ ...prev, ...formData }));
+        setUser((prev) => ({ ...prev, ...formData }));
         setEditing(false);
         setError(null);
       } else {
@@ -223,13 +118,17 @@ const TenantProfile = () => {
       }
     } catch (error) {
       console.error("Error updating profile:", error);
-      setError(error.response?.data?.message || "An error occurred while updating profile.");
+      setError(error.response?.data?.message || "Failed to update profile.");
+    } finally {
+      setSaveLoading(false);
     }
   };
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("usertoken");
     localStorage.removeItem("tenanttoken");
+    sessionStorage.removeItem("token");
     logout();
     navigate("/", { replace: true });
   };
@@ -273,21 +172,61 @@ const TenantProfile = () => {
     );
   }
 
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full mx-4 text-center border border-yellow-100"
+        >
+          <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-gray-800 mb-2">No User Data</h3>
+          <p className="text-gray-600 mb-6">Unable to load user profile</p>
+          <button
+            onClick={() => navigate("/login", { replace: true })}
+            className="w-full p-4 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium"
+          >
+            Go to Login
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4">
       <div className="max-w-6xl mx-auto">
- 
+        {/* Header */}
+        <div className="mb-8 flex items-center justify-between">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+          >
+            <h1 className="text-4xl font-bold text-gray-900">Profile</h1>
+            <p className="text-gray-600 mt-2">Manage your personal information</p>
+          </motion.div>
+          <motion.button
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 font-medium transition-all"
+          >
+            <LogOut className="w-4 h-4" />
+            Logout
+          </motion.button>
+        </div>
 
-        {/* Main Content */}
+        {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Profile Overview */}
+          {/* Left Column - Profile Card */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             className="lg:col-span-1"
           >
             <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
-              {/* Profile Avatar */}
+              {/* Avatar */}
               <div className="text-center mb-6">
                 <div className="relative inline-block">
                   <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center mx-auto mb-4">
@@ -297,38 +236,42 @@ const TenantProfile = () => {
                     <CheckCircle className="w-4 h-4 text-white" />
                   </div>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900">{tenant?.name}</h2>
-                <p className="text-gray-600">{tenant?.email}</p>
+                <h2 className="text-2xl font-bold text-gray-900">{user?.name}</h2>
+                <p className="text-gray-600 mt-1">{user?.email || "No email registered"}</p>
               </div>
 
-              {/* Profile Stats */}
+              {/* Stats */}
               <div className="space-y-4 mb-8">
                 <div className="flex items-center justify-between p-4 rounded-xl bg-blue-50">
                   <div className="flex items-center gap-3">
                     <Phone className="w-5 h-5 text-blue-600" />
                     <div>
                       <p className="text-sm text-gray-600">Phone</p>
-                      <p className="font-medium text-gray-900">{tenant?.mobile || "Not set"}</p>
+                      <p className="font-medium text-gray-900">{user?.phone || "Not set"}</p>
                     </div>
                   </div>
                 </div>
+
                 <div className="flex items-center justify-between p-4 rounded-xl bg-green-50">
                   <div className="flex items-center gap-3">
                     <Calendar className="w-5 h-5 text-green-600" />
                     <div>
-                      <p className="text-sm text-gray-600">Joined On</p>
-                      <p className="font-medium text-gray-900">
-                        {tenant?.createdAt ? new Date(tenant.createdAt).toLocaleDateString() : "N/A"}
+                      <p className="text-sm text-gray-600">Member Since</p>
+                      <p className="font-medium text-gray-900 text-sm">
+                        {new Date(user?.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
                 </div>
+
                 <div className="flex items-center justify-between p-4 rounded-xl bg-purple-50">
                   <div className="flex items-center gap-3">
                     <Shield className="w-5 h-5 text-purple-600" />
                     <div>
                       <p className="text-sm text-gray-600">Account Status</p>
-                      <p className="font-medium text-gray-900">Active</p>
+                      <p className="font-medium text-gray-900">
+                        {user?.isActive ? "Active" : "Inactive"}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -347,99 +290,6 @@ const TenantProfile = () => {
                 </motion.button>
               )}
             </div>
-
-            {/* Signature Section */}
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 mt-6">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500">
-                  <User className="w-5 h-5 text-white" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900">Digital Signature</h3>
-              </div>
-
-              {signatureUrl ? (
-                <div className="space-y-4">
-                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 flex items-center justify-center">
-                    <img
-                      src={signatureUrl}
-                      alt="Signature"
-                      className="max-h-32 object-contain"
-                    />
-                  </div>
-                  <button
-                    onClick={deleteSignature}
-                    disabled={deleting}
-                    className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 font-medium disabled:opacity-50"
-                  >
-                    {deleting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Deleting...
-                      </>
-                    ) : (
-                      <>
-                        <Trash2 className="w-4 h-4" />
-                        Remove Signature
-                      </>
-                    )}
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center">
-                    <Upload className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                    <p className="text-gray-600 text-sm">No signature uploaded</p>
-                    <p className="text-gray-400 text-xs mt-1">Upload your digital signature</p>
-                  </div>
-                  <input
-                    id="signatureInput"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleSignatureChange}
-                    className="hidden"
-                  />
-                  <label
-                    htmlFor="signatureInput"
-                    className="block w-full p-3 rounded-xl bg-gray-50 text-gray-700 hover:bg-gray-100 text-center font-medium cursor-pointer border border-gray-200"
-                  >
-                    Choose Signature File
-                  </label>
-                  {signatureFile && (
-                    <div className="p-3 bg-blue-50 rounded-xl">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-gray-900">{signatureFile.name}</span>
-                        <button
-                          onClick={() => {
-                            setSignatureFile(null);
-                            document.getElementById("signatureInput").value = "";
-                          }}
-                          className="text-gray-400 hover:text-gray-600"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                      <button
-                        onClick={uploadSignature}
-                        disabled={uploading}
-                        className="w-full flex items-center justify-center gap-2 p-2 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium"
-                      >
-                        {uploading ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Uploading...
-                          </>
-                        ) : (
-                          <>
-                            <Upload className="w-4 h-4" />
-                            Upload Signature
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
           </motion.div>
 
           {/* Right Column - Profile Details */}
@@ -454,15 +304,23 @@ const TenantProfile = () => {
               <div className="flex border-b border-gray-200">
                 <button
                   onClick={() => setActiveTab("personal")}
-                  className={`flex-1 px-6 py-4 text-center font-medium transition-all ${activeTab === "personal" ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50" : "text-gray-600 hover:text-blue-600"}`}
+                  className={`flex-1 px-6 py-4 text-center font-medium transition-all ${
+                    activeTab === "personal"
+                      ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
+                      : "text-gray-600 hover:text-blue-600"
+                  }`}
                 >
                   Personal Details
                 </button>
                 <button
-                  onClick={() => setActiveTab("contact")}
-                  className={`flex-1 px-6 py-4 text-center font-medium transition-all ${activeTab === "contact" ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50" : "text-gray-600 hover:text-blue-600"}`}
+                  onClick={() => setActiveTab("info")}
+                  className={`flex-1 px-6 py-4 text-center font-medium transition-all ${
+                    activeTab === "info"
+                      ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
+                      : "text-gray-600 hover:text-blue-600"
+                  }`}
                 >
-                  Contact & Emergency
+                  Account Info
                 </button>
               </div>
 
@@ -494,29 +352,7 @@ const TenantProfile = () => {
                           />
                         ) : (
                           <div className="p-4 rounded-xl bg-gray-50 text-gray-900 font-medium">
-                            {tenant?.name}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Email */}
-                      <div className="space-y-2">
-                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                          <Mail className="w-4 h-4" />
-                          Email Address
-                        </label>
-                        {editing ? (
-                          <input
-                            type="email"
-                            name="email"
-                            value={formData.email}
-                            onChange={handleChange}
-                            className="w-full p-4 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-                            placeholder="Enter your email"
-                          />
-                        ) : (
-                          <div className="p-4 rounded-xl bg-gray-50 text-gray-900 font-medium">
-                            {tenant?.email}
+                            {user?.name}
                           </div>
                         )}
                       </div>
@@ -530,172 +366,113 @@ const TenantProfile = () => {
                         {editing ? (
                           <input
                             type="tel"
-                            name="mobile"
-                            value={formData.mobile}
+                            name="phone"
+                            value={formData.phone}
                             onChange={handleChange}
                             className="w-full p-4 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
                             placeholder="Enter your mobile number"
                           />
                         ) : (
                           <div className="p-4 rounded-xl bg-gray-50 text-gray-900 font-medium">
-                            {tenant?.mobile || "Not provided"}
+                            {user?.phone || "Not provided"}
                           </div>
                         )}
                       </div>
 
-                      {/* Address */}
+                      {/* Email (Read-only) */}
                       <div className="space-y-2">
                         <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                          <MapPin className="w-4 h-4" />
-                          Permanent Address
+                          <Mail className="w-4 h-4" />
+                          Email Address
                         </label>
-                        {editing ? (
-                          <textarea
-                            name="permanentAddress"
-                            value={formData.permanentAddress}
-                            onChange={handleChange}
-                            rows="3"
-                            className="w-full p-4 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all resize-none"
-                            placeholder="Enter your permanent address"
-                          />
-                        ) : (
-                          <div className="p-4 rounded-xl bg-gray-50 text-gray-900 font-medium">
-                            {tenant?.permanentAddress || "Not provided"}
-                          </div>
-                        )}
+                        <div className="p-4 rounded-xl bg-gray-50 text-gray-900 font-medium">
+                          {user?.email || "Not registered"}
+                        </div>
+                        <p className="text-xs text-gray-500">Email cannot be changed</p>
                       </div>
                     </motion.div>
                   )}
 
-                  {activeTab === "contact" && (
+                  {activeTab === "info" && (
                     <motion.div
-                      key="contact"
+                      key="info"
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
                       className="space-y-6"
                     >
-                      {/* Work */}
+                      {/* User ID */}
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                          <Shield className="w-4 h-4" />
+                          User ID
+                        </label>
+                        <div className="p-4 rounded-xl bg-gray-50 text-gray-900 font-medium text-sm font-mono">
+                          {user?._id}
+                        </div>
+                      </div>
+
+                      {/* Role */}
                       <div className="space-y-2">
                         <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                           <Briefcase className="w-4 h-4" />
-                          Occupation
+                          Role
                         </label>
-                        {editing ? (
-                          <input
-                            type="text"
-                            name="work"
-                            value={formData.work}
-                            onChange={handleChange}
-                            className="w-full p-4 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-                            placeholder="Enter your occupation"
-                          />
-                        ) : (
-                          <div className="p-4 rounded-xl bg-gray-50 text-gray-900 font-medium">
-                            {tenant?.work || "Not provided"}
-                          </div>
-                        )}
+                        <div className="p-4 rounded-xl bg-gray-50 text-gray-900 font-medium capitalize">
+                          {user?.role}
+                        </div>
                       </div>
 
-                      {/* Marital Status */}
-                      <div className="space-y-2">
-                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                          <Heart className="w-4 h-4" />
-                          Marital Status
-                        </label>
-                        {editing ? (
-                          <select
-                            name="maritalStatus"
-                            value={formData.maritalStatus}
-                            onChange={handleChange}
-                            className="w-full p-4 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-                          >
-                            <option value="">Select marital status</option>
-                            <option value="Single">Single</option>
-                            <option value="Married">Married</option>
-                            <option value="Divorced">Divorced</option>
-                            <option value="Widowed">Widowed</option>
-                          </select>
-                        ) : (
-                          <div className="p-4 rounded-xl bg-gray-50 text-gray-900 font-medium">
-                            {tenant?.maritalStatus || "Not provided"}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Date of Birth */}
+                      {/* Account Created */}
                       <div className="space-y-2">
                         <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                           <Calendar className="w-4 h-4" />
-                          Date of Birth
+                          Account Created
                         </label>
-                        {editing ? (
-                          <input
-                            type="date"
-                            name="dob"
-                            value={formData.dob}
-                            onChange={handleChange}
-                            className="w-full p-4 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-                          />
-                        ) : (
-                          <div className="p-4 rounded-xl bg-gray-50 text-gray-900 font-medium">
-                            {tenant?.dob ? new Date(tenant.dob).toLocaleDateString() : "Not provided"}
-                          </div>
-                        )}
+                        <div className="p-4 rounded-xl bg-gray-50 text-gray-900 font-medium">
+                          {new Date(user?.createdAt).toLocaleString()}
+                        </div>
                       </div>
 
-                      {/* Emergency Contact */}
-                      <div className="space-y-4">
+                      {/* Last Login */}
+                      <div className="space-y-2">
                         <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                          <Shield className="w-4 h-4" />
-                          Emergency Contact
+                          <Clock className="w-4 h-4" />
+                          Last Login
                         </label>
-                        {editing ? (
-                          <div className="space-y-4 p-4 rounded-xl border border-gray-300">
-                            <input
-                              type="text"
-                              value={formData.emergencyContact.name}
-                              onChange={(e) => handleEmergencyContactChange('name', e.target.value)}
-                              className="w-full p-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                              placeholder="Contact Name"
-                            />
-                            <input
-                              type="tel"
-                              value={formData.emergencyContact.phone}
-                              onChange={(e) => handleEmergencyContactChange('phone', e.target.value)}
-                              className="w-full p-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                              placeholder="Phone Number"
-                            />
-                            <input
-                              type="text"
-                              value={formData.emergencyContact.relation}
-                              onChange={(e) => handleEmergencyContactChange('relation', e.target.value)}
-                              className="w-full p-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                              placeholder="Relationship"
-                            />
-                          </div>
-                        ) : (
-                          <div className="p-4 rounded-xl bg-gray-50">
-                            {tenant?.emergencyContact && Object.keys(tenant.emergencyContact).length > 0 ? (
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-gray-600">Name:</span>
-                                  <span className="font-medium">{tenant.emergencyContact.name}</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                  <span className="text-gray-600">Phone:</span>
-                                  <span className="font-medium">{tenant.emergencyContact.phone}</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                  <span className="text-gray-600">Relation:</span>
-                                  <span className="font-medium">{tenant.emergencyContact.relation}</span>
-                                </div>
-                              </div>
-                            ) : (
-                              <p className="text-gray-500">No emergency contact provided</p>
-                            )}
-                          </div>
-                        )}
+                        <div className="p-4 rounded-xl bg-gray-50 text-gray-900 font-medium">
+                          {user?.lastLogin
+                            ? new Date(user.lastLogin).toLocaleString()
+                            : "Not recorded"}
+                        </div>
+                      </div>
+
+                      {/* Status Badges */}
+                      <div className="space-y-3 pt-4 border-t border-gray-200">
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-green-50 border border-green-200">
+                          <span className="text-sm font-medium text-gray-700">Account Status</span>
+                          <span
+                            className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                              user?.isActive
+                                ? "bg-green-200 text-green-800"
+                                : "bg-red-200 text-red-800"
+                            }`}
+                          >
+                            {user?.isActive ? "Active" : "Inactive"}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-blue-50 border border-blue-200">
+                          <span className="text-sm font-medium text-gray-700">Verification Status</span>
+                          <span
+                            className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                              user?.isVerified
+                                ? "bg-blue-200 text-blue-800"
+                                : "bg-yellow-200 text-yellow-800"
+                            }`}
+                          >
+                            {user?.isVerified ? "Verified" : "Pending"}
+                          </span>
+                        </div>
                       </div>
                     </motion.div>
                   )}
@@ -710,14 +487,31 @@ const TenantProfile = () => {
                   >
                     <button
                       onClick={handleSave}
-                      className="flex-1 flex items-center justify-center gap-2 p-4 rounded-xl bg-gradient-to-r from-green-500 to-green-600 text-white font-medium shadow-lg hover:shadow-xl"
+                      disabled={saveLoading}
+                      className="flex-1 flex items-center justify-center gap-2 p-4 rounded-xl bg-gradient-to-r from-green-500 to-green-600 text-white font-medium shadow-lg hover:shadow-xl disabled:opacity-50"
                     >
-                      <Save className="w-5 h-5" />
-                      Save Changes
+                      {saveLoading ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-5 h-5" />
+                          Save Changes
+                        </>
+                      )}
                     </button>
                     <button
-                      onClick={() => setEditing(false)}
-                      className="flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50"
+                      onClick={() => {
+                        setEditing(false);
+                        setFormData({
+                          name: user?.name || "",
+                          phone: user?.phone || "",
+                        });
+                      }}
+                      disabled={saveLoading}
+                      className="flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-50"
                     >
                       <X className="w-5 h-5" />
                       Cancel

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
 import { 
   FaBuilding, 
   FaVideo, 
@@ -25,12 +26,14 @@ import {
   FaClipboardList,
   FaClock,
   FaPhone,
-  FaUser
+  FaUser,
+  FaSpinner
 } from 'react-icons/fa';
 
 const ProfileTabs = ({ role }) => {
   // If the logged-in user is a tenant, hide the tabs and only show profile data
   if (role === 'tenant') return null;
+
   const [activeTab, setActiveTab] = useState('listings');
   const [selectedReel, setSelectedReel] = useState(null);
   const [uploadModal, setUploadModal] = useState(false);
@@ -50,52 +53,12 @@ const ProfileTabs = ({ role }) => {
     description: ''
   });
 
-  // Dummy Data
-  const myListings = [
-    {
-      id: 1,
-      title: 'Luxury 3BHK Apartment',
-      type: 'Apartment',
-      price: '₹85,00,000',
-      location: 'Vijay Nagar, Indore',
-      bedrooms: 3,
-      bathrooms: 2,
-      area: '1450 sq ft',
-      image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=500',
-      status: 'Active',
-      views: 245,
-      inquiries: 12
-    },
-    {
-      id: 2,
-      title: 'Commercial Office Space .....npm u',
-      type: 'Office',
-      price: '₹45,000/month',
-      location: 'MG Road, Indore',
-      bedrooms: null,
-      bathrooms: 1,
-      area: '850 sq ft',
-      image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=500',
-      status: 'Active',
-      views: 189,
-      inquiries: 8
-    },
-    {
-      id: 3,
-      title: 'Modern Studio Apartment',
-      type: 'Studio',
-      price: '₹35,00,000',
-      location: 'AB Road, Indore',
-      bedrooms: 1,
-      bathrooms: 1,
-      area: '650 sq ft',
-      image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=500',
-      status: 'Pending',
-      views: 156,
-      inquiries: 5
-    }
-  ];
+  // ── States for real API (only Listings tab) ──
+  const [myProperties, setMyProperties] = useState([]);
+  const [loadingProperties, setLoadingProperties] = useState(false);
+  const [propertiesError, setPropertiesError] = useState(null);
 
+  // Dummy Data (unchanged)
   const myReels = [
     {
       id: 1,
@@ -257,6 +220,51 @@ const ProfileTabs = ({ role }) => {
     { id: 'subscriptions', label: 'Subscriptions', icon: <FaCrown /> }
   ];
 
+  // Fetch real properties when listings tab is active
+  useEffect(() => {
+    if (activeTab !== 'listings') return;
+
+    const fetchMyProperties = async () => {
+      setLoadingProperties(true);
+      setPropertiesError(null);
+
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        setPropertiesError("Authentication token not found. Please login.");
+        setLoadingProperties(false);
+        return;
+      }
+
+      try {
+        const res = await axios.get(
+          "https://api.gharzoreality.com/api/v2/properties/my-properties",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (res.data.success && Array.isArray(res.data.data)) {
+          setMyProperties(res.data.data);
+        } else {
+          setMyProperties([]);
+        }
+      } catch (err) {
+        console.error("My properties fetch failed:", err);
+        setPropertiesError(
+          err.response?.data?.message ||
+          "Failed to load your properties. Please try again."
+        );
+      } finally {
+        setLoadingProperties(false);
+      }
+    };
+
+    fetchMyProperties();
+  }, [activeTab]);
+
   const handleReelUpload = (e) => {
     e.preventDefault();
     console.log('Reel uploaded:', reelForm);
@@ -319,58 +327,101 @@ const ProfileTabs = ({ role }) => {
             transition={{ duration: 0.3 }}
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
           >
-            {myListings.map((property) => (
-              <div 
-                key={property.id} 
-                className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-blue-200"
-              >
-                <div className="relative aspect-[4/3]">
-                  <img src={property.image} alt={property.title} className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 hover:scale-105" />
-                  <div className="absolute top-3 right-3">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      property.status === 'Active' ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'
-                    }`}>
-                      {property.status}
-                    </span>
-                  </div>
-                  <div className="absolute bottom-3 left-3">
-                    <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
-                      {property.type}
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="p-5">
-                  <h3 className="font-bold text-xl text-gray-800 mb-2">{property.title}</h3>
-                  <div className="flex items-center text-gray-600 text-sm mb-3">
-                    <FaMapMarkerAlt className="mr-1 text-blue-500" />
-                    <span>{property.location}</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-4 mb-4 text-sm text-gray-600">
-                    {property.bedrooms && (
-                      <div className="flex items-center gap-1">
-                        <FaBed className="text-indigo-500" /> {property.bedrooms}
-                      </div>
-                    )}
-                    <div className="flex items-center gap-1">
-                      <FaBath className="text-indigo-500" /> {property.bathrooms}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <FaRuler className="text-indigo-500" /> {property.area}
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-between items-center pt-3 border-t border-gray-200">
-                    <span className="text-blue-600 font-bold text-xl">{property.price}</span>
-                    <div className="flex gap-4 text-xs text-gray-500">
-                      <span className="flex items-center gap-1"><FaEye className="text-green-500" /> {property.views}</span>
-                      <span className="flex items-center gap-1"><FaComment className="text-purple-500" /> {property.inquiries}</span>
-                    </div>
-                  </div>
-                </div>
+            {loadingProperties ? (
+              <div className="col-span-full flex justify-center items-center py-20">
+                <FaSpinner className="animate-spin text-5xl text-blue-600 mr-4" />
+                <span className="text-xl text-gray-700">Loading your properties...</span>
               </div>
-            ))}
+            ) : propertiesError ? (
+              <div className="col-span-full bg-red-50 border border-red-200 rounded-xl p-8 text-center">
+                <p className="text-red-600 font-medium text-lg">{propertiesError}</p>
+                <button 
+                  onClick={() => window.location.reload()}
+                  className="mt-6 px-8 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                >
+                  Try Again
+                </button>
+              </div>
+            ) : myProperties.length === 0 ? (
+              <div className="col-span-full text-center py-16 bg-white rounded-xl shadow">
+                <p className="text-xl text-gray-600 mb-6">You haven't listed any properties yet.</p>
+                <button className="px-10 py-4 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition shadow-md">
+                  Add New Property
+                </button>
+              </div>
+            ) : (
+              myProperties.map((property) => {
+                const primaryImg = property.images?.find(i => i.isPrimary)?.url || property.images?.[0]?.url || '';
+                const loc = property.location || {};
+
+                return (
+                  <div 
+                    key={property._id} 
+                    className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-blue-200"
+                  >
+                    <div className="relative aspect-[4/3]">
+                      <img 
+                        src={primaryImg || 'https://via.placeholder.com/600x450?text=No+Photo'} 
+                        alt={property.title}
+                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                      />
+                      <div className="absolute top-3 right-3">
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(property.status)}`}>
+                          {property.status || 'Unknown'}
+                        </span>
+                      </div>
+                      <div className="absolute bottom-3 left-3">
+                        <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
+                          {property.propertyType || 'Property'}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="p-5">
+                      <h3 className="font-bold text-xl text-gray-800 mb-2 line-clamp-2">
+                        {property.title || 'Property Listing'}
+                      </h3>
+                      <div className="flex items-center text-gray-600 text-sm mb-3">
+                        <FaMapMarkerAlt className="mr-1 text-blue-500" />
+                        <span className="line-clamp-1">
+                          {loc.locality || loc.city || 'Location not specified'}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-5 mb-4 text-sm text-gray-600">
+                        {property.bhk && (
+                          <div className="flex items-center gap-1">
+                            <FaBed className="text-indigo-500" /> {property.bhk}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1">
+                          <FaBath className="text-indigo-500" /> {property.bathrooms || 0}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <FaRuler className="text-indigo-500" /> 
+                          {property.area?.carpet || property.area?.builtUp || '—'} {property.area?.unit || 'sqft'}
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-between items-center pt-3 border-t border-gray-200">
+                        <span className="text-blue-600 font-bold text-xl">
+                          ₹{property.price?.amount?.toLocaleString() || '—'} 
+                          {property.price?.per ? `/${property.price.per}` : ''}
+                        </span>
+                        <div className="flex gap-4 text-xs text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <FaEye className="text-green-500" /> {property.stats?.views || 0}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <FaComment className="text-purple-500" /> {property.stats?.enquiries || 0}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </motion.div>
         )}
 
@@ -508,87 +559,6 @@ const ProfileTabs = ({ role }) => {
                 </div>
               </div>
             ))}
-          </motion.div>
-        )}
-
-        {activeTab === 'services' && (
-          <motion.div
-            key="services"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-          >
-            <div className="mb-6 flex justify-end">
-              <button
-                onClick={() => setServiceModal(true)}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-full font-semibold shadow-md hover:shadow-xl transition-all duration-300"
-              >
-                <FaUpload />
-                Add New Service
-              </button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {myServices.map((service) => (
-                <div 
-                  key={service.id} 
-                  className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-indigo-200"
-                >
-                  <div className="relative aspect-[4/3]">
-                    <img 
-                      src={service.image} 
-                      alt={service.title} 
-                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 hover:scale-105" 
-                    />
-                    <div className="absolute top-3 right-3">
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        service.status === 'Available' 
-                          ? 'bg-green-500 text-white' 
-                          : 'bg-orange-500 text-white'
-                      }`}>
-                        {service.status}
-                      </span>
-                    </div>
-                    <div className="absolute bottom-3 left-3">
-                      <span className="bg-indigo-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
-                        {service.category}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="p-5">
-                    <h3 className="font-bold text-xl text-gray-800 mb-2 line-clamp-2">
-                      {service.title}
-                    </h3>
-
-                    <div className="flex items-center text-gray-600 text-sm mb-4">
-                      <FaMapMarkerAlt className="mr-1 text-indigo-500" />
-                      <span>{service.location}</span>
-                    </div>
-
-                    <div className="flex flex-wrap gap-4 text-sm text-gray-700 mb-4">
-                      <div className="flex items-center gap-1">
-                        <FaHardHat className="text-amber-600" />
-                        <span>{service.experience}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <FaStar className="text-yellow-500" />
-                        {service.rating} ({service.reviews})
-                      </div>
-                    </div>
-
-                    <div className="flex justify-between items-center pt-4 border-t border-gray-200">
-                      <span className="text-indigo-600 font-bold text-xl">
-                        {service.price}
-                      </span>
-                      <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors duration-300">
-                        Contact Now
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
           </motion.div>
         )}
 
