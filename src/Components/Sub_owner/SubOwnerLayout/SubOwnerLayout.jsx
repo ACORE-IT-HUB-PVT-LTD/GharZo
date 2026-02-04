@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { Outlet } from "react-router-dom";
+import { useAuth } from "../../User_Section/Context/AuthContext";
+import LayoutGuard from "../../../utils/LayoutGuard";
 import Sidebar from "../Sidebar/SubOwnerSidebar";
 
-const SubOwnerLayout = () => {
-  const [sidebarWidth, setSidebarWidth] = useState(80); // desktop default collapsed
+const SubOwnerLayoutContent = () => {
+  const [sidebarWidth, setSidebarWidth] = useState(80);
 
   return (
     <div className="flex">
@@ -18,6 +20,23 @@ const SubOwnerLayout = () => {
         <Outlet />
       </div>
     </div>
+  );
+};
+
+const SubOwnerLayout = () => {
+  const { loading } = useAuth();
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
+
+  return (
+    <LayoutGuard 
+      requiredRole="sub_owner" 
+      fallbackPath="/sub_owner_login"
+    >
+      <SubOwnerLayoutContent />
+    </LayoutGuard>
   );
 };
 

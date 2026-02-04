@@ -16,6 +16,7 @@ import {
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../Context/AuthContext";
+import { redirectByRole } from "../../../utils/routingUtils";
 import Login from "../Login&Signup/Login";
 import Signup from "../Login&Signup/UserSignup";
 import AOS from "aos";
@@ -23,7 +24,7 @@ import "aos/dist/aos.css";
 
 const PG = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
   const [formData, setFormData] = useState({
     city: "",
@@ -33,11 +34,13 @@ const PG = () => {
 
   const [pgData, setPgData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [pgLoading, setPgLoading] = useState(true);
   const [noProperties, setNoProperties] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
   const [selectedPg, setSelectedPg] = useState(null);
+  const [showRoleModal, setShowRoleModal] = useState(false);
+  const [roleModalMessage, setRoleModalMessage] = useState("");
 
   useEffect(() => {
     AOS.init({ duration: 800, once: true });
@@ -46,7 +49,7 @@ const PG = () => {
   }, []);
 
   const fetchPGProperties = async () => {
-    setLoading(true);
+    setPgLoading(true);
     setNoProperties(false);
     try {
       const res = await fetch(`https://api.gharzoreality.com/api/public/properties?page=1&limit=100`);
@@ -68,7 +71,7 @@ const PG = () => {
           type: "PG",
           lowestPrice: p.price?.amount || 0,
           totalBeds: p.pgDetails?.totalBeds || 1,
-          totalRooms: Math.ceil((p.pgDetails?.totalBeds || 1) / 2), // Estimate rooms
+          totalRooms: Math.ceil((p.pgDetails?.totalBeds || 1) / 2),
           images: p.images?.map(img => img.url) || [],
           location: {
             city: p.location?.city || "",
@@ -77,8 +80,8 @@ const PG = () => {
             landmark: p.location?.landmark || "",
           },
           amenities: p.amenitiesList || [],
-          rating: 4.5, // Default rating
-          reviews: Math.floor(Math.random() * 100) + 20, // Random reviews
+          rating: 4.5,
+          reviews: Math.floor(Math.random() * 100) + 20,
           landlordInfo: { 
             name: p.ownerId?.name || p.contactInfo?.name || "Property Owner" 
           },
@@ -100,7 +103,7 @@ const PG = () => {
       setFilteredData([]);
       setNoProperties(true);
     } finally {
-      setLoading(false);
+      setPgLoading(false);
     }
   };
 
@@ -146,39 +149,105 @@ const PG = () => {
     setFilteredData(pgData);
   };
 
-  const handlePgClick = (pg) => {
+  // Unified role-based redirect function
+  const redirectBasedOnRole = (targetRole, pg = null) => {
+    // Not logged in - show login modal
     if (!user) {
-      setSelectedPg(pg);
+      // Store the target role so we can redirect after login
+      sessionStorage.setItem('pendingRole', targetRole);
       setShowLogin(true);
-    } else if (!user.isRegistered) {
-      setSelectedPg(pg);
-      setShowSignup(true);
-    } else {
-      navigate(`/property/${pg.id}`, { state: pg });
+      return;
+    }
+
+    const userRole = user.role?.toLowerCase?.();
+
+    // Role-based navigation logic
+    switch (targetRole) {
+      case 'tenant':
+        if (userRole === 'tenant') {
+          redirectByRole(navigate, userRole);
+        } else {
+          setRoleModalMessage(`You are not a tenant. Your current role is: ${user.role}`);
+          setShowRoleModal(true);
+        }
+        break;
+
+      case 'landlord':
+        if (userRole === 'landlord') {
+          redirectByRole(navigate, userRole);
+        } else {
+          setRoleModalMessage(`Access Denied! You need a landlord account to add properties. Your current role is: ${user.role}`);
+          setShowRoleModal(true);
+        }
+        break;
+
+      case 'subOwner':
+        if (userRole === 'sub_owner') {
+          redirectByRole(navigate, userRole);
+        } else {
+          setRoleModalMessage(`You are not a sub owner. Your current role is: ${user.role}`);
+          setShowRoleModal(true);
+        }
+        break;
+
+      case 'worker':
+        if (userRole === 'worker') {
+          redirectByRole(navigate, userRole);
+        } else {
+          setRoleModalMessage(`You are not a worker. Your current role is: ${user.role}`);
+          setShowRoleModal(true);
+        }
+        break;
+
+      case 'viewProperty':
+        if (pg) {
+          navigate(`/property/${pg.id}`, { state: pg });
+        }
+        break;
+
+      default:
+        console.error('Unknown target role:', targetRole);
     }
   };
 
-  const handleSignupComplete = () => {
-    setShowSignup(false);
-    if (selectedPg) {
-      navigate(`/property/${selectedPg.id}`, { state: selectedPg });
-    }
-  };
-
+  // Simplified handlers - just call redirectBasedOnRole
   const handleTenantLogin = () => {
-    navigate("/tenant_login");
+    redirectBasedOnRole('tenant');
   };
 
   const handleLandlordLogin = () => {
-    navigate("/landlord_login");
+    redirectBasedOnRole('landlord');
   };
-  
-  const handleSubowerLogin = () => {
-    navigate("/sub_owner_login");
+
+  const handleSubOwnerLogin = () => {
+    redirectBasedOnRole('subOwner');
   };
-  
-  const handleworkerLogin = () => {
-    navigate("/dr_worker_login");
+
+  const handleWorkerLogin = () => {
+    redirectBasedOnRole('worker');
+  };
+
+  const handlePgClick = (pg) => {
+    redirectBasedOnRole('viewProperty', pg);
+  };
+
+  // Handle successful login
+  const handleLoginSuccess = async () => {
+    setShowLogin(false);
+    
+    // Check if there was a pending role action
+    const pendingRole = sessionStorage.getItem('pendingRole');
+    if (pendingRole) {
+      sessionStorage.removeItem('pendingRole');
+      // Wait a moment for auth state to update
+      setTimeout(() => {
+        redirectBasedOnRole(pendingRole);
+      }, 300);
+    }
+  };
+
+  const handleSignupComplete = async () => {
+    setShowSignup(false);
   };
 
   const renderStars = (rating) => {
@@ -268,11 +337,11 @@ const PG = () => {
               data-aos-delay="100"
             >
               <FaUser className="w-5 h-5" />
-              Login as Tenant
+              Tenant Dashboard
             </button>
 
             <button
-              onClick={handleSubowerLogin}
+              onClick={handleSubOwnerLogin}
               className="px-6 py-3 bg-gradient-to-r from-blue-800 to-blue-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:from-orange-600 hover:to-blue-700 transition-all duration-300 transform hover:-translate-y-1 flex items-center gap-2"
               data-aos="zoom-in"
               data-aos-delay="200"
@@ -282,7 +351,7 @@ const PG = () => {
             </button>
             
             <button
-              onClick={handleworkerLogin}
+              onClick={handleWorkerLogin}
               className="px-6 py-3 bg-gradient-to-r from-blue-800 to-blue-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:from-orange-600 hover:to-blue-700 transition-all duration-300 transform hover:-translate-y-1 flex items-center gap-2"
               data-aos="zoom-in"
               data-aos-delay="200"
@@ -350,7 +419,7 @@ const PG = () => {
       </div>
 
       {/* No Properties Message */}
-      {noProperties && !loading && (
+      {noProperties && !pgLoading && (
         <div className="max-w-6xl mx-auto">
           <div className="col-span-full text-center py-12">
             <FaHome className="mx-auto text-6xl text-gray-300 mb-4" />
@@ -363,7 +432,7 @@ const PG = () => {
       {/* Enhanced PG Cards Grid */}
       <div className="max-w-6xl mx-auto">
         <div className="grid gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" data-aos="fade-up" data-aos-delay="100">
-          {loading ? (
+          {pgLoading ? (
             // Loading skeletons
             Array.from({ length: 6 }).map((_, index) => (
               <div key={index} className="bg-white rounded-2xl overflow-hidden shadow-lg">
@@ -488,7 +557,7 @@ const PG = () => {
           )}
         </div>
 
-        {filteredData.length > 0 && !loading && (
+        {filteredData.length > 0 && !pgLoading && (
           <div className="text-center mt-8 py-6 bg-white/50 rounded-xl">
             <p className="text-gray-600">
               Showing <span className="font-semibold text-blue-600">{filteredData.length}</span> 
@@ -514,10 +583,11 @@ const PG = () => {
         </button>
       </div>
 
+      {/* Login Modal */}
       {showLogin && (
         <Login
           role="User"
-          onClose={() => setShowLogin(false)}
+          onClose={handleLoginSuccess}
           onRegisterClick={() => {
             setShowLogin(false);
             setShowSignup(true);
@@ -525,7 +595,26 @@ const PG = () => {
         />
       )}
 
+      {/* Signup Modal */}
       {showSignup && <Signup onClose={handleSignupComplete} />}
+
+      {/* Role Access Modal */}
+      {showRoleModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <h3 className="text-lg font-bold mb-2 text-red-600">Access Restricted</h3>
+            <p className="text-sm text-gray-700 mb-4">{roleModalMessage}</p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowRoleModal(false)}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

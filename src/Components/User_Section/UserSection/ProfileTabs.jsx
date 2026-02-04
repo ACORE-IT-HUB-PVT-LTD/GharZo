@@ -28,7 +28,9 @@ import {
   FaUser
 } from 'react-icons/fa';
 
-const ProfileTabs = () => {
+const ProfileTabs = ({ role }) => {
+  // If the logged-in user is a tenant, hide the tabs and only show profile data
+  if (role === 'tenant') return null;
   const [activeTab, setActiveTab] = useState('listings');
   const [selectedReel, setSelectedReel] = useState(null);
   const [uploadModal, setUploadModal] = useState(false);

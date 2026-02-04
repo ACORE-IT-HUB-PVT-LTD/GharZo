@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../Context/AuthContext";
 import { motion } from "framer-motion";
 import {
   BedDouble,
@@ -18,9 +19,15 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import baseurl from "../../../../BaseUrl";
+import { verifyUserRoleFromAPI } from "../../../utils/authUtils";
 
 const HostelsListingPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [showNotTenantModal, setShowNotTenantModal] = useState(false);
+  const [currentUserRole, setCurrentUserRole] = useState(null);
+  const [showRoleModal, setShowRoleModal] = useState(false);
+  const [roleModalMessage, setRoleModalMessage] = useState("");
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState("");
@@ -35,8 +42,65 @@ const HostelsListingPage = () => {
   const [loading, setLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(1);
 
+  // Fetch current user role from API
+  const fetchCurrentUser = async () => {
+    const token = localStorage.getItem("usertoken");
+    if (!token) {
+      setCurrentUserRole(null);
+      return null;
+    }
+
+    try {
+      const { role, success } = await verifyUserRoleFromAPI(token);
+      if (success) {
+        setCurrentUserRole(role);
+        return role;
+      }
+    } catch (error) {
+      console.error("Error fetching user role:", error);
+    }
+    setCurrentUserRole(null);
+    return null;
+  };
+
+  useEffect(() => {
+    fetchCurrentUser();
+  }, []);
+
   const handlePropertyClick = (id) => {
     navigate(`/property/${id}`);
+  };
+
+  // Unified role-based redirect
+  const redirectBasedOnRole = async (targetRole) => {
+    const role = await fetchCurrentUser();
+
+    if (!role) {
+      // Not logged in
+      if (targetRole === 'tenant') {
+        navigate('/tenant_login');
+      } else if (targetRole === 'landlord') {
+        navigate('/landlord_login');
+      }
+      return;
+    }
+
+    // Logged in - check role
+    if (targetRole === 'tenant') {
+      if (role === 'tenant') {
+        navigate('/tenant/profile');
+      } else {
+        setRoleModalMessage(`You are not a tenant. Your current role is: ${role}`);
+        setShowRoleModal(true);
+      }
+    } else if (targetRole === 'landlord') {
+      if (role === 'landlord') {
+        navigate('/landlord/add-property');
+      } else {
+        setRoleModalMessage(`You need a landlord account to list properties. Your current role is: ${role}`);
+        setShowRoleModal(true);
+      }
+    }
   };
 
   useEffect(() => {
@@ -119,15 +183,15 @@ const HostelsListingPage = () => {
           {/* Action Buttons - Left: Tenant Login | Right: List Property */}
           <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
             <button
-              onClick={() => navigate("/tenant_login")}
+              onClick={() => redirectBasedOnRole('tenant')}
               className="flex-1 px-7 py-3.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:from-green-700 hover:to-emerald-700 transition-all flex items-center justify-center gap-2 min-w-[220px]"
             >
               <Users size={20} />
-              Login as Tenant
+              Tenant Dashboard
             </button>
 
             <button
-              onClick={() => navigate("/landlord_login")}
+              onClick={() => redirectBasedOnRole('landlord')}
               className="flex-1 px-7 py-3.5 bg-gradient-to-r from-orange-500 to-red-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:from-orange-600 hover:to-red-700 transition-all flex items-center justify-center gap-2 min-w-[220px]"
             >
               <Plus size={20} />
@@ -311,6 +375,55 @@ const HostelsListingPage = () => {
           )
         ))}
       </div>
+
+      {showNotTenantModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <h3 className="text-lg font-bold mb-2">Access Restricted</h3>
+            <p className="text-sm text-gray-600 mb-4">You are not a tenant.</p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowNotTenantModal(false)}
+                className="px-4 py-2 bg-gray-200 rounded-lg"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => { setShowNotTenantModal(false); navigate('/tenant_login'); }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+              >
+                Login as Tenant
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRoleModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <h3 className="text-lg font-bold mb-2">Access Denied</h3>
+            <p className="text-sm text-gray-600 mb-4">{roleModalMessage}</p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowRoleModal(false)}
+                className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  setShowRoleModal(false);
+                  navigate('/');
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Go Home
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Pagination */}
       {totalPages > 1 && (

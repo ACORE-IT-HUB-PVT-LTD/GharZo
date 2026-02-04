@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import {
   FaBuilding,
@@ -14,8 +14,6 @@ import {
   FaTag,
 } from "react-icons/fa";
 import { motion } from "framer-motion";
-import axios from "axios";
-import baseurl from "../../../../BaseUrl";
 import {
   ResponsiveContainer,
   LineChart,
@@ -42,13 +40,10 @@ const Dashboard = () => {
   const [totalSubAdmins, setTotalSubAdmins] = useState(0);
   const [totalPlans, setTotalPlans] = useState(0);
   const [totalDues, setTotalDues] = useState(0);
-  const [error, setError] = useState(null);
   const [token, setToken] = useState(localStorage.getItem("token"));
   const [properties, setProperties] = useState([]);
-  const [plans, setPlans] = useState([]);
-  const [landlordId, setLandlordId] = useState(null);
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [propertyMixData, setPropertyMixData] = useState([
     { name: "PG", value: 14 },
     { name: "Flats", value: 9 },
@@ -85,10 +80,11 @@ const Dashboard = () => {
     }
   }, []);
 
-  // Load fallback data
-  const loadFallbackData = useCallback(() => {
+  // Load data from localStorage
+  useEffect(() => {
     const storedProperties = JSON.parse(localStorage.getItem("properties")) || [];
     const storedTenants = JSON.parse(localStorage.getItem("tenants")) || [];
+    
     setTotalProperties(storedProperties.length);
     setTotalTenants(storedTenants.length);
     setProperties(storedProperties);
@@ -99,141 +95,9 @@ const Dashboard = () => {
     setTotalSubAdmins(0);
     setTotalPlans(0);
     setTotalDues(0);
-    setPlans([]);
-    setLoading(false);
   }, []);
 
-  // Fetch or refresh token
-  const fetchToken = useCallback(async () => {
-    try {
-      const response = await axios.post(`${baseurl}api/auth/login`, {
-        username: "your-username",
-        password: "your-password",
-      });
-      const newToken = response.data.token;
-      localStorage.setItem("token", newToken);
-      setToken(newToken);
-      return newToken;
-    } catch (err) {
-      setError("Failed to authenticate. Please log in again.");
-      return null;
-    }
-  }, []);
-
-  // Axios interceptors
-  useEffect(() => {
-    const requestInterceptor = axios.interceptors.request.use(
-      (config) => {
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-      },
-      (error) => Promise.reject(error)
-    );
-
-    const responseInterceptor = axios.interceptors.response.use(
-      (response) => response,
-      async (error) => {
-        if (error.response?.status === 401 && !error.config._retry) {
-          error.config._retry = true;
-          const newToken = await fetchToken();
-          if (newToken) {
-            error.config.headers.Authorization = `Bearer ${newToken}`;
-            return axios(error.config);
-          }
-        }
-        return Promise.reject(error);
-      }
-    );
-
-    return () => {
-      axios.interceptors.request.eject(requestInterceptor);
-      axios.interceptors.response.eject(responseInterceptor);
-    };
-  }, [token, fetchToken]);
-
-  // Fetch dashboard data
-  const fetchDashboardData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      let currentLandlordId = landlordId;
-      if (!currentLandlordId) {
-        const profileRes = await axios.get(`${baseurl}api/landlord/profile`).catch(() => ({ data: { landlord: { _id: null } } }));
-        currentLandlordId = profileRes.data.landlord?._id;
-        setLandlordId(currentLandlordId);
-      }
-
-      let duesTotal = 0;
-      if (currentLandlordId) {
-        const duesRes = await axios.get(`${baseurl}api/dues/getdue/${currentLandlordId}`).catch(() => ({ data: { tenants: [] } }));
-        duesTotal = duesRes.data.tenants.reduce((sum, tenant) => sum + (tenant.totalAmount || 0), 0);
-      }
-      setTotalDues(duesTotal);
-
-      const [
-        propertiesRes,
-        tenantsRes,
-        visitsRes,
-        complaintsRes,
-        collectionsRes,
-        subAdminsRes,
-        bedsPlansRes,
-        reelsPlansRes,
-      ] = await Promise.all([
-        axios.get(`${baseurl}api/landlord/properties`).catch(() => ({ data: { properties: [], count: 0 } })),
-        axios.get(`${baseurl}api/landlord/tenant/count`).catch(() => ({ data: { count: 0 } })),
-        axios.get(`${baseurl}api/visits/landlord`).catch(() => ({ data: { totalVisits: 0 } })),
-        axios.get(`${baseurl}api/landlord/analytics/complaints`).catch(() => ({ data: { totalComplaints: 0 } })),
-        axios.get(`${baseurl}api/landlord/analytics/collections`).catch(() => ({ data: { totalCollected: 0 } })),
-        axios.get(`${baseurl}api/sub-owner/auth/sub-owners`).catch(() => ({ data: { subOwners: [] } })),
-        axios.get(`${baseurl}api/landlord/subscriptions/plans`).catch(() => ({ data: { data: [] } })),
-        axios.get(`${baseurl}api/reel/reel-subscription-plans/active`).catch(() => ({ data: { data: [] } })),
-      ]);
-
-      const fetchedProperties = propertiesRes.data?.properties || propertiesRes.data || [];
-      setProperties(fetchedProperties);
-      setTotalProperties(propertiesRes.data?.count || fetchedProperties.length);
-      setTotalTenants(tenantsRes.data?.count || 0);
-      setTotalVisits(visitsRes.data?.totalVisits || 0);
-      setAllComplaints(complaintsRes.data?.totalComplaints || 0);
-      setTotalCollected(collectionsRes.data?.totalCollected || 0);
-
-      const subOwners = subAdminsRes.data?.subOwners || [];
-      setTotalSubAdmins(Array.isArray(subOwners) ? subOwners.length : 0);
-
-      const bedsPlans = bedsPlansRes.data?.data || [];
-      const reelsPlans = reelsPlansRes.data?.data || [];
-      const combinedPlans = [...bedsPlans, ...reelsPlans];
-      setPlans(combinedPlans);
-      setTotalPlans(bedsPlans.length + reelsPlans.length);
-
-      const totalRooms = fetchedProperties.reduce((sum, p) => sum + (p.totalRooms || 0), 0);
-      const occupied = tenantsRes.data?.count || 0;
-      setOccupancy({ totalRooms, occupied });
-    } catch (err) {
-      console.error("Error fetching dashboard data:", err);
-      setError("Failed to fetch dashboard data. Using fallback data.");
-      loadFallbackData();
-    } finally {
-      setLoading(false);
-    }
-  }, [landlordId, loadFallbackData]);
-
-  useEffect(() => {
-    if (token) {
-      fetchDashboardData();
-    } else {
-      fetchToken().then((newToken) => {
-        if (newToken) fetchDashboardData();
-        else loadFallbackData();
-      });
-    }
-  }, [token, fetchToken, fetchDashboardData, loadFallbackData]);
-
-  // Update graph data
+  // Update graph data based on properties
   useEffect(() => {
     const totalRooms = properties.reduce((sum, p) => sum + (p.totalRooms || 0), 0);
     const occupied = totalTenants;
@@ -250,10 +114,12 @@ const Dashboard = () => {
       acc[type] = (acc[type] || 0) + 1;
       return acc;
     }, {});
+    
     const updatedPropertyMix = Object.entries(typeCounts).map(([name, value]) => ({
       name,
       value,
     }));
+    
     setPropertyMixData(
       updatedPropertyMix.length > 0
         ? updatedPropertyMix
@@ -269,17 +135,8 @@ const Dashboard = () => {
     ? ((occupancy.occupied / occupancy.totalRooms) * 100).toFixed(1)
     : 0;
 
-  const monthlyRentData = [
-    { month: "Feb", collected: 52000, pending: 8000 },
-    { month: "Mar", collected: 61000, pending: 6000 },
-    { month: "Apr", collected: 58000, pending: 9000 },
-    { month: "May", collected: 64000, pending: 5000 },
-    { month: "Jun", collected: 70000, pending: 4000 },
-    { month: "Jul", collected: 68000, pending: 7000 },
-  ];
-
   // Brand Colors
-  const ACCENT_ORANGE = "white"; // Vibrant orange for highlights
+  const ACCENT_ORANGE = "white";
   const PIE_COLORS = ["#f57c00", "#ff9d3f", "#ffb87a"];
 
   return (
@@ -293,16 +150,6 @@ const Dashboard = () => {
         background: `radial-gradient(circle at center bottom, rgba(245, 124, 0, 0.35), transparent 60%), linear-gradient(rgb(7, 26, 47) 0%, rgb(13, 47, 82) 45%, rgb(18, 62, 107) 75%, rgb(11, 42, 74) 100%)`,
       }}
     >
-      {error && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-red-900/70 backdrop-blur-md text-white p-4 rounded-xl mb-8 text-center font-medium shadow-lg border border-red-500/50"
-        >
-          {error}
-        </motion.div>
-      )}
-
       {loading && (
         <div className="text-center text-gray-400 text-lg py-12">Loading dashboard data...</div>
       )}
@@ -391,9 +238,6 @@ const Dashboard = () => {
           );
         })}
       </div>
-
-      {/* Charts Section - Commented out as in original */}
-      {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12"> ... </div> */}
 
       {/* Property Mix Pie Chart */}
       <motion.div
