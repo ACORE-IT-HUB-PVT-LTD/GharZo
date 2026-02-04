@@ -91,6 +91,34 @@ const PropertyDetail = () => {
   useEffect(() => {
     const fetchPropertyDetails = async () => {
       try {
+        // Try authenticated v2 details endpoint first (token from localStorage)
+        let token = localStorage.getItem("usertoken") || localStorage.getItem("authToken") || localStorage.getItem("access_token");
+
+        if (token) {
+          try {
+            const resV2 = await axios.get(
+              `https://api.gharzoreality.com/api/v2/properties/${id}/details`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+
+            const foundV2 = resV2.data?.data;
+            if (foundV2) {
+              setProperty(foundV2);
+              setLoading(false);
+              return;
+            }
+          } catch (e) {
+            console.warn("Authenticated v2 details fetch failed, falling back to public API:", e?.response?.status || e.message);
+            // continue to public fetch
+          }
+        }
+
+        // Fallback to public API
         const res = await axios.get(`${baseurl}api/public/property/${id}`);
         setProperty(res.data.property);
       } catch (error) {
@@ -133,16 +161,16 @@ const PropertyDetail = () => {
   // Image Carousel - Only for Details tab
   const ImageCarousel = () => (
     <div className="relative overflow-hidden rounded-2xl border-4 border-[#FF6B35] mb-8 shadow-2xl group">
-      {property.images?.length > 0 ? (
+      {property?.images?.length > 0 ? (
         <div className="relative w-full h-96">
           <AnimatePresence>
             <motion.img
               key={activeImageIndex}
               src={
-                property.images[activeImageIndex] ||
+                property.images[activeImageIndex]?.url ||
                 "https://via.placeholder.com/600x400?text=No+Image"
               }
-              alt={`${property.name} - Image ${activeImageIndex + 1}`}
+              alt={`${property?.title || property?.name} - Image ${activeImageIndex + 1}`}
               className="w-full h-full object-cover"
               initial={{ opacity: 0, x: 100 }}
               animate={{ opacity: 1, x: 0 }}
@@ -211,36 +239,121 @@ const PropertyDetail = () => {
             <ImageCarousel />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gradient-to-br from-gray-50 to-blue-50 p-6 rounded-2xl border-2 border-[#FF6B35]/30 shadow-xl">
-              <DetailItem icon={<Home />} label="Type" value={property?.type} />
+              <DetailItem icon={<Home />} label="Property Type" value={property?.propertyType} />
               <DetailItem
                 icon={<MapPin />}
                 label="Address"
-                value={property?.location?.address || property?.address}
+                value={property?.location?.address}
               />
               <DetailItem
                 icon={<Building />}
                 label="City"
-                value={property?.location?.city || property?.city}
+                value={property?.location?.city}
               />
               <DetailItem
                 icon={<Landmark />}
-                label="State"
-                value={property?.location?.state || property?.state}
+                label="Locality"
+                value={property?.location?.locality}
               />
               <DetailItem
                 icon={<LocateFixed />}
                 label="Pin Code"
-                value={property?.location?.pinCode || property?.pinCode}
+                value={property?.location?.pincode}
               />
               <DetailItem
-                icon={<Layers />}
-                label="Total Rooms"
-                value={property?.totalRooms}
+                icon={<Building2 />}
+                label="State"
+                value={property?.location?.state}
               />
               <DetailItem
                 icon={<BedDouble />}
-                label="Total Beds"
-                value={property?.totalBeds}
+                label="BHK"
+                value={property?.bhk}
+              />
+              <DetailItem
+                icon={<Building />}
+                label="Bathrooms"
+                value={property?.bathrooms}
+              />
+              <DetailItem
+                icon={<Layers />}
+                label="Carpet Area"
+                value={property?.area?.carpet ? `${property.area.carpet} ${property.area.unit}` : "N/A"}
+              />
+              <DetailItem
+                icon={<Layers />}
+                label="Built-up Area"
+                value={property?.area?.builtUp ? `${property.area.builtUp} ${property.area.unit}` : "N/A"}
+              />
+              <DetailItem
+                icon={<FaRupeeSign />}
+                label="Price"
+                value={property?.price?.amount ? `₹${property.price.amount.toLocaleString()} per ${property.price.per}` : "N/A"}
+              />
+              <DetailItem
+                icon={<FaRupeeSign />}
+                label="Security Deposit"
+                value={property?.price?.securityDeposit ? `₹${property.price.securityDeposit.toLocaleString()}` : "N/A"}
+              />
+              <DetailItem
+                icon={<Landmark />}
+                label="Furnishing Type"
+                value={property?.furnishing?.type}
+              />
+              <DetailItem
+                icon={<Building />}
+                label="Listing Type"
+                value={property?.listingType}
+              />
+              <DetailItem
+                icon={<Home />}
+                label="Property Status"
+                value={property?.status}
+              />
+              <DetailItem
+                icon={<Landmark />}
+                label="Property Age"
+                value={property?.propertyAge}
+              />
+              <DetailItem
+                icon={<Building />}
+                label="Floor"
+                value={property?.floor?.current && property?.floor?.total ? `${property.floor.current} of ${property.floor.total}` : "N/A"}
+              />
+              <DetailItem
+                icon={<Building2 />}
+                label="Balconies"
+                value={property?.balconies}
+              />
+              <DetailItem
+                icon={<Building2 />}
+                label="Covered Parking"
+                value={property?.parking?.covered}
+              />
+              <DetailItem
+                icon={<Building2 />}
+                label="Open Parking"
+                value={property?.parking?.open}
+              />
+              <DetailItem
+                icon={<Building2 />}
+                label="Landmark"
+                value={property?.location?.landmark}
+              />
+              <DetailItem
+                icon={<Landmark />}
+                label="Preferred Payment"
+                value={property?.landlordDetails?.preferredPaymentMethod}
+              />
+              <DetailItem
+                icon={<Building />}
+                label="Total Room Stats"
+                value={property?.roomStats?.totalRooms ? `Total: ${property.roomStats.totalRooms}, Occupied: ${property.roomStats.occupiedRooms}, Available: ${property.roomStats.availableRooms}` : "N/A"}
+              />
+              <DetailItem
+                icon={<Building2 />}
+                label="Completion %"
+                value={`${property?.completionPercentage}%`}
               />
               <div className="col-span-1 md:col-span-2 bg-white p-5 rounded-xl border-2 border-[#FF6B35]/30 shadow-md">
                 <h6 className="text-[#003366] font-bold text-lg mb-3 flex items-center">
@@ -250,6 +363,18 @@ const PropertyDetail = () => {
                 <p className="text-gray-700 leading-relaxed">
                   {property?.description || "No description available"}
                 </p>
+              </div>
+              <div className="col-span-1 md:col-span-2 bg-white p-5 rounded-xl border-2 border-[#FF6B35]/30 shadow-md">
+                <h6 className="text-[#003366] font-bold text-lg mb-3 flex items-center">
+                  <span className="w-1 h-6 bg-[#FF6B35] mr-3 rounded"></span>
+                  Contact Information
+                </h6>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <p className="text-gray-700"><span className="font-semibold">Name:</span> {property?.contactInfo?.name}</p>
+                  <p className="text-gray-700"><span className="font-semibold">Phone:</span> {property?.contactInfo?.phone}</p>
+                  <p className="text-gray-700"><span className="font-semibold">Email:</span> {property?.contactInfo?.email}</p>
+                  <p className="text-gray-700"><span className="font-semibold">Preferred Call Time:</span> {property?.contactInfo?.preferredCallTime}</p>
+                </div>
               </div>
             </div>
           </>
@@ -328,7 +453,7 @@ const PropertyDetail = () => {
             <div className="p-2 bg-[#FF6B35] rounded-full text-white shadow-lg">
               <Building2 size={24} />
             </div>
-            <h1 className="text-2xl font-bold text-blue-900 tracking-wide">{property.name}</h1>
+            <h1 className="text-2xl font-bold text-blue-900 tracking-wide">{property?.title || property?.name}</h1>
           </div>
           <div className="flex flex-wrap gap-2">
             {tabList.map((tab) => (

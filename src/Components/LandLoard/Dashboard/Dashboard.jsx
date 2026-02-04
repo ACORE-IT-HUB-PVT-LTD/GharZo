@@ -58,10 +58,7 @@ const Dashboard = () => {
     { month: "Jul", occupied: 74 },
   ]);
 
-  // Redirect if no token
-  if (!token) {
-    return <Navigate to="/landlord_login" />;
-  }
+  
 
   // Sidebar hover effect
   useEffect(() => {

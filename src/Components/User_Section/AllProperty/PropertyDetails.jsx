@@ -100,6 +100,49 @@ function PropertyDetails() {
     const fetchProperty = async () => {
       setLoading(true);
       try {
+        // Try authenticated v2 details endpoint first (token from localStorage)
+        let token = localStorage.getItem("usertoken") || localStorage.getItem("authToken") || localStorage.getItem("access_token");
+
+        if (token) {
+          try {
+            const resV2 = await axios.get(
+              `https://api.gharzoreality.com/api/v2/properties/${id}/details`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+
+            const foundV2 = resV2.data?.data;
+            if (foundV2) {
+              // when v2 returns full property object in data
+              const calculatedPostedDays = Math.floor(
+                (new Date() - new Date(foundV2.createdAt)) / (1000 * 60 * 60 * 24)
+              );
+
+              const updatedProperty = {
+                ...foundV2,
+                description:
+                  foundV2?.description ||
+                  `${foundV2.title} is a premium ${foundV2.propertyType?.toLowerCase() || "property"} located at ${
+                    foundV2.location?.address
+                  }, ${foundV2.location?.city}.`,
+              };
+
+              setProperty(updatedProperty);
+              setPostedDays(calculatedPostedDays);
+              setLoading(false);
+              return;
+            }
+          } catch (e) {
+            console.warn("Authenticated v2 details fetch failed, falling back to public API:", e?.response?.status || e.message);
+            // continue to public fetch
+          }
+        }
+
+        // Fallback to public API
         const timestamp = new Date().getTime();
         const response = await axios.get(
           `${baseurl}api/public/properties/${id}?_=${timestamp}`,
@@ -117,25 +160,23 @@ function PropertyDetails() {
           return;
         }
 
-        const calculatedPostedDays = Math.floor(
-          (new Date() - new Date(found.createdAt)) / (1000 * 60 * 60 * 24)
-        );
+        if (found) {
+          const calculatedPostedDays = Math.floor(
+            (new Date() - new Date(found.createdAt)) / (1000 * 60 * 60 * 24)
+          );
 
-        const updatedProperty = {
-          ...found,
-          description:
-            found?.description ||
-            `${found.title} is a premium ${found.propertyType?.toLowerCase() || "property"} located at ${
-              found.location?.address
-            }, ${found.location?.city}. This property features ${
-              found.bhk
-            } BHK with ${
-              found.bathrooms
-            } bathrooms, designed for ultimate comfort and elegance.`,
-        };
+          const updatedProperty = {
+            ...found,
+            description:
+              found?.description ||
+              `${found.title} is a premium ${found.propertyType?.toLowerCase() || "property"} located at ${
+                found.location?.address
+              }, ${found.location?.city}. This property features ${found.bhk} BHK with ${found.bathrooms} bathrooms.`,
+          };
 
-        setProperty(updatedProperty);
-        setPostedDays(calculatedPostedDays);
+          setProperty(updatedProperty);
+          setPostedDays(calculatedPostedDays);
+        }
       } catch (err) {
         console.error("Error fetching property:", err);
         setProperty(null);

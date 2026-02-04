@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { 
@@ -228,35 +229,64 @@ const ProfileTabs = ({ role }) => {
       setLoadingProperties(true);
       setPropertiesError(null);
 
-      const token = localStorage.getItem("token");
+      // Get token from localStorage - Try multiple possible key names
+      let token = localStorage.getItem("usertoken");
+      
+      if (!token) {
+        token = localStorage.getItem("authToken");
+      }
+      
+      if (!token) {
+        token = localStorage.getItem("access_token");
+      }
+
+      // Debug: Log what's in localStorage
+      console.log("Available localStorage keys:", Object.keys(localStorage));
+      console.log("Token found:", token ? "Yes" : "No");
 
       if (!token) {
-        setPropertiesError("Authentication token not found. Please login.");
+        setPropertiesError("Authentication token not found. Please login again.");
         setLoadingProperties(false);
         return;
       }
 
       try {
+        console.log("Fetching properties with token:", token.substring(0, 20) + "...");
+        
         const res = await axios.get(
           "https://api.gharzoreality.com/api/v2/properties/my-properties",
           {
             headers: {
-              Authorization: `Bearer ${token}`,
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json"
             },
           }
         );
 
+        console.log("API Response:", res.data);
+
         if (res.data.success && Array.isArray(res.data.data)) {
           setMyProperties(res.data.data);
+          console.log(`Successfully loaded ${res.data.data.length} properties`);
         } else {
           setMyProperties([]);
+          console.log("No properties found or invalid response format");
         }
       } catch (err) {
         console.error("My properties fetch failed:", err);
-        setPropertiesError(
-          err.response?.data?.message ||
-          "Failed to load your properties. Please try again."
-        );
+        console.error("Error response:", err.response?.data);
+        console.error("Error status:", err.response?.status);
+        
+        if (err.response?.status === 401) {
+          setPropertiesError("Your session has expired. Please login again.");
+        } else if (err.response?.status === 403) {
+          setPropertiesError("You don't have permission to view properties.");
+        } else {
+          setPropertiesError(
+            err.response?.data?.message ||
+            "Failed to load your properties. Please try again."
+          );
+        }
       } finally {
         setLoadingProperties(false);
       }
@@ -264,6 +294,8 @@ const ProfileTabs = ({ role }) => {
 
     fetchMyProperties();
   }, [activeTab]);
+
+  const navigate = useNavigate();
 
   const handleReelUpload = (e) => {
     e.preventDefault();
@@ -283,11 +315,15 @@ const ProfileTabs = ({ role }) => {
 
   const getStatusColor = (status) => {
     switch(status) {
+      case 'Active':
+      case 'Available':
       case 'Completed':
         return 'bg-green-500 text-white';
       case 'Scheduled':
+      case 'Pending':
         return 'bg-blue-500 text-white';
       case 'Cancelled':
+      case 'Inactive':
         return 'bg-red-500 text-white';
       default:
         return 'bg-gray-500 text-white';
@@ -334,13 +370,24 @@ const ProfileTabs = ({ role }) => {
               </div>
             ) : propertiesError ? (
               <div className="col-span-full bg-red-50 border border-red-200 rounded-xl p-8 text-center">
-                <p className="text-red-600 font-medium text-lg">{propertiesError}</p>
-                <button 
-                  onClick={() => window.location.reload()}
-                  className="mt-6 px-8 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-                >
-                  Try Again
-                </button>
+                <p className="text-red-600 font-medium text-lg mb-4">{propertiesError}</p>
+                <div className="flex gap-4 justify-center">
+                  <button 
+                    onClick={() => window.location.reload()}
+                    className="px-8 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                  >
+                    Try Again
+                  </button>
+                  <button 
+                    onClick={() => {
+                      localStorage.clear();
+                      window.location.href = '/login';
+                    }}
+                    className="px-8 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+                  >
+                    Login Again
+                  </button>
+                </div>
               </div>
             ) : myProperties.length === 0 ? (
               <div className="col-span-full text-center py-16 bg-white rounded-xl shadow">
@@ -357,7 +404,8 @@ const ProfileTabs = ({ role }) => {
                 return (
                   <div 
                     key={property._id} 
-                    className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-blue-200"
+                    onClick={() => navigate(`/property/${property._id}`)}
+                    className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-blue-200 cursor-pointer"
                   >
                     <div className="relative aspect-[4/3]">
                       <img 
