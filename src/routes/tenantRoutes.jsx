@@ -34,7 +34,8 @@ export const tenantRoutes = (
     <Route path="sidebar" element={<TenantSidebar />} />
     <Route path="properties" element={<TenantProperties />} />
     <Route path="properties/:id" element={<TenantPropertyDetails />} />
-    <Route path="rent-payments/:tenantId" element={<RentPayments />} />
+    {/* <Route path="rent-payments/:tenantId" element={<RentPayments />} /> */}
+    <Route path="rent-payments" element={<RentPayments />} />
     <Route path="police-verification" element={<TenantPoliceVerification />} />
     <Route path="room-switch" element={<Roomswitch />} />
     <Route path="rent-agreement" element={<MyAgreement />} />
@@ -50,7 +51,8 @@ export const tenantRoutes = (
     <Route path="contacts" element={<ContactsPage />} />
     <Route path="announcements-dashboard" element={<AnnouncementsPage />} />
     <Route path="lease-dashboard" element={<LeasePage />} />
-    <Route path="complaints/:tenantId" element={<Complaints />} />
+    {/* <Route path="complaints/:tenantId" element={<Complaints />} /> */}
+        <Route path="complaints" element={<Complaints />} />
     <Route path="property/:id/complaints" element={<LandlordComplaints />} />
     <Route path="announcements/:tenantId" element={<Announcements />} />
     <Route path="support" element={<Support />} />
