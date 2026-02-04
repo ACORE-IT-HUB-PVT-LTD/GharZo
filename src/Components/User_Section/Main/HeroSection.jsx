@@ -1,5 +1,6 @@
 import { FaAngleDown } from "react-icons/fa";
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   FaSearch, FaMapMarkerAlt, FaHome, FaBuilding, 
@@ -7,6 +8,7 @@ import {
 } from "react-icons/fa";
 
 const HeroSection = () => {
+  const navigate = useNavigate();
   // States
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -109,7 +111,7 @@ const HeroSection = () => {
 
             {/* Highlighted Post Property Button - Mobile Optimized */}
             <button 
-              onClick={() => setIsModalOpen(true)}
+              onClick={() => navigate('/add-listing')}
               className="group relative bg-gradient-to-r from-orange-600 to-orange-600 hover:from-white/25 hover:to-orange-600 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full border border-white/30 transition-all shadow-lg hover:shadow-xl w-full sm:w-auto"
             >
               <span className="text-xs sm:text-sm font-bold text-white uppercase tracking-wide">

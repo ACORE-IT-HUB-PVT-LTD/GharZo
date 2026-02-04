@@ -1,4 +1,4 @@
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, useLocation } from "react-router-dom";
 import Navbar from "../Components/User_Section/Navbar/navbar";
 import Footer from "../Components/User_Section/Footer/footer";
 import AdsPopup from "../Components/User_Section/AdsPopup.jsx";
@@ -44,58 +44,75 @@ import FranchiseEnquiry from "../Components/User_Section/Enquiries/FranchiseEnqu
 import HomeLoanEnquiry from "../Components/User_Section/Enquiries/HomeLoanEnquiry.jsx";
 import ChannelPartnerEnquiry from "../Components/User_Section/Enquiries/ChannelPartnerEnquiry.jsx";
 
-const PublicLayout = () => (
-  <div className="flex flex-col min-h-screen">
-    <Navbar />
-    <AdsPopup />
-    <div className="flex-grow pt-20">
-      <Routes>
-        <Route path="/add-channel-partner" element={<AddChannelPartner />} />
-        <Route path="/home-loan" element={<HomeLoan />} />
-        <Route path="/franchise-request" element={<FranchiseRequest />} />
-        <Route path="/enquiry/franchise" element={<FranchiseEnquiry />} />
-        <Route path="/enquiry/home-loan" element={<HomeLoanEnquiry />} />
-        <Route path="/enquiry/channel-partner" element={<ChannelPartnerEnquiry />} />
-        <Route index element={<MainPage />} />
-        <Route path="/properties" element={<AllProperty />} />
-        <Route path="/property/:id" element={<PropertyDetails />} />
-        <Route path="/reels" element={<Reel />} />
-        <Route path="/pg" element={<PG />} />
-        <Route path="/pg/:id" element={<PgDetails />} />
-        <Route path="/contact" element={<Contact />} />
-        <Route path="/hostel" element={<Hostel />} />
-        <Route path="/hostel/:id" element={<HostelDetail />} />
-        <Route path="/toparea" element={<PropertyListMain />} />
-        <Route path="/rentalpropety" element={<RentalPropety />} />
-        <Route path="/details/:name" element={<PropertyDetailMain />} />
-        <Route path="/rent" element={<RentListingPage />} />
-        <Route path="/sale" element={<SaleListingPage />} />
-        <Route path="/rooms" element={<RoomsListingPage />} />
-        <Route path="/commercial" element={<CommercialListingPage />} />
-        <Route path="/pg-hostel" element={<PGHostelSection />} />
-        <Route path="/hostels" element={<HostelsListingPage />} />
-        <Route path="/services" element={<ServicesListingPage />} />
-        <Route path="/add-listing" element={<AddListingForm />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signupuser" element={<UserSignup />} />
-        <Route path="/landlord_login" element={<LandloardLogin />} />
-        <Route path="/landlord_signup" element={<LandloardSignup />} />
-        <Route path="/tenant_login" element={<TenantLogin />} />
-        <Route path="/tenant_signup" element={<TenantSignup />} />
-        <Route path="/rent-property" element={<RentProperty />} />
-        <Route path="/rent/:id" element={<RentPropertyDetail />} />
-        <Route path="/sell-property" element={<SellProperty />} />
-        <Route path="/sell/:propertyId" element={<SellPropertyDetail />} />
-        <Route path="/about" element={<AboutUs />} />
-        <Route path="/my-visits" element={<MyVisits />} />
-        <Route path="/blog" element={<BlogPage />} />
-        <Route path="/how-it-works" element={<HowItWorks />} />
-        <Route path="/privacy_refund" element={<PrivacyRefund />} />
-      </Routes>
+const PublicLayout = () => {
+  const location = useLocation();
+
+  // /reels pe Navbar aur Footer dono hide
+  const isReelsPage = location.pathname === "/reels";
+
+  return (
+    <div className="flex flex-col min-h-screen">
+      {/* Navbar sirf tab show hoga jab /reels nahi hai */}
+      {!isReelsPage && <Navbar />}
+
+      <AdsPopup />
+
+      {/* 
+        pt-20 sirf tab lagega jab Navbar dikha raha ho.
+        /reels pe Navbar nahi hai toh top padding 0 rakho taaki
+        ReelsPage apna full-screen layout khud manage kar sake.
+      */}
+      <div className={`flex-grow ${isReelsPage ? "pt-0" : "pt-20"}`}>
+        <Routes>
+          <Route path="/add-channel-partner" element={<AddChannelPartner />} />
+          <Route path="/home-loan" element={<HomeLoan />} />
+          <Route path="/franchise-request" element={<FranchiseRequest />} />
+          <Route path="/enquiry/franchise" element={<FranchiseEnquiry />} />
+          <Route path="/enquiry/home-loan" element={<HomeLoanEnquiry />} />
+          <Route path="/enquiry/channel-partner" element={<ChannelPartnerEnquiry />} />
+          <Route index element={<MainPage />} />
+          <Route path="/properties" element={<AllProperty />} />
+          <Route path="/property/:id" element={<PropertyDetails />} />
+          <Route path="/reels" element={<Reel />} />
+          <Route path="/pg" element={<PG />} />
+          <Route path="/pg/:id" element={<PgDetails />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/hostel" element={<Hostel />} />
+          <Route path="/hostel/:id" element={<HostelDetail />} />
+          <Route path="/toparea" element={<PropertyListMain />} />
+          <Route path="/rentalpropety" element={<RentalPropety />} />
+          <Route path="/details/:name" element={<PropertyDetailMain />} />
+          <Route path="/rent" element={<RentListingPage />} />
+          <Route path="/sale" element={<SaleListingPage />} />
+          <Route path="/rooms" element={<RoomsListingPage />} />
+          <Route path="/commercial" element={<CommercialListingPage />} />
+          <Route path="/pg-hostel" element={<PGHostelSection />} />
+          <Route path="/hostels" element={<HostelsListingPage />} />
+          <Route path="/services" element={<ServicesListingPage />} />
+          <Route path="/add-listing" element={<AddListingForm />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signupuser" element={<UserSignup />} />
+          <Route path="/landlord_login" element={<LandloardLogin />} />
+          <Route path="/landlord_signup" element={<LandloardSignup />} />
+          <Route path="/tenant_login" element={<TenantLogin />} />
+          <Route path="/tenant_signup" element={<TenantSignup />} />
+          <Route path="/rent-property" element={<RentProperty />} />
+          <Route path="/rent/:id" element={<RentPropertyDetail />} />
+          <Route path="/sell-property" element={<SellProperty />} />
+          <Route path="/sell/:propertyId" element={<SellPropertyDetail />} />
+          <Route path="/about" element={<AboutUs />} />
+          <Route path="/my-visits" element={<MyVisits />} />
+          <Route path="/blog" element={<BlogPage />} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
+          <Route path="/privacy_refund" element={<PrivacyRefund />} />
+        </Routes>
+      </div>
+
+      {/* Footer bhi /reels pe hide */}
+      {!isReelsPage && <Footer />}
     </div>
-    <Footer />
-  </div>
-);
+  );
+};
 
 export const publicRoutes = (
   <Route path="*" element={<PublicLayout />} />
