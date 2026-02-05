@@ -65,7 +65,8 @@ const landlordMainRoutes = (
     <Route path="tenant-form" element={<TenantForm />} />
     <Route path="tenant-list" element={<TenantList />} />
     <Route path="reels" element={<Reel />} />
-    <Route path="tenant-details/:tenantId" element={<TenantDetails />} />
+    <Route path="tenant-details/:tenancyId" element={<TenantDetails />} />
+    <Route path="tenancy-details/:tenancyId" element={<TenantDetails />} />
   </Route>
 );
 

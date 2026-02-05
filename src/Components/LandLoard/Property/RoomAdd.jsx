@@ -1,1520 +1,1304 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import {
-  useParams,
-  useSearchParams,
-  useNavigate,
-  useLocation,
-} from "react-router-dom";
-import {
-  FaPlus,
-  FaBed,
-  FaMoneyBillWave,
-  FaLayerGroup,
+  FaTimes,
   FaListUl,
-  FaImage,
   FaThLarge,
   FaUsers,
   FaToggleOn,
-  FaTimes,
+  FaLayerGroup,
+  FaMoneyBillWave,
+  FaImage,
   FaTrash,
-  FaEye,
-  FaChevronLeft,
-  FaChevronRight,
+  FaRulerCombined,
+  FaClock,
+  FaShieldAlt,
   FaExclamationTriangle,
+  FaCheck,
+  FaArrowLeft,
+  FaPlus,
+  FaMinus,
 } from "react-icons/fa";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import baseurl from "../../../../BaseUrl";
-// Initial mapping of frontend amenity names to backend facility keys
-const initialFacilityKeyMapping = {
-  roomEssentials: {
-    Bed: "bed",
-    Table: "tableStudyDesk",
-    Chair: "chair",
-    Fan: "fan",
-    Light: "light",
-    Lamp: "chargingPoint",
-    Wardrobe: "cupboardWardrobe",
-  },
-  comfortFeatures: {
-    "Air Conditioner": "ac",
-    Geyser: "geyser",
-    Heater: "heater",
-    TV: "tv",
-    Fridge: "cooler",
-    Sofa: "sofa",
-    Mattress: "mattress",
-  },
-  washroomHygiene: {
-    Toilet: "westernToilet",
-    Shower: "shower",
-    Sink: "washBasins",
-    Mirror: "mirror",
-    "Western Toilet": "westernToilet",
-    Towels: "bucketMug",
-    Toiletries: "toiletries",
-  },
-  utilitiesConnectivity: {
-    WiFi: "wifi",
-    "Power Backup": "powerBackup",
-    "Water Supply": "water24x7",
-    Electricity: "electricityIncluded",
-    Internet: "wifi",
-  },
-  laundryHousekeeping: {
-    "Washing Machine": "washingMachine",
-    Dryer: "dryingSpace",
-    "Cleaning Service": "cleaningService",
-    Iron: "ironTable",
-    "Laundry Service": "laundryArea",
-  },
-  securitySafety: {
-    CCTV: "cctv",
-    "Fire Extinguisher": "fireSafety",
-    "First Aid Kit": "fireSafety",
-    "Security Guard": "securityGuard",
-    "Smoke Alarm": "fireSafety",
-  },
-  parkingTransport: {
-    Parking: "carParking",
-    "Bike Parking": "bikeParking",
-    "Car Parking": "carParking",
-    "Public Transport Access": "nearBus",
-  },
-  propertySpecific: {
-    Lift: "liftAvailable",
-    Gym: "gym",
-    Kitchen: "modularKitchen",
-    "Common Area": "hall",
-    Balcony: "balcony",
-    Terrace: "terrace",
-    Garden: "garden",
-  },
-  nearbyFacilities: {
-    Hospital: "hospital",
-    School: "schoolCollege",
-    Market: "marketMall",
-    Metro: "nearMetro",
-    "Bus Stop": "nearBus",
-    Restaurant: "marketMall",
-  },
-};
-// Reverse mapping for fetching data
-const computeReverseMapping = (mapping) => {
-  return Object.keys(mapping).reduce((acc, category) => {
-    acc[category] = {};
-    Object.entries(mapping[category]).forEach(([frontendKey, backendKey]) => {
-      acc[category][backendKey] = frontendKey;
-    });
-    return acc;
-  }, {});
-};
-// Initial amenities options
-const initialAmenitiesOptions = {
-  roomEssentials: ["Bed", "Table", "Chair", "Fan", "Light", "Lamp", "Wardrobe"],
-  comfortFeatures: [
-    "Air Conditioner",
-    "Geyser",
-    "Heater",
-    "TV",
-    "Fridge",
-    "Sofa",
-    "Mattress",
-  ],
-  washroomHygiene: [
-    "Toilet",
-    "Shower",
-    "Sink",
-    "Mirror",
-    "Western Toilet",
-    "Towels",
-    "Toiletries",
-  ],
-  utilitiesConnectivity: [
-    "WiFi",
-    "Power Backup",
-    "Water Supply",
-    "Electricity",
-    "Internet",
-  ],
-  laundryHousekeeping: [
-    "Washing Machine",
-    "Dryer",
-    "Cleaning Service",
-    "Iron",
-    "Laundry Service",
-  ],
-  securitySafety: [
-    "CCTV",
-    "Fire Extinguisher",
-    "First Aid Kit",
-    "Security Guard",
-    "Smoke Alarm",
-  ],
-  parkingTransport: [
-    "Parking",
-    "Bike Parking",
-    "Car Parking",
-    "Public Transport Access",
-  ],
-  propertySpecific: [
-    "Lift",
-    "Gym",
-    "Kitchen",
-    "Common Area",
-    "Balcony",
-    "Terrace",
-    "Garden",
-  ],
-  nearbyFacilities: [
-    "Hospital",
-    "School",
-    "Market",
-    "Metro",
-    "Bus Stop",
-    "Restaurant",
-  ],
-};
-// Initialize facilities with all backend keys set to false
-const computeInitialFacilities = (mapping) => {
-  return Object.keys(mapping).reduce((acc, category) => {
-    acc[category] = Object.keys(mapping[category]).reduce(
-      (catAcc, frontendKey) => {
-        const backendKey = mapping[category][frontendKey];
-        catAcc[frontendKey] = false;
-        return catAcc;
-      },
-      {}
-    );
-    return acc;
-  }, {});
-};
-// Custom Dialog Component
-const CustomDialog = ({ isOpen, onClose, title, message, onConfirm, confirmText, cancelText, isConfirmDialog }) => {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <motion.div
-        className="bg-white rounded-xl shadow-lg max-w-sm w-full p-6"
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.8 }}
-      >
-        <h3 className="text-lg font-bold mb-4">{title}</h3>
-        <p className="text-gray-700 mb-6">{message}</p>
-        <div className="flex justify-end gap-4">
-          {isConfirmDialog && (
-            <button
-              onClick={onClose}
-              className="px-4 py-2 bg-gray-300 text-black rounded-lg hover:bg-gray-400 transition-all duration-200"
-            >
-              {cancelText || "Cancel"}
-            </button>
-          )}
-          <button
-            onClick={isConfirmDialog ? onConfirm : onClose}
-            className={`px-4 py-2 rounded-lg transition-all duration-200 ${
-              isConfirmDialog
-                ? "bg-red-500 text-white hover:bg-red-600"
-                : "bg-blue-500 text-white hover:bg-blue-600"
-            }`}
-          >
-            {confirmText || (isConfirmDialog ? "Confirm" : "OK")}
-          </button>
-        </div>
-      </motion.div>
-    </div>
-  );
-};
-// Simple Carousel Component for Cards
-const ImageCarousel = ({ images, onImageClick, roomId }) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  if (!images || images.length === 0) {
-    return <div className="h-48 bg-gray-200 flex items-center justify-center rounded-lg">No Images</div>;
-  }
-  const nextSlide = () => {
-    setCurrentIndex((prev) => (prev + 1) % images.length);
-  };
-  const prevSlide = () => {
-    setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
-  };
-  const handleClick = () => {
-    onImageClick('room', images, currentIndex, roomId);
-  };
-  return (
-    <div className="relative w-full h-48 cursor-pointer" onClick={handleClick}>
-      <motion.img
-        key={currentIndex}
-        src={images[currentIndex]}
-        alt={`Room Image ${currentIndex + 1}`}
-        className="w-full h-full object-cover rounded-t-lg"
-        loading="lazy"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.3 }}
-      />
-      {images.length > 1 && (
-        <>
-          <button
-            onClick={(e) => { e.stopPropagation(); prevSlide(); }}
-            className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-70"
-          >
-            <FaChevronLeft size={12} />
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); nextSlide(); }}
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-70"
-          >
-            <FaChevronRight size={12} />
-          </button>
-          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
-            {images.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={(e) => { e.stopPropagation(); setCurrentIndex(idx); }}
-                className={`w-2 h-2 rounded-full ${idx === currentIndex ? 'bg-white' : 'bg-white bg-opacity-50'}`}
-              />
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-};
-// Full-Screen Image Modal Carousel
-const ImageModal = ({ isOpen, onClose, type, images, currentIndex, roomId, bedId }) => {
-  const [modalIndex, setModalIndex] = useState(currentIndex);
-  useEffect(() => {
-    if (isOpen) {
-      setModalIndex(currentIndex);
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => { document.body.style.overflow = 'unset'; };
-  }, [isOpen, currentIndex]);
-  useEffect(() => {
-    const handleEsc = (e) => {
-      if (e.key === 'Escape') onClose();
-    };
-    if (isOpen) document.addEventListener('keydown', handleEsc);
-    return () => document.removeEventListener('keydown', handleEsc);
-  }, [isOpen, onClose]);
-  if (!isOpen || !images || images.length === 0) return null;
-  const nextSlide = () => {
-    setModalIndex((prev) => (prev + 1) % images.length);
-  };
-  const prevSlide = () => {
-    setModalIndex((prev) => (prev - 1 + images.length) % images.length);
-  };
-  const handleClick = (e) => {
-    if (e.target === e.currentTarget) onClose();
-  };
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-50" onClick={handleClick}>
-      <motion.div
-        className="relative w-full h-full flex items-center justify-center p-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-      >
-        <motion.img
-          key={modalIndex}
-          src={images[modalIndex]}
-          alt={`${type === 'room' ? 'Room' : 'Bed'} Image ${modalIndex + 1}`}
-          className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-          loading="lazy"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3 }}
-        />
-        {images.length > 1 && (
-          <>
-            <button
-              onClick={(e) => { e.stopPropagation(); prevSlide(); }}
-              className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 text-2xl"
-            >
-              <FaChevronLeft />
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); nextSlide(); }}
-              className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 text-2xl"
-            >
-              <FaChevronRight />
-            </button>
-            <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex space-x-2">
-              {images.map((_, idx) => (
-                <button
-                  key={idx}
-                  onClick={(e) => { e.stopPropagation(); setModalIndex(idx); }}
-                  className={`w-3 h-3 rounded-full ${idx === modalIndex ? 'bg-white' : 'bg-white bg-opacity-50'}`}
-                />
-              ))}
-            </div>
-          </>
-        )}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70"
-        >
-          <FaTimes size={20} />
-        </button>
-      </motion.div>
-    </div>
-  );
-};
+
 const RoomAdd = () => {
   const { propertyId } = useParams();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const location = useLocation();
-  const action = searchParams.get("action");
   const roomId = searchParams.get("roomId");
-  const API_BASE = `${baseurl}api/landlord/properties/${propertyId}/rooms`;
+
+  const getToken = () => localStorage.getItem("usertoken");
+  const API_BASE = `${baseurl}api/rooms`;
+
   const [focusedField, setFocusedField] = useState("");
-  const [editingId, setEditingId] = useState(null);
-  const [facilityKeyMappingState, setFacilityKeyMappingState] = useState(
-    initialFacilityKeyMapping
-  );
-  const [amenitiesOptionsState, setAmenitiesOptionsState] = useState(
-    initialAmenitiesOptions
-  );
-  const [initialFacilitiesState, setInitialFacilitiesState] = useState(
-    computeInitialFacilities(initialFacilityKeyMapping)
-  );
-  const [roomData, setRoomData] = useState({
-    name: "",
-    type: "",
-    capacity: "",
-    status: "Available",
-    floorNumber: "",
-    roomSize: "",
-    securityDeposit: "",
-    noticePeriod: "",
-    facilities: computeInitialFacilities(initialFacilityKeyMapping),
-    beds: [],
-    images: [],
-  });
-  const [rooms, setRooms] = useState([]);
-  const [showBedForm, setShowBedForm] = useState(false);
-  const [selectedRoomId, setSelectedRoomId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [beds, setBeds] = useState([
-    { name: "", status: "Available", price: "", images: [] },
-  ]);
-  const [showAddFacilityForm, setShowAddFacilityForm] = useState(false);
-  const [newFacilityCategory, setNewFacilityCategory] = useState("");
-  const [newFacilityName, setNewFacilityName] = useState("");
-  const [showBedsModal, setShowBedsModal] = useState(false);
-  const [bedsModalData, setBedsModalData] = useState([]);
-  const [editBedModal, setEditBedModal] = useState({ open: false, bed: null });
-  const [editBedNewImages, setEditBedNewImages] = useState([]);
-  const [editBedLoading, setEditBedLoading] = useState(false);
-  const [editBedError, setEditBedError] = useState("");
-  const [dialog, setDialog] = useState({
-    isOpen: false,
-    title: "",
-    message: "",
-    onConfirm: null,
-    confirmText: "",
-    cancelText: "",
-    isConfirmDialog: false,
+  const [successMessage, setSuccessMessage] = useState("");
+  const [toast, setToast] = useState({ show: false, message: "", type: "error" });
+  const [showEnableRentalModal, setShowEnableRentalModal] = useState(false);
+  const [enablingRental, setEnablingRental] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkRooms, setBulkRooms] = useState([]);
+
+  useEffect(() => {
+    if (!toast.show) return;
+    const t = setTimeout(() => {
+      setToast({ show: false, message: "", type: "error" });
+    }, 4000);
+    return () => clearTimeout(t);
+  }, [toast.show]);
+
+  const [roomData, setRoomData] = useState({
+    propertyId: propertyId,
+    roomNumber: "",
+    roomType: "",
+    floor: "",
+    rentPerBed: "",
+    rentPerRoom: "",
+    securityDeposit: "",
+    maintenanceCharges: "",
+    maintenanceIncluded: false,
+    electricityCharges: "Extra",
+    waterCharges: "Included",
+    totalBeds: "",
+    furnishing: "Unfurnished",
+    hasAttachedBathroom: false,
+    hasBalcony: false,
+    hasAC: false,
+    hasWardrobe: false,
+    hasFridge: false,
+    amenities: [],
+    genderPreference: "Any",
+    foodType: "Both",
+    smokingAllowed: false,
+    petsAllowed: false,
+    guestsAllowed: false,
+    noticePeriod: "30",
+    lockInPeriod: "0",
+    carpetArea: "",
+    areaUnit: "sqft",
+    newImages: [],
+    existingImages: [],
   });
-  // New state for image modal
-  const [imageModal, setImageModal] = useState({ open: false, type: '', images: [], currentIndex: 0, roomId: '', bedId: '' });
-  const [globalTotalBeds, setGlobalTotalBeds] = useState(0);
-  const [totalLimit, setTotalLimit] = useState(0);
-  const [landlordId, setLandlordId] = useState(null);
-  const getToken = () => localStorage.getItem("token");
-  const debounce = (func, delay) => {
-    let timeoutId;
-    return (...args) => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => func(...args), delay);
-    };
-  };
-  const handleOpenImageModal = useCallback((type, images, index = 0, roomId, bedId) => {
-    setImageModal({ open: true, type, images, currentIndex: index, roomId, bedId });
-  }, []);
-  const handleCloseImageModal = useCallback(() => {
-    setImageModal({ open: false, type: '', images: [], currentIndex: 0, roomId: '', bedId: '' });
-  }, []);
-  const fetchGlobalBedsCount = useCallback(async () => {
-    try {
-      const token = getToken();
-      if (!token) return;
-      const res = await axios.get(`${baseurl}api/landlord/properties/beds/count`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (res.data.success) {
-        setGlobalTotalBeds(res.data.totalBeds || 0);
-        setLandlordId(res.data.landlordId);
-      }
-    } catch (err) {
-      console.error("Error fetching global beds count:", err);
-    }
-  }, []);
-  const fetchMySubscriptions = useCallback(async () => {
-    if (!landlordId) return;
-    try {
-      const token = getToken();
-      if (!token) return;
-      const res = await axios.get(`${baseurl}api/landlord/subscriptions/my-subscriptions/${landlordId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (res.data.success) {
-        const activeSubsWithPlan = res.data.data.filter(sub =>
-          sub.status === 'active' && sub.planId && sub.planId.maxBeds
-        );
-        const calculatedLimit = activeSubsWithPlan.reduce((acc, sub) => acc + sub.planId.maxBeds, 0);
-        setTotalLimit(calculatedLimit || 0);
-      }
-    } catch (err) {
-      console.error("Error fetching subscriptions:", err);
-      setTotalLimit(0); // Fallback to 0 on error
-    }
-  }, [landlordId]);
+
+  const [propertyInfo, setPropertyInfo] = useState(null);
+  const [propertyValid, setPropertyValid] = useState(true);
+
+  const amenitiesList = [
+    "WiFi",
+    "Study Table",
+    "Chair",
+    "Bed",
+    "Mattress",
+    "Pillow",
+    "Blanket",
+    "Washing Machine",
+    "Geyser",
+    "TV",
+    "Sofa",
+    "Dining Table",
+    "Microwave",
+    "Refrigerator",
+    "Water Purifier",
+    "Power Backup",
+    "CCTV",
+    "Security Guard",
+    "Parking",
+    "Gym",
+    "Common Area",
+    "Garden",
+    "Lift",
+  ];
+
   useEffect(() => {
-    fetchGlobalBedsCount();
-  }, [fetchGlobalBedsCount]);
+    if (propertyId) {
+      fetchProperty();
+    }
+  }, [propertyId]);
+
   useEffect(() => {
-    if (landlordId) {
-      fetchMySubscriptions();
+    if (roomId && propertyValid) {
+      fetchRoomDetails();
     }
-  }, [landlordId, fetchMySubscriptions]);
-  const deleteRoomImage = async (targetRoomId, imageUrl) => {
+  }, [roomId, propertyValid]);
+
+  const fetchProperty = async () => {
     try {
       const token = getToken();
       if (!token) {
-        throw new Error("No authentication token found. Please log in.");
-      }
-      const res = await axios.delete(
-        `${baseurl}api/landlord/properties/${propertyId}/rooms/${targetRoomId}/images`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          data: {
-            imageUrls: [imageUrl],
-          },
-        }
-      );
-      if (res.data.success) {
-        // Update local state for edit mode if applicable
-        if (action === "edit" && editingId === targetRoomId) {
-          setRoomData((prev) => ({
-            ...prev,
-            images: prev.images.filter((img) => img !== imageUrl),
-          }));
-        }
-        // Refetch rooms to update list
-        await fetchRooms();
-        setDialog({
-          isOpen: true,
-          title: "Success",
-          message: res.data.message || "Image deleted successfully.",
-          isConfirmDialog: false,
-        });
-        return true;
-      } else {
-        throw new Error(res.data.message || "Failed to delete image.");
-      }
-    } catch (err) {
-      console.error("Error deleting room image:", err.response?.data || err);
-      setError(err.response?.data?.message || `Failed to delete image: ${err.message}`);
-      setDialog({
-        isOpen: true,
-        title: "Error",
-        message: `Failed to delete image: ${err.response?.data?.message || err.message}`,
-        isConfirmDialog: false,
-      });
-      return false;
-    }
-  };
-  const deleteBedImage = async (targetRoomId, bedId, imageUrl) => {
-    try {
-      const token = getToken();
-      if (!token) {
-        throw new Error("No authentication token found. Please log in.");
-      }
-      const res = await axios.delete(
-        `${baseurl}api/landlord/properties/${propertyId}/rooms/${targetRoomId}/beds/${bedId}/images`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          data: {
-            imageUrls: [imageUrl],
-          },
-        }
-      );
-      if (res.data.success) {
-        // Update local state for edit bed modal if applicable
-        if (editBedModal.open && editBedModal.bed.bedId === bedId) {
-          setEditBedModal((prev) => ({
-            ...prev,
-            bed: {
-              ...prev.bed,
-              images: prev.bed.images.filter((img) => img !== imageUrl),
-            },
-          }));
-        }
-        // Update beds modal data if open
-        if (showBedsModal) {
-          setBedsModalData((prev) =>
-            prev.map((b) =>
-              b.bedId === bedId
-                ? { ...b, images: b.images.filter((img) => img !== imageUrl) }
-                : b
-            )
-          );
-        }
-        // Refetch rooms to update list
-        await fetchRooms();
-        setDialog({
-          isOpen: true,
-          title: "Success",
-          message: res.data.message || "Image deleted successfully.",
-          isConfirmDialog: false,
-        });
-        return true;
-      } else {
-        throw new Error(res.data.message || "Failed to delete image.");
-      }
-    } catch (err) {
-      console.error("Error deleting bed image:", err.response?.data || err);
-      setError(err.response?.data?.message || `Failed to delete image: ${err.message}`);
-      setDialog({
-        isOpen: true,
-        title: "Error",
-        message: `Failed to delete image: ${err.response?.data?.message || err.message}`,
-        isConfirmDialog: false,
-      });
-      return false;
-    }
-  };
-  const fetchRoomImages = async (roomId) => {
-    try {
-      const token = getToken();
-      if (!token) {
-        throw new Error("No authentication token found. Please log in.");
-      }
-      const res = await axios.get(
-        `${baseurl}api/landlord/properties/${propertyId}/room/${roomId}/images`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      return res.data.images || [];
-    } catch (err) {
-      console.error(
-        `Error fetching images for room ${roomId}:`,
-        err.response?.data || err
-      );
-      return [];
-    }
-  };
-  const fetchBedImages = async (roomId, bedId) => {
-    try {
-      const token = getToken();
-      if (!token) {
-        throw new Error("No authentication token found. Please log in.");
-      }
-      const res = await axios.get(
-        `${baseurl}api/landlord/properties/${propertyId}/rooms/${roomId}/beds/${bedId}/images`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      return res.data.images || [];
-    } catch (err) {
-      console.error(
-        `Error fetching images for bed ${bedId} in room ${roomId}:`,
-        err.response?.data || err
-      );
-      return [];
-    }
-  };
-  const fetchRooms = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const token = getToken();
-      if (!token) {
-        throw new Error("No authentication token found. Please log in.");
-      }
-      const res = await axios.get(`${API_BASE}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-      let fetchedRooms = [];
-      if (Array.isArray(res.data)) {
-        fetchedRooms = res.data;
-      } else if (res.data && Array.isArray(res.data.rooms)) {
-        fetchedRooms = res.data.rooms;
-      } else {
-        console.warn("Unexpected API response structure:", res.data);
-        fetchedRooms = Object.values(res.data).filter((item) => item.roomId);
-      }
-      // Map backend facilities to frontend format and fetch images
-      const roomsWithImages = await Promise.all(
-        fetchedRooms.map(async (room) => {
-          const mappedFacilities = Object.keys(facilityKeyMappingState).reduce(
-            (acc, category) => {
-              acc[category] = Object.keys(
-                facilityKeyMappingState[category]
-              ).reduce((catAcc, frontendKey) => {
-                const backendKey = facilityKeyMappingState[category][frontendKey];
-                let isSelected = false;
-                if (Array.isArray(room.facilities)) {
-                  isSelected = room.facilities.includes(backendKey);
-                } else if (room.facilities?.[category]?.[backendKey]) {
-                  isSelected = room.facilities[category][backendKey];
-                } else if (room.allFacilities?.[category]?.[backendKey]) {
-                  isSelected = room.allFacilities[category][backendKey];
-                }
-                catAcc[frontendKey] = isSelected;
-                return catAcc;
-              }, {});
-              return acc;
-            },
-            {}
-          );
-          const images = await fetchRoomImages(room.roomId || room._id);
-          // Fetch images for each bed
-          const bedsWithImages = await Promise.all(
-            (room.beds || []).map(async (bed) => {
-              const bedImages = await fetchBedImages(room.roomId || room._id, bed.bedId);
-              return { ...bed, images: bedImages };
-            })
-          );
-          return {
-            ...room,
-            name:
-              room.name ||
-              room.roomId ||
-              `Room ${Date.now().toString().slice(-4)}`,
-            facilities: mappedFacilities,
-            images,
-            beds: bedsWithImages,
-          };
-        })
-      );
-      setRooms(roomsWithImages);
-    } catch (err) {
-      console.error("Error fetching rooms:", err.response?.data || err);
-      setError(err.response?.data?.message || err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [propertyId, facilityKeyMappingState]);
-  const debouncedFetchRooms = useCallback(debounce(fetchRooms, 300), [
-    fetchRooms,
-  ]);
-  useEffect(() => {
-    if (propertyId && !action) {
-      debouncedFetchRooms();
-    }
-  }, [propertyId, debouncedFetchRooms, action]);
-  useEffect(() => {
-    if (action === "edit" && roomId) {
-      const fetchRoomForEdit = async () => {
-        try {
-          setLoading(true);
-          setError(null);
-          const token = getToken();
-          if (!token) {
-            throw new Error("No authentication token found. Please log in.");
-          }
-          const res = await axios.get(`${API_BASE}/${roomId}`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          });
-          const fetchedRoom = res.data.room;
-          const images = fetchedRoom.images || [];
-          // Map backend facilities to frontend format
-          const mappedFacilities = Object.keys(facilityKeyMappingState).reduce(
-            (acc, category) => {
-              acc[category] = Object.keys(
-                facilityKeyMappingState[category]
-              ).reduce((catAcc, frontendKey) => {
-                const backendKey =
-                  facilityKeyMappingState[category][frontendKey];
-                let isSelected = false;
-                if (Array.isArray(fetchedRoom.facilities)) {
-                  isSelected = fetchedRoom.facilities.includes(backendKey);
-                } else if (fetchedRoom.facilities?.[category]?.[backendKey]) {
-                  isSelected = fetchedRoom.facilities[category][backendKey];
-                } else if (fetchedRoom.allFacilities?.[category]?.[backendKey]) {
-                  isSelected = fetchedRoom.allFacilities[category][backendKey];
-                }
-                catAcc[frontendKey] = isSelected;
-                return catAcc;
-              }, {});
-              return acc;
-            },
-            {}
-          );
-          // Fetch images for each bed
-          const bedsWithImages = await Promise.all(
-            (fetchedRoom.beds || []).map(async (bed) => {
-              const bedImages = await fetchBedImages(roomId, bed.bedId);
-              return { ...bed, images: bedImages };
-            })
-          );
-          const roomName = fetchedRoom.name || fetchedRoom.roomId || `Room ${Date.now().toString().slice(-4)}`;
-          setRoomData({
-            ...fetchedRoom,
-            name: roomName,
-            facilities: mappedFacilities,
-            images,
-            beds: bedsWithImages,
-          });
-          setEditingId(roomId);
-        } catch (err) {
-          console.error(
-            "Error fetching room for edit:",
-            err.response?.data || err
-          );
-          setError(err.response?.data?.message || err.message);
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchRoomForEdit();
-    }
-  }, [action, roomId, propertyId, facilityKeyMappingState]);
-  const handleChange = (e) => {
-    setRoomData({ ...roomData, [e.target.name]: e.target.value });
-  };
-  const handleFacilityToggle = (category, frontendKey) => {
-    setRoomData((prev) => ({
-      ...prev,
-      facilities: {
-        ...prev.facilities,
-        [category]: {
-          ...prev.facilities[category],
-          [frontendKey]: !prev.facilities[category][frontendKey],
-        },
-      },
-    }));
-  };
-  const handleAddNewFacility = () => {
-    if (!newFacilityCategory || !newFacilityName) return;
-    const backendKey = newFacilityName.toLowerCase().replace(/\s+/g, "");
-    setAmenitiesOptionsState((prev) => ({
-      ...prev,
-      [newFacilityCategory]: [...prev[newFacilityCategory], newFacilityName],
-    }));
-    setFacilityKeyMappingState((prev) => ({
-      ...prev,
-      [newFacilityCategory]: {
-        ...prev[newFacilityCategory],
-        [newFacilityName]: backendKey,
-      },
-    }));
-    setRoomData((prev) => ({
-      ...prev,
-      facilities: {
-        ...prev.facilities,
-        [newFacilityCategory]: {
-          ...prev.facilities[newFacilityCategory],
-          [newFacilityName]: false,
-        },
-      },
-    }));
-    setNewFacilityName("");
-    setShowAddFacilityForm(false);
-  };
-  const handleImageChange = (e) => {
-    const files = Array.from(e.target.files);
-    setRoomData((prev) => ({ ...prev, images: [...prev.images.filter(img => !(img instanceof File)), ...files] }));
-  };
-  const handleBedChange = (index, field, value) => {
-    const updatedBeds = [...beds];
-    updatedBeds[index] = { ...updatedBeds[index], [field]: value };
-    setBeds(updatedBeds);
-  };
-  const handleBedImageChange = (index, e) => {
-    const files = Array.from(e.target.files);
-    const updatedBeds = [...beds];
-    updatedBeds[index] = { ...updatedBeds[index], images: [...updatedBeds[index].images.filter(img => !(img instanceof File)), ...files] };
-    setBeds(updatedBeds);
-  };
-  const addBedField = () => {
-    setBeds([
-      ...beds,
-      { name: "", status: "Available", price: "", images: [] },
-    ]);
-  };
-  const removeBedField = (index) => {
-    setBeds(beds.filter((_, i) => i !== index));
-  };
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const selectedFacilities = {};
-    Object.entries(roomData.facilities).forEach(([category, facilities]) => {
-      const selectedInCategory = {};
-      Object.entries(facilities).forEach(([frontendKey, isSelected]) => {
-        if (isSelected) {
-          const backendKey = facilityKeyMappingState[category][frontendKey];
-          selectedInCategory[backendKey] = true;
-        }
-      });
-      if (Object.keys(selectedInCategory).length > 0) {
-        selectedFacilities[category] = selectedInCategory;
-      }
-    });
-    const payload = {
-      name: roomData.name || `Room ${Date.now().toString().slice(-4)}`,
-      type: roomData.type,
-      price: Number(roomData.price),
-      capacity: Number(roomData.capacity),
-      status: roomData.status,
-      floorNumber: roomData.floorNumber ? Number(roomData.floorNumber) : null,
-      roomSize: roomData.roomSize,
-      securityDeposit: Number(roomData.securityDeposit) || 0,
-      noticePeriod: Number(roomData.noticePeriod) || 0,
-      facilities: selectedFacilities,
-      beds: roomData.beds,
-    };
-    try {
-      setLoading(true);
-      setError(null);
-      const token = getToken();
-      if (!token) {
-        throw new Error("No authentication token found. Please log in.");
-      }
-      const res = await axios({
-        method: editingId ? "PUT" : "POST",
-        url: editingId ? `${API_BASE}/${editingId}` : API_BASE,
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        data: payload,
-      });
-      console.log("Room save response:", res.data); // Debug log
-      let savedRoomId;
-      if (editingId) {
-        savedRoomId = editingId;
-      } else {
-        // For POST, extract roomId from addedRooms array or other structures
-        savedRoomId = res.data?.addedRooms?.[0]?.roomId ||
-                      res.data?.addedRooms?.[0]?._id ||
-                      res.data?.room?.roomId ||
-                      res.data?.room?._id ||
-                      res.data?.roomId ||
-                      res.data?._id;
-      }
-      if (!savedRoomId) {
-        console.error('Could not extract roomId from response:', res.data);
-        throw new Error('Failed to extract room ID from server response');
-      }
-      console.log("Uploading images for roomId:", savedRoomId); // Debug log
-      // Filter only File instances for upload (skip URLs from existing images)
-      const imagesToUpload = roomData.images.filter(img => img instanceof File);
-      if (imagesToUpload.length > 0) {
-        const formData = new FormData();
-        imagesToUpload.forEach((image) => formData.append("images", image));
-        await axios.post(`${API_BASE}/${savedRoomId}/images`, formData, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            // No Content-Type for FormData, let browser set it
-          },
-        });
-        console.log("Images uploaded successfully"); // Debug log
-      } else {
-        console.log("No new images to upload"); // Debug log
-      }
-      await fetchRooms();
-      // Refetch global beds count after adding room (though beds are separate)
-      await fetchGlobalBedsCount();
-      resetForm();
-      setDialog({
-        isOpen: true,
-        title: "Success",
-        message: "Room saved successfully.",
-        isConfirmDialog: false,
-      });
-    } catch (err) {
-      console.error("Error saving room:", {
-        message: err.message,
-        response: err.response?.data,
-        status: err.response?.status,
-        requestData: payload,
-      });
-      setError(
-        err.response?.data?.message || `Failed to save room: ${err.message}`
-      );
-      setDialog({
-        isOpen: true,
-        title: "Error",
-        message: `Failed to save room: ${err.response?.data?.message || err.message}`,
-        isConfirmDialog: false,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-  const handleBedSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      setLoading(true);
-      setError(null);
-      const token = getToken();
-      if (!token) {
-        throw new Error("No authentication token found. Please log in.");
-      }
-      const savedBeds = [];
-      for (const bed of beds) {
-        if (!bed.name) {
-          throw new Error("Bed name is required.");
-        }
-        const payload = {
-          name: bed.name,
-          status: bed.status,
-          price: Number(bed.price) || 0, // Default to 0 if not provided, to avoid required error
-        };
-        const res = await axios.post(
-          `${API_BASE}/${selectedRoomId}/beds`,
-          payload,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        const savedBed = res.data.bed;
-        const savedBedId = savedBed?.bedId;
-        if (bed.images && bed.images.length > 0 && savedBedId) {
-          // Filter only File instances
-          const imagesToUpload = bed.images.filter(img => img instanceof File);
-          if (imagesToUpload.length > 0) {
-            const formData = new FormData();
-            imagesToUpload.forEach((image) => formData.append("images", image));
-            const imageRes = await axios.post(
-              `${API_BASE}/${selectedRoomId}/beds/${savedBedId}/images`,
-              formData,
-              {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              }
-            );
-            savedBed.images = imageRes.data.images || [];
-          } else {
-            savedBed.images = bed.images; // Existing URLs
-          }
-        }
-        savedBeds.push(savedBed);
-      }
-      setBeds([{ name: "", status: "Available", price: "", images: [] }]);
-      await fetchRooms();
-      // Refetch global beds count after adding beds
-      await fetchGlobalBedsCount();
-      resetBedForm();
-      setDialog({
-        isOpen: true,
-        title: "Success",
-        message: "Beds added successfully.",
-        isConfirmDialog: false,
-      });
-    } catch (err) {
-      console.error("Error adding beds:", err.response?.data || err);
-      setError(
-        err.response?.data?.message || `Failed to add beds: ${err.message}`
-      );
-      setDialog({
-        isOpen: true,
-        title: "Error",
-        message: `Failed to add beds: ${err.response?.data?.message || err.message}`,
-        isConfirmDialog: false,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-  const handleAddBeds = async (room) => {
-    try {
-      await fetchGlobalBedsCount();
-      await fetchMySubscriptions();
-      if (globalTotalBeds >= totalLimit) {
-        setDialog({
-          isOpen: true,
-          title: "Subscription Limit Reached",
-          message: `You have reached your limit of ${totalLimit} active beds under your subscription. Please buy or upgrade your subscription to add more beds.`,
-          onConfirm: () => navigate("/landlord/subscription-plans"),
-          confirmText: "Buy Subscription",
-          cancelText: "Cancel",
-          isConfirmDialog: true,
+        setToast({
+          show: true,
+          message: "Authentication required. Please login.",
+          type: "error",
         });
         return;
       }
-      setSelectedRoomId(room._id || room.roomId);
-      setShowBedForm(true);
-    } catch (err) {
-      console.error("Error checking limits:", err);
-      // On error, allow proceeding or show error
-      setDialog({
-        isOpen: true,
-        title: "Error",
-        message: "Could not check subscription limits. Proceeding anyway.",
-        isConfirmDialog: false,
+
+      const res = await axios.get(`${baseurl}api/properties/${propertyId}`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      setSelectedRoomId(room._id || room.roomId);
-      setShowBedForm(true);
-    }
-  };
-  const handleViewBeds = async (roomId) => {
-    try {
-      const token = getToken();
-      if (!token) {
-        throw new Error("No authentication token found. Please log in.");
-      }
-      const res = await axios.get(
-        `${API_BASE}/${roomId}/beds`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
+
+      if (res.data?.success) {
+        const prop = res.data.data;
+        setPropertyInfo(prop);
+        const isRental = prop.listingType === "Rent" && prop.isRentalManagement === true;
+        setPropertyValid(isRental);
+
+        if (!isRental) {
+          setShowEnableRentalModal(true);
         }
-      );
-      if (res.data && Array.isArray(res.data.beds)) {
-        // Fetch images for each bed
-        const bedsWithImages = await Promise.all(
-          res.data.beds.map(async (bed) => {
-            const bedImages = await fetchBedImages(roomId, bed.bedId);
-            return { ...bed, roomId, images: bedImages };
-          })
-        );
-        setBedsModalData(bedsWithImages);
-        setShowBedsModal(true);
-      } else {
-        setDialog({
-          isOpen: true,
-          title: "Error",
-          message: res.data.message || "Could not fetch beds.",
-          isConfirmDialog: false,
-        });
       }
     } catch (err) {
-      console.error("Error fetching beds:", err.response?.data || err);
-      setDialog({
-        isOpen: true,
-        title: "Error",
-        message: `Failed to fetch beds: ${err.response?.data?.message || err.message}`,
-        isConfirmDialog: false,
+      console.error("Error fetching property:", err);
+      const errorMsg = err.response?.data?.message || "Failed to fetch property details";
+      setError(errorMsg);
+      setToast({
+        show: true,
+        message: errorMsg,
+        type: "error",
       });
     }
   };
-  const handleEditBed = (bed) => {
-    let roomId = bed.roomId;
-    if (!roomId) {
-      const found = bedsModalData.find(b => b.bedId === bed.bedId);
-      roomId = found?.roomId;
-    }
-    if (!roomId && selectedRoomId) {
-      roomId = selectedRoomId;
-    }
-    setEditBedModal({ open: true, bed: { ...bed, roomId } });
-    setEditBedNewImages([]);
-    setEditBedError("");
-  };
-  const handleEditBedChange = (field, value) => {
-    setEditBedModal((prev) => ({
-      ...prev,
-      bed: { ...prev.bed, [field]: value },
-    }));
-  };
-  const handleEditBedImageChange = (e) => {
-    const files = Array.from(e.target.files);
-    setEditBedNewImages(files);
-  };
-  const handleEditBedSubmit = async (e) => {
-    e.preventDefault();
-    setEditBedLoading(true);
-    setEditBedError("");
+
+  const handleEnableRentalManagement = async () => {
     try {
+      setEnablingRental(true);
       const token = getToken();
       if (!token) {
-        throw new Error("No authentication token found. Please log in.");
+        throw new Error("No authentication token found");
       }
-      const { bed } = editBedModal;
-      const payload = {
-        status: bed.status,
-      };
-      const res = await axios.put(
-        `${API_BASE}/${bed.roomId}/beds/${bed.bedId}`,
-        payload,
+
+      const response = await axios.put(
+        `${baseurl}api/properties/${propertyId}`,
+        { isRentalManagement: true },
         {
           headers: {
-            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
         }
       );
-      let updatedImages = bed.images || [];
-      if (editBedNewImages.length > 0) {
-        const formData = new FormData();
-        editBedNewImages.forEach((image) => formData.append("images", image));
-        const imageRes = await axios.post(
-          `${API_BASE}/${bed.roomId}/beds/${bed.bedId}/images`,
-          formData,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-        updatedImages = [...updatedImages, ...(imageRes.data.images || [])];
-      }
-      if (res.data.success) {
-        setBedsModalData((prev) =>
-          prev.map((b) =>
-            b.bedId === bed.bedId
-              ? { ...b, status: bed.status, images: updatedImages }
-              : b
-          )
-        );
-        setEditBedModal({ open: false, bed: null });
-        setEditBedNewImages([]);
-        setDialog({
-          isOpen: true,
-          title: "Success",
-          message: res.data.message || "Bed updated successfully.",
-          isConfirmDialog: false,
+
+      if (response.data.success) {
+        setPropertyValid(true);
+        setShowEnableRentalModal(false);
+        setToast({
+          show: true,
+          message: "Rental management enabled successfully!",
+          type: "success",
         });
-        await fetchRooms();
-        // Refetch global beds count after updating bed
-        await fetchGlobalBedsCount();
-      } else {
-        throw new Error(res.data.message || "Failed to update bed.");
+        await fetchProperty();
       }
     } catch (err) {
-      console.error("Error updating bed:", err.response?.data || err);
-      setEditBedError(err.response?.data?.message || `Failed to update bed: ${err.message}`);
+      console.error("Error enabling rental management:", err);
+      setToast({
+        show: true,
+        message: err.response?.data?.message || "Failed to enable rental management",
+        type: "error",
+      });
     } finally {
-      setEditBedLoading(false);
+      setEnablingRental(false);
     }
   };
-  const handleDeleteBed = async (bed) => {
-    setDialog({
-      isOpen: true,
-      title: "Confirm Delete",
-      message: `Are you sure you want to delete bed ${bed.name}?`,
-      onConfirm: async () => {
-        try {
-          setLoading(true);
-          setError(null);
-          const token = getToken();
-          if (!token) {
-            throw new Error("No authentication token found. Please log in.");
-          }
-          const res = await axios.delete(
-            `${API_BASE}/${bed.roomId}/beds/${bed.bedId}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-            }
-          );
-          if (res.data.success) {
-            setBedsModalData((prev) => prev.filter((b) => b.bedId !== bed.bedId));
-            setDialog({
-              isOpen: true,
-              title: "Success",
-              message: res.data.message || "Bed deleted successfully.",
-              isConfirmDialog: false,
-            });
-            await fetchRooms();
-            // Refetch global beds count after deleting bed
-            await fetchGlobalBedsCount();
-          } else {
-            throw new Error(res.data.message || "Failed to delete bed.");
-          }
-        } catch (err) {
-          console.error("Error deleting bed:", err.response?.data || err);
-          setError(
-            err.response?.data?.message || `Failed to delete bed: ${err.message}`
-          );
-          setDialog({
-            isOpen: true,
-            title: "Error",
-            message: `Failed to delete bed: ${err.response?.data?.message || err.message}`,
-            isConfirmDialog: false,
-          });
-        } finally {
-          setLoading(false);
-        }
-      },
-      confirmText: "Delete",
-      cancelText: "Cancel",
-      isConfirmDialog: true,
-    });
-  };
-  const resetForm = () => {
-    setRoomData({
-      name: "",
-      type: "",
-      price: "",
-      capacity: "",
-      status: "Available",
-      floorNumber: "",
-      roomSize: "",
-      securityDeposit: "",
-      noticePeriod: "",
-      facilities: initialFacilitiesState,
-      beds: [],
-      images: [],
-    });
-    setEditingId(null);
-    setFocusedField("");
-    navigate(location.pathname);
-  };
-  const resetBedForm = () => {
-    setShowBedForm(false);
-    setSelectedRoomId(null);
-    setBeds([{ name: "", status: "Available", price: "", images: [] }]);
-  };
-  const handleDelete = async (roomId) => {
+
+  const fetchRoomDetails = async () => {
     try {
       setLoading(true);
-      setError(null);
       const token = getToken();
       if (!token) {
-        throw new Error("No authentication token found. Please log in.");
+        throw new Error("No authentication token found");
       }
-      await axios.delete(`${API_BASE}/${roomId}`, {
+
+      const response = await axios.get(`${API_BASE}/${roomId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
         },
       });
-      await fetchRooms();
-      setDialog({
-        isOpen: true,
-        title: "Success",
-        message: "Room deleted successfully.",
-        isConfirmDialog: false,
-      });
+
+      if (response.data.success) {
+        const room = response.data.data;
+        setRoomData({
+          propertyId: room.propertyId,
+          roomNumber: room.roomNumber || "",
+          roomType: room.roomType || "",
+          floor: room.floor || "",
+          rentPerBed: room.pricing?.rentPerBed || "",
+          rentPerRoom: room.pricing?.rentPerRoom || "",
+          securityDeposit: room.pricing?.securityDeposit || "",
+          maintenanceCharges: room.pricing?.maintenanceCharges?.amount || "",
+          maintenanceIncluded: room.pricing?.maintenanceCharges?.includedInRent || false,
+          electricityCharges: room.pricing?.electricityCharges || "Extra",
+          waterCharges: room.pricing?.waterCharges || "Included",
+          totalBeds: room.capacity?.totalBeds || "",
+          furnishing: room.features?.furnishing || "Unfurnished",
+          hasAttachedBathroom: room.features?.hasAttachedBathroom || false,
+          hasBalcony: room.features?.hasBalcony || false,
+          hasAC: room.features?.hasAC || false,
+          hasWardrobe: room.features?.hasWardrobe || false,
+          hasFridge: room.features?.hasFridge || false,
+          amenities: room.features?.amenities || [],
+          genderPreference: room.rules?.genderPreference || "Any",
+          foodType: room.rules?.foodType || "Both",
+          smokingAllowed: room.rules?.smokingAllowed || false,
+          petsAllowed: room.rules?.petsAllowed || false,
+          guestsAllowed: room.rules?.guestsAllowed || false,
+          noticePeriod: room.rules?.noticePeriod || "30",
+          lockInPeriod: room.rules?.lockInPeriod || "0",
+          carpetArea: room.area?.carpet || "",
+          areaUnit: room.area?.unit || "sqft",
+          newImages: [],
+          existingImages: room.media?.images?.map((img) => img.url) || [],
+        });
+      }
     } catch (err) {
-      console.error("Error deleting room:", err.response?.data || err);
-      setError(
-        err.response?.data?.message || `Failed to delete room: ${err.message}`
-      );
-      setDialog({
-        isOpen: true,
-        title: "Error",
-        message: `Failed to delete room: ${err.response?.data?.message || err.message}`,
-        isConfirmDialog: false,
+      console.error("Error fetching room details:", err);
+      setError(err.response?.data?.message || "Failed to fetch room details");
+      setToast({
+        show: true,
+        message: err.response?.data?.message || "Failed to fetch room details",
+        type: "error",
       });
     } finally {
       setLoading(false);
     }
   };
-  const handleEdit = (room) => {
-    setSearchParams({ action: "edit", roomId: room._id || room.roomId });
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setRoomData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
   };
-  const handleAddRoom = () => {
-    setSearchParams({ action: "add" });
+
+  const handleAmenityToggle = (amenity) => {
+    setRoomData((prev) => ({
+      ...prev,
+      amenities: prev.amenities.includes(amenity)
+        ? prev.amenities.filter((a) => a !== amenity)
+        : [...prev.amenities, amenity],
+    }));
   };
+
+  const handleImageChange = (e) => {
+    const files = Array.from(e.target.files);
+    setRoomData((prev) => ({
+      ...prev,
+      newImages: [...prev.newImages, ...files],
+    }));
+  };
+
+  const removeImage = (index, isExisting = false) => {
+    if (isExisting) {
+      setRoomData((prev) => ({
+        ...prev,
+        existingImages: prev.existingImages.filter((_, i) => i !== index),
+      }));
+    } else {
+      setRoomData((prev) => ({
+        ...prev,
+        newImages: prev.newImages.filter((_, i) => i !== index),
+      }));
+    }
+  };
+
+  // Bulk room management
+  const addBulkRoom = () => {
+    const newBulkRoom = {
+      roomNumber: "",
+      roomType: "",
+      floor: "",
+      rentPerBed: "",
+      rentPerRoom: "",
+      securityDeposit: "",
+      maintenanceCharges: "",
+      maintenanceIncluded: false,
+      electricityCharges: "Extra",
+      waterCharges: "Included",
+      totalBeds: "",
+      furnishing: "Unfurnished",
+      hasAttachedBathroom: false,
+      hasBalcony: false,
+      hasAC: false,
+      hasWardrobe: false,
+      hasFridge: false,
+      amenities: [],
+      genderPreference: "Any",
+      foodType: "Both",
+      smokingAllowed: false,
+      petsAllowed: false,
+      guestsAllowed: false,
+      noticePeriod: "30",
+      lockInPeriod: "0",
+      carpetArea: "",
+      areaUnit: "sqft",
+    };
+    setBulkRooms([...bulkRooms, newBulkRoom]);
+  };
+
+  const removeBulkRoom = (index) => {
+    setBulkRooms(bulkRooms.filter((_, i) => i !== index));
+  };
+
+  const updateBulkRoom = (index, field, value, isCheckbox = false) => {
+    const updatedRooms = [...bulkRooms];
+    updatedRooms[index] = {
+      ...updatedRooms[index],
+      [field]: isCheckbox ? !updatedRooms[index][field] : value,
+    };
+    setBulkRooms(updatedRooms);
+  };
+
+  const toggleBulkAmenity = (index, amenity) => {
+    const updatedRooms = [...bulkRooms];
+    const amenities = updatedRooms[index].amenities;
+    updatedRooms[index].amenities = amenities.includes(amenity)
+      ? amenities.filter((a) => a !== amenity)
+      : [...amenities, amenity];
+    setBulkRooms(updatedRooms);
+  };
+
+  // Validation function for bulk rooms
+  const validateBulkRooms = () => {
+    for (let i = 0; i < bulkRooms.length; i++) {
+      const room = bulkRooms[i];
+      if (!room.roomNumber || !room.roomType || !room.totalBeds || !room.securityDeposit) {
+        setToast({
+          show: true,
+          message: `Room ${i + 1}: Please fill all required fields (Room Number, Type, Total Beds, Security Deposit)`,
+          type: "error",
+        });
+        return false;
+      }
+    }
+    return true;
+  };
+
+  // Single room submission
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!propertyValid) {
+      setToast({
+        show: true,
+        message: "Please enable rental management for this property first",
+        type: "error",
+      });
+      setShowEnableRentalModal(true);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setSuccessMessage("");
+
+    try {
+      const token = getToken();
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+
+      // Prepare room payload
+      const roomPayload = {
+        propertyId: propertyId,
+        roomNumber: roomData.roomNumber,
+        roomType: roomData.roomType,
+        floor: roomData.floor ? Number(roomData.floor) : undefined,
+        pricing: {
+          rentPerBed: roomData.rentPerBed ? Number(roomData.rentPerBed) : undefined,
+          rentPerRoom: roomData.rentPerRoom ? Number(roomData.rentPerRoom) : undefined,
+          securityDeposit: Number(roomData.securityDeposit),
+          maintenanceCharges: {
+            amount: Number(roomData.maintenanceCharges) || 0,
+            includedInRent: roomData.maintenanceIncluded,
+          },
+          electricityCharges: roomData.electricityCharges,
+          waterCharges: roomData.waterCharges,
+        },
+        capacity: {
+          totalBeds: Number(roomData.totalBeds),
+          occupiedBeds: 0,
+        },
+        features: {
+          furnishing: roomData.furnishing,
+          hasAttachedBathroom: roomData.hasAttachedBathroom,
+          hasBalcony: roomData.hasBalcony,
+          hasAC: roomData.hasAC,
+          hasWardrobe: roomData.hasWardrobe,
+          hasFridge: roomData.hasFridge,
+          amenities: roomData.amenities,
+        },
+        rules: {
+          genderPreference: roomData.genderPreference,
+          foodType: roomData.foodType,
+          smokingAllowed: roomData.smokingAllowed,
+          petsAllowed: roomData.petsAllowed,
+          guestsAllowed: roomData.guestsAllowed,
+          noticePeriod: Number(roomData.noticePeriod),
+          lockInPeriod: Number(roomData.lockInPeriod),
+        },
+        area: {
+          carpet: Number(roomData.carpetArea) || undefined,
+          unit: roomData.areaUnit,
+        },
+      };
+
+      let response;
+
+      if (roomId) {
+        // Update existing room - send JSON
+        response = await axios.put(`${API_BASE}/${roomId}`, roomPayload, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      } else {
+        // Create new room - send FormData if images exist, otherwise JSON
+        if (roomData.newImages.length > 0) {
+          const formData = new FormData();
+          formData.append("roomData", JSON.stringify(roomPayload));
+          roomData.newImages.forEach((image) => {
+            formData.append("images", image);
+          });
+
+          response = await axios.post(`${API_BASE}/create`, formData, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            onUploadProgress: (progressEvent) => {
+              if (progressEvent.total) {
+                setUploadProgress(
+                  Math.round((progressEvent.loaded * 100) / progressEvent.total)
+                );
+              }
+            },
+          });
+        } else {
+          // No images - send JSON
+          response = await axios.post(`${API_BASE}/create`, roomPayload, {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          });
+        }
+      }
+
+      if (response.data.success) {
+        const successMsg = roomId ? "Room updated successfully!" : "Room created successfully!";
+        setSuccessMessage(successMsg);
+        setToast({ show: true, message: successMsg, type: "success" });
+
+        setTimeout(() => {
+          navigate(`/landlord/property/${propertyId}`);
+        }, 2000);
+      } else {
+        const msg = response.data.message || "Failed to save room";
+        setError(msg);
+        setToast({ show: true, message: msg, type: "error" });
+      }
+    } catch (err) {
+      console.error("Error saving room:", err);
+      const msg = err.response?.data?.message || err.message || "Failed to save room";
+      setError(msg);
+      setToast({ show: true, message: msg, type: "error" });
+    } finally {
+      setLoading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  // Bulk room submission - FIXED
+  const handleBulkSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!propertyValid) {
+      setToast({
+        show: true,
+        message: "Please enable rental management for this property first",
+        type: "error",
+      });
+      setShowEnableRentalModal(true);
+      return;
+    }
+
+    if (bulkRooms.length === 0) {
+      setToast({
+        show: true,
+        message: "Please add at least one room",
+        type: "error",
+      });
+      return;
+    }
+
+    // Validate all bulk rooms
+    if (!validateBulkRooms()) {
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setSuccessMessage("");
+
+    try {
+      const token = getToken();
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+
+      // Prepare bulk payload - FIXED
+      const payload = {
+        propertyId: propertyId,
+        rooms: bulkRooms.map((room) => ({
+          roomNumber: room.roomNumber,
+          roomType: room.roomType,
+          floor: room.floor ? Number(room.floor) : undefined,
+          pricing: {
+            rentPerBed: room.rentPerBed ? Number(room.rentPerBed) : undefined,
+            rentPerRoom: room.rentPerRoom ? Number(room.rentPerRoom) : undefined,
+            securityDeposit: Number(room.securityDeposit),
+            maintenanceCharges: {
+              amount: Number(room.maintenanceCharges) || 0,
+              includedInRent: room.maintenanceIncluded,
+            },
+            electricityCharges: room.electricityCharges,
+            waterCharges: room.waterCharges,
+          },
+          capacity: {
+            totalBeds: Number(room.totalBeds),
+            occupiedBeds: 0,
+          },
+          features: {
+            furnishing: room.furnishing,
+            hasAttachedBathroom: room.hasAttachedBathroom,
+            hasBalcony: room.hasBalcony,
+            hasAC: room.hasAC,
+            hasWardrobe: room.hasWardrobe,
+            hasFridge: room.hasFridge,
+            amenities: room.amenities,
+          },
+          rules: {
+            genderPreference: room.genderPreference,
+            foodType: room.foodType,
+            smokingAllowed: room.smokingAllowed,
+            petsAllowed: room.petsAllowed,
+            guestsAllowed: room.guestsAllowed,
+            noticePeriod: Number(room.noticePeriod),
+            lockInPeriod: Number(room.lockInPeriod),
+          },
+          area: {
+            carpet: Number(room.carpetArea) || undefined,
+            unit: room.areaUnit,
+          },
+        })),
+      };
+
+      console.log("Sending bulk rooms payload:", payload); // Debug log
+
+      const response = await axios.post(`${API_BASE}/bulk-create`, payload, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.data.success) {
+        const createdCount = response.data.data?.createdRooms?.length || bulkRooms.length;
+        const successMsg = `Successfully created ${createdCount} room${createdCount !== 1 ? 's' : ''}!`;
+        setSuccessMessage(successMsg);
+        setToast({ show: true, message: successMsg, type: "success" });
+
+        setTimeout(() => {
+          navigate(`/landlord/property/${propertyId}`);
+        }, 2000);
+      } else {
+        const msg = response.data.message || "Failed to create rooms";
+        setError(msg);
+        setToast({ show: true, message: msg, type: "error" });
+      }
+    } catch (err) {
+      console.error("Error saving bulk rooms:", err);
+      const msg = err.response?.data?.message || err.message || "Failed to save rooms";
+      setError(msg);
+      setToast({ show: true, message: msg, type: "error" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getFieldStyle = (name) =>
-    `w-full flex items-center gap-2 border rounded-md px-4 py-2 bg-transparent transition-all duration-200 ${
-      focusedField === name ? "border-blue-400" : "border-gray-300"
-    } text-black`;
+    `w-full flex items-center gap-3 border rounded-lg px-4 py-3 bg-white transition-all duration-300 ${
+      focusedField === name
+        ? "border-orange-500 shadow-lg ring-2 ring-orange-100"
+        : "border-gray-200 hover:border-gray-300"
+    } text-gray-900`;
+
   const getIconStyle = (name) => ({
-    color: focusedField === name ? "#3b82f6" : "#6b7280",
+    color: focusedField === name ? "#FF6B35" : "#9CA3AF",
+    fontSize: "18px",
   });
-  if (action) {
-    return (
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 bg-white min-h-screen text-black rounded-xl shadow-lg relative">
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 py-8 px-4 sm:px-6 lg:px-8">
+      {/* Toast Messages */}
+      {toast.show && (
+        <motion.div
+          initial={{ opacity: 0, y: -20, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -20 }}
+          className={`fixed top-6 right-6 z-50 max-w-sm px-6 py-4 rounded-xl shadow-2xl font-medium flex items-center gap-3 ${
+            toast.type === "success"
+              ? "bg-green-50 text-green-700 border border-green-200"
+              : "bg-red-50 text-red-700 border border-red-200"
+          }`}
+        >
+          <span className="text-xl">{toast.type === "success" ? "✓" : "⚠"}</span>
+          {toast.message}
+        </motion.div>
+      )}
+
+      {/* Enable Rental Modal */}
+      <AnimatePresence>
+        {showEnableRentalModal && (
+          <motion.div
+            className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center z-50 p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl"
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+            >
+              <div className="flex items-center justify-center mb-6">
+                <div className="w-16 h-16 bg-gradient-to-br from-amber-100 to-amber-200 rounded-full flex items-center justify-center">
+                  <FaExclamationTriangle className="text-amber-600 text-3xl" />
+                </div>
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 text-center mb-2">
+                Enable Rental Management
+              </h3>
+              <p className="text-gray-600 text-center mb-6 leading-relaxed">
+                This property isn't set up for rental management yet. Enable it to start adding rooms.
+              </p>
+              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded">
+                <p className="text-sm text-blue-900">
+                  <strong>Property Status:</strong>
+                  <br />
+                  Type: {propertyInfo?.listingType || "N/A"}
+                  <br />
+                  Rental: {propertyInfo?.isRentalManagement ? "✓ Enabled" : "✗ Disabled"}
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowEnableRentalModal(false);
+                    navigate(`/landlord/property/${propertyId}`);
+                  }}
+                  className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-200 font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleEnableRentalManagement}
+                  disabled={enablingRental}
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-200 font-semibold disabled:opacity-50 shadow-lg"
+                >
+                  {enablingRental ? "Enabling..." : "Enable Now"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <button
+            onClick={() => navigate(`/landlord/property/${propertyId}`)}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium mb-6 transition-colors"
+          >
+            <FaArrowLeft size={18} />
+            Back to Property
+          </button>
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-4xl font-bold text-gray-900 mb-2">
+                {bulkMode ? "Add Multiple Rooms" : roomId ? "Edit Room" : "Add New Room"}
+              </h1>
+              <p className="text-gray-600">
+                {bulkMode
+                  ? "Create multiple rooms in bulk"
+                  : roomId
+                  ? "Update room details and pricing"
+                  : "Create a new room listing"}
+              </p>
+            </div>
+
+            {/* Mode Toggle */}
+            {!roomId && (
+              <div className="flex gap-2 bg-white rounded-lg p-1 shadow-sm border border-gray-200">
+                <button
+                  onClick={() => {
+                    setBulkMode(false);
+                    setBulkRooms([]);
+                  }}
+                  className={`px-6 py-2 rounded-md font-semibold transition-all ${
+                    !bulkMode
+                      ? "bg-orange-500 text-white"
+                      : "bg-transparent text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Single Room
+                </button>
+                <button
+                  onClick={() => {
+                    setBulkMode(true);
+                    if (bulkRooms.length === 0) {
+                      addBulkRoom(); // Add first room automatically
+                    }
+                  }}
+                  className={`px-6 py-2 rounded-md font-semibold transition-all ${
+                    bulkMode
+                      ? "bg-orange-500 text-white"
+                      : "bg-transparent text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Bulk Rooms
+                </button>
+              </div>
+            )}
+          </div>
+        </motion.div>
+
+        {/* Error Alert */}
         {error && (
-          <motion.p
-            className="text-red-500 text-center mb-4"
+          <motion.div
+            className="mb-8 p-5 bg-red-50 border-2 border-red-200 text-red-700 rounded-xl flex items-start gap-3"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
           >
-            {error}
-          </motion.p>
+            <FaExclamationTriangle size={20} className="mt-1 flex-shrink-0" />
+            <div>
+              <h3 className="font-semibold mb-1">Error</h3>
+              <p className="text-sm">{error}</p>
+            </div>
+          </motion.div>
         )}
-        {loading && <p className="text-center text-gray-500">Loading...</p>}
-        <motion.div
-          className="bg-gray-50 p-4 sm:p-6 rounded-2xl shadow-lg w-full max-w-6xl mx-auto"
-          initial={{ opacity: 0, y: 50 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 50 }}
-        >
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-semibold">
-              {action === "add" ? "Add Room" : "Edit Room"}
-            </h3>
-            <button
-              onClick={() => resetForm()}
-              className="text-gray-600 hover:text-black"
-            >
-              <FaTimes />
-            </button>
-          </div>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div>
-                <label className="block font-semibold mb-1">Room Name</label>
-                <div className={getFieldStyle("roomName")}>
-                  <FaListUl style={getIconStyle("roomName")} />
-                  <input
-                    type="text"
-                    name="name"
-                    value={roomData.name}
-                    onChange={handleChange}
-                    onFocus={() => setFocusedField("roomName")}
-                    onBlur={() => setFocusedField("")}
-                    className="w-full outline-none bg-transparent"
-                    placeholder="Enter room name"
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block font-semibold mb-1">Room Type</label>
-                <div className={getFieldStyle("roomType")}>
-                  <FaThLarge style={getIconStyle("roomType")} />
-                  <select
-                    name="type"
-                    value={roomData.type}
-                    onChange={handleChange}
-                    onFocus={() => setFocusedField("roomType")}
-                    onBlur={() => setFocusedField("")}
-                    className="w-full outline-none bg-gray-50 text-black"
-                    required
+
+        {/* Success Alert */}
+        {successMessage && (
+          <motion.div
+            className="mb-8 p-5 bg-green-50 border-2 border-green-200 text-green-700 rounded-xl flex items-start gap-3"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <FaCheck size={20} className="mt-1 flex-shrink-0" />
+            <div>
+              <h3 className="font-semibold mb-1">Success</h3>
+              <p className="text-sm">{successMessage}</p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Single Room Form */}
+        {!bulkMode ? (
+          <motion.div
+            className="bg-white rounded-2xl shadow-xl overflow-hidden"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <form onSubmit={handleSubmit} className="p-6 sm:p-10 space-y-10">
+              {/* Basic Information Section */}
+              <Section title="Basic Information" icon="📋">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <FormField
+                    label="Room Number *"
+                    icon={<FaListUl />}
+                    focusedField={focusedField}
+                    setFocusedField={setFocusedField}
+                    getFieldStyle={getFieldStyle}
+                    getIconStyle={getIconStyle}
                   >
-                    <option value="">Select Room Type</option>
-                    <option value="PG">PG</option>
-                    <option value="AC">AC</option>
-                    <option value="Single Sharing">Single Sharing</option>
-                    <option value="Double Sharing">Double Sharing</option>
-                    <option value="Triple Sharing">Triple Sharing</option>
-                    <option value="Four Sharing">Four Sharing</option>
-                    <option value="Five Sharing">Five Sharing</option>
-                    <option value="Six Sharing">Six Sharing</option>
-                    <option value="More Than 6 Sharing">
-                      More Than 6 Sharing
-                    </option>
-                    <option value="Private Room">Private Room</option>
-                    <option value="Shared Room">Shared Room</option>
-                    <option value="Couple">Couple</option>
-                    <option value="Family">Family</option>
-                    <option value="Male Only">Male Only</option>
-                    <option value="Female Only">Female Only</option>
-                    <option value="Unisex">Unisex</option>
-                    <option value="Student Only">Student Only</option>
-                    <option value="Working Professionals Only">
-                      Working Professionals Only
-                    </option>
-                  </select>
-                </div>
-              </div>
-     
-          
-              <div>
-                <label className="block font-semibold mb-1">Capacity</label>
-                <div className={getFieldStyle("capacity")}>
-                  <FaUsers style={getIconStyle("capacity")} />
-                  <input
-                    type="number"
-                    name="capacity"
-                    value={roomData.capacity}
-                    onChange={handleChange}
-                    onFocus={() => setFocusedField("capacity")}
-                    onBlur={() => setFocusedField("")}
-                    className="w-full outline-none bg-transparent"
-                    placeholder="Enter capacity"
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block font-semibold mb-1">Status</label>
-                <div className={getFieldStyle("status")}>
-                  <FaToggleOn style={getIconStyle("status")} />
-                  <select
-                    name="status"
-                    value={roomData.status}
-                    onChange={handleChange}
-                    onFocus={() => setFocusedField("status")}
-                    onBlur={() => setFocusedField("")}
-                    className="w-full outline-none bg-gray-50"
-                    required
+                    <input
+                      type="text"
+                      name="roomNumber"
+                      value={roomData.roomNumber}
+                      onChange={handleChange}
+                      onFocus={() => setFocusedField("roomNumber")}
+                      onBlur={() => setFocusedField("")}
+                      className="w-full outline-none bg-transparent"
+                      placeholder="e.g., 101, A-205"
+                      required
+                    />
+                  </FormField>
+
+                  <FormField
+                    label="Room Type *"
+                    icon={<FaThLarge />}
+                    focusedField={focusedField}
+                    setFocusedField={setFocusedField}
+                    getFieldStyle={getFieldStyle}
+                    getIconStyle={getIconStyle}
                   >
-                    <option value="Available">Available</option>
-                    <option value="Not Available">Not Available</option>
-                    <option value="Partially Available">Partially Available</option>
-                    <option value="Under Maintenance">Under Maintenance</option>
-                    <option value="Reserved">Reserved</option>
-                  </select>
+                    <select
+                      name="roomType"
+                      value={roomData.roomType}
+                      onChange={handleChange}
+                      onFocus={() => setFocusedField("roomType")}
+                      onBlur={() => setFocusedField("")}
+                      className="w-full outline-none bg-transparent text-gray-900"
+                      required
+                    >
+                      <option value="">Select Type</option>
+                      <option value="Single">Single</option>
+                      <option value="Double Sharing">Double Sharing</option>
+                      <option value="Triple Sharing">Triple Sharing</option>
+                      <option value="Dormitory">Dormitory</option>
+                      <option value="1 BHK">1 BHK</option>
+                      <option value="2 BHK">2 BHK</option>
+                      <option value="3 BHK">3 BHK</option>
+                    </select>
+                  </FormField>
+
+                  <FormField
+                    label="Floor"
+                    icon={<FaLayerGroup />}
+                    focusedField={focusedField}
+                    setFocusedField={setFocusedField}
+                    getFieldStyle={getFieldStyle}
+                    getIconStyle={getIconStyle}
+                  >
+                    <input
+                      type="number"
+                      name="floor"
+                      value={roomData.floor}
+                      onChange={handleChange}
+                      onFocus={() => setFocusedField("floor")}
+                      onBlur={() => setFocusedField("")}
+                      className="w-full outline-none bg-transparent"
+                      placeholder="Floor number"
+                    />
+                  </FormField>
+
+                  <FormField
+                    label="Total Beds *"
+                    icon={<FaUsers />}
+                    focusedField={focusedField}
+                    setFocusedField={setFocusedField}
+                    getFieldStyle={getFieldStyle}
+                    getIconStyle={getIconStyle}
+                  >
+                    <input
+                      type="number"
+                      name="totalBeds"
+                      value={roomData.totalBeds}
+                      onChange={handleChange}
+                      onFocus={() => setFocusedField("totalBeds")}
+                      onBlur={() => setFocusedField("")}
+                      className="w-full outline-none bg-transparent"
+                      placeholder="Number of beds"
+                      required
+                      min="1"
+                    />
+                  </FormField>
+
+                  <FormField
+                    label="Carpet Area"
+                    icon={<FaRulerCombined />}
+                    focusedField={focusedField}
+                    setFocusedField={setFocusedField}
+                    getFieldStyle={getFieldStyle}
+                    getIconStyle={getIconStyle}
+                  >
+                    <input
+                      type="number"
+                      name="carpetArea"
+                      value={roomData.carpetArea}
+                      onChange={handleChange}
+                      onFocus={() => setFocusedField("carpetArea")}
+                      onBlur={() => setFocusedField("")}
+                      className="w-full outline-none bg-transparent"
+                      placeholder="Area size"
+                    />
+                  </FormField>
+
+                  <FormField
+                    label="Area Unit"
+                    icon={<FaRulerCombined />}
+                    focusedField={focusedField}
+                    setFocusedField={setFocusedField}
+                    getFieldStyle={getFieldStyle}
+                    getIconStyle={getIconStyle}
+                  >
+                    <select
+                      name="areaUnit"
+                      value={roomData.areaUnit}
+                      onChange={handleChange}
+                      onFocus={() => setFocusedField("areaUnit")}
+                      onBlur={() => setFocusedField("")}
+                      className="w-full outline-none bg-transparent text-gray-900"
+                    >
+                      <option value="sqft">Square Feet (sqft)</option>
+                      <option value="sqm">Square Meters (sqm)</option>
+                    </select>
+                  </FormField>
                 </div>
-              </div>
-              <div>
-                <label className="block font-semibold mb-1">Floor Number</label>
-                <div className={getFieldStyle("floorNumber")}>
-                  <FaLayerGroup style={getIconStyle("floorNumber")} />
+              </Section>
+
+              {/* Pricing Section */}
+              <Section title="Pricing" icon="💰">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <FormField
+                    label="Rent Per Bed (₹)"
+                    icon={<FaMoneyBillWave />}
+                    focusedField={focusedField}
+                    setFocusedField={setFocusedField}
+                    getFieldStyle={getFieldStyle}
+                    getIconStyle={getIconStyle}
+                  >
+                    <input
+                      type="number"
+                      name="rentPerBed"
+                      value={roomData.rentPerBed}
+                      onChange={handleChange}
+                      onFocus={() => setFocusedField("rentPerBed")}
+                      onBlur={() => setFocusedField("")}
+                      className="w-full outline-none bg-transparent"
+                      placeholder="Rent per bed"
+                    />
+                  </FormField>
+
+                  <FormField
+                    label="Rent Per Room (₹)"
+                    icon={<FaMoneyBillWave />}
+                    focusedField={focusedField}
+                    setFocusedField={setFocusedField}
+                    getFieldStyle={getFieldStyle}
+                    getIconStyle={getIconStyle}
+                  >
+                    <input
+                      type="number"
+                      name="rentPerRoom"
+                      value={roomData.rentPerRoom}
+                      onChange={handleChange}
+                      onFocus={() => setFocusedField("rentPerRoom")}
+                      onBlur={() => setFocusedField("")}
+                      className="w-full outline-none bg-transparent"
+                      placeholder="Rent per room"
+                    />
+                  </FormField>
+
+                  <FormField
+                    label="Security Deposit (₹) *"
+                    icon={<FaShieldAlt />}
+                    focusedField={focusedField}
+                    setFocusedField={setFocusedField}
+                    getFieldStyle={getFieldStyle}
+                    getIconStyle={getIconStyle}
+                  >
+                    <input
+                      type="number"
+                      name="securityDeposit"
+                      value={roomData.securityDeposit}
+                      onChange={handleChange}
+                      onFocus={() => setFocusedField("securityDeposit")}
+                      onBlur={() => setFocusedField("")}
+                      className="w-full outline-none bg-transparent"
+                      placeholder="Security deposit"
+                      required
+                    />
+                  </FormField>
+
+                  <FormField
+                    label="Maintenance Charges (₹)"
+                    icon={<FaMoneyBillWave />}
+                    focusedField={focusedField}
+                    setFocusedField={setFocusedField}
+                    getFieldStyle={getFieldStyle}
+                    getIconStyle={getIconStyle}
+                  >
+                    <input
+                      type="number"
+                      name="maintenanceCharges"
+                      value={roomData.maintenanceCharges}
+                      onChange={handleChange}
+                      onFocus={() => setFocusedField("maintenanceCharges")}
+                      onBlur={() => setFocusedField("")}
+                      className="w-full outline-none bg-transparent"
+                      placeholder="Maintenance charges"
+                    />
+                  </FormField>
+
+                  <FormField
+                    label="Electricity Charges"
+                    icon={<FaToggleOn />}
+                    focusedField={focusedField}
+                    setFocusedField={setFocusedField}
+                    getFieldStyle={getFieldStyle}
+                    getIconStyle={getIconStyle}
+                  >
+                    <select
+                      name="electricityCharges"
+                      value={roomData.electricityCharges}
+                      onChange={handleChange}
+                      onFocus={() => setFocusedField("electricityCharges")}
+                      onBlur={() => setFocusedField("")}
+                      className="w-full outline-none bg-transparent text-gray-900"
+                    >
+                      <option value="Included">Included</option>
+                      <option value="Extra">Extra</option>
+                      <option value="Per-Unit">Per-Unit</option>
+                    </select>
+                  </FormField>
+
+                  <FormField
+                    label="Water Charges"
+                    icon={<FaToggleOn />}
+                    focusedField={focusedField}
+                    setFocusedField={setFocusedField}
+                    getFieldStyle={getFieldStyle}
+                    getIconStyle={getIconStyle}
+                  >
+                    <select
+                      name="waterCharges"
+                      value={roomData.waterCharges}
+                      onChange={handleChange}
+                      onFocus={() => setFocusedField("waterCharges")}
+                      onBlur={() => setFocusedField("")}
+                      className="w-full outline-none bg-transparent text-gray-900"
+                    >
+                      <option value="Included">Included</option>
+                      <option value="Extra">Extra</option>
+                    </select>
+                  </FormField>
+                </div>
+
+                <div className="flex items-center gap-3 p-4 bg-orange-50 rounded-lg border border-orange-200 mt-6">
                   <input
-                    type="number"
-                    name="floorNumber"
-                    value={roomData.floorNumber || ""}
+                    type="checkbox"
+                    name="maintenanceIncluded"
+                    checked={roomData.maintenanceIncluded}
                     onChange={handleChange}
-                    onFocus={() => setFocusedField("floorNumber")}
-                    onBlur={() => setFocusedField("")}
-                    className="w-full outline-none bg-transparent"
-                    placeholder="Enter floor number"
+                    className="w-5 h-5 text-orange-500 rounded cursor-pointer"
                   />
+                  <label className="font-medium text-gray-900 cursor-pointer">
+                    Maintenance Charges Included in Rent
+                  </label>
                 </div>
-              </div>
-              <div>
-                <label className="block font-semibold mb-1">Room Size</label>
-                <div className={getFieldStyle("roomSize")}>
-                  <FaThLarge style={getIconStyle("roomSize")} />
-                  <input
-                    type="text"
-                    name="roomSize"
-                    value={roomData.roomSize || ""}
-                    onChange={handleChange}
-                    onFocus={() => setFocusedField("roomSize")}
-                    onBlur={() => setFocusedField("")}
-                    className="w-full outline-none bg-transparent"
-                    placeholder="Enter room size (e.g., 200 sq ft)"
-                  />
+              </Section>
+
+              {/* Features Section */}
+              <Section title="Room Features" icon="✨">
+                <div className="mb-6">
+                  <FormField
+                    label="Furnishing"
+                    icon={<FaThLarge />}
+                    focusedField={focusedField}
+                    setFocusedField={setFocusedField}
+                    getFieldStyle={getFieldStyle}
+                    getIconStyle={getIconStyle}
+                  >
+                    <select
+                      name="furnishing"
+                      value={roomData.furnishing}
+                      onChange={handleChange}
+                      onFocus={() => setFocusedField("furnishing")}
+                      onBlur={() => setFocusedField("")}
+                      className="w-full outline-none bg-transparent text-gray-900"
+                    >
+                      <option value="Unfurnished">Unfurnished</option>
+                      <option value="Semi-Furnished">Semi-Furnished</option>
+                      <option value="Fully-Furnished">Fully-Furnished</option>
+                    </select>
+                  </FormField>
                 </div>
-              </div>
-              <div className="lg:col-span-3">
-                <label className="block font-semibold mb-1">
-                  Upload Room Images
-                </label>
-                <div className={getFieldStyle("images")}>
-                  <FaImage style={getIconStyle("images")} />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[
+                    { name: "hasAttachedBathroom", label: "Attached Bathroom" },
+                    { name: "hasBalcony", label: "Balcony" },
+                    { name: "hasAC", label: "Air Conditioning" },
+                    { name: "hasWardrobe", label: "Wardrobe" },
+                    { name: "hasFridge", label: "Refrigerator" },
+                  ].map((feature) => (
+                    <label
+                      key={feature.name}
+                      className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-all border border-gray-200"
+                    >
+                      <input
+                        type="checkbox"
+                        name={feature.name}
+                        checked={roomData[feature.name]}
+                        onChange={handleChange}
+                        className="w-5 h-5 text-orange-500 rounded cursor-pointer"
+                      />
+                      <span className="font-medium text-gray-900">{feature.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </Section>
+
+              {/* Amenities Section */}
+              <Section title="Amenities" icon="🏠">
+                <div className="flex flex-wrap gap-3">
+                  {amenitiesList.map((amenity) => {
+                    const isActive = roomData.amenities.includes(amenity);
+                    return (
+                      <motion.button
+                        key={amenity}
+                        type="button"
+                        onClick={() => handleAmenityToggle(amenity)}
+                        className={`px-4 py-2 rounded-full font-medium transition-all duration-200 border-2 ${
+                          isActive
+                            ? "bg-orange-500 border-orange-600 text-white shadow-lg"
+                            : "bg-white border-gray-200 text-gray-700 hover:border-orange-300"
+                        }`}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        {amenity}
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              </Section>
+
+              {/* Rules Section */}
+              <Section title="Rules & Policies" icon="📋">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                  <FormField
+                    label="Gender Preference"
+                    icon={<FaUsers />}
+                    focusedField={focusedField}
+                    setFocusedField={setFocusedField}
+                    getFieldStyle={getFieldStyle}
+                    getIconStyle={getIconStyle}
+                  >
+                    <select
+                      name="genderPreference"
+                      value={roomData.genderPreference}
+                      onChange={handleChange}
+                      onFocus={() => setFocusedField("genderPreference")}
+                      onBlur={() => setFocusedField("")}
+                      className="w-full outline-none bg-transparent text-gray-900"
+                    >
+                      <option value="Any">Any Gender</option>
+                      <option value="Male">Male Only</option>
+                      <option value="Female">Female Only</option>
+                    </select>
+                  </FormField>
+
+                  <FormField
+                    label="Food Type"
+                    icon={<FaThLarge />}
+                    focusedField={focusedField}
+                    setFocusedField={setFocusedField}
+                    getFieldStyle={getFieldStyle}
+                    getIconStyle={getIconStyle}
+                  >
+                    <select
+                      name="foodType"
+                      value={roomData.foodType}
+                      onChange={handleChange}
+                      onFocus={() => setFocusedField("foodType")}
+                      onBlur={() => setFocusedField("")}
+                      className="w-full outline-none bg-transparent text-gray-900"
+                    >
+                      <option value="Both">Both Veg & Non-Veg</option>
+                      <option value="Veg">Vegetarian Only</option>
+                      <option value="Non-Veg">Non-Vegetarian Only</option>
+                    </select>
+                  </FormField>
+
+                  <FormField
+                    label="Notice Period (days)"
+                    icon={<FaClock />}
+                    focusedField={focusedField}
+                    setFocusedField={setFocusedField}
+                    getFieldStyle={getFieldStyle}
+                    getIconStyle={getIconStyle}
+                  >
+                    <input
+                      type="number"
+                      name="noticePeriod"
+                      value={roomData.noticePeriod}
+                      onChange={handleChange}
+                      onFocus={() => setFocusedField("noticePeriod")}
+                      onBlur={() => setFocusedField("")}
+                      className="w-full outline-none bg-transparent"
+                      placeholder="30"
+                    />
+                  </FormField>
+
+                  <FormField
+                    label="Lock-in Period (months)"
+                    icon={<FaClock />}
+                    focusedField={focusedField}
+                    setFocusedField={setFocusedField}
+                    getFieldStyle={getFieldStyle}
+                    getIconStyle={getIconStyle}
+                  >
+                    <input
+                      type="number"
+                      name="lockInPeriod"
+                      value={roomData.lockInPeriod}
+                      onChange={handleChange}
+                      onFocus={() => setFocusedField("lockInPeriod")}
+                      onBlur={() => setFocusedField("")}
+                      className="w-full outline-none bg-transparent"
+                      placeholder="0"
+                    />
+                  </FormField>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[
+                    { name: "smokingAllowed", label: "Smoking Allowed" },
+                    { name: "petsAllowed", label: "Pets Allowed" },
+                    { name: "guestsAllowed", label: "Guests Allowed" },
+                  ].map((rule) => (
+                    <label
+                      key={rule.name}
+                      className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-all border border-gray-200"
+                    >
+                      <input
+                        type="checkbox"
+                        name={rule.name}
+                        checked={roomData[rule.name]}
+                        onChange={handleChange}
+                        className="w-5 h-5 text-orange-500 rounded cursor-pointer"
+                      />
+                      <span className="font-medium text-gray-900">{rule.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </Section>
+
+              {/* Images Section */}
+              <Section title="Room Images" icon="🖼️">
+                <FormField
+                  label="Upload Images"
+                  icon={<FaImage />}
+                  focusedField={focusedField}
+                  setFocusedField={setFocusedField}
+                  getFieldStyle={getFieldStyle}
+                  getIconStyle={getIconStyle}
+                >
                   <input
                     type="file"
-                    name="images"
                     onChange={handleImageChange}
                     onFocus={() => setFocusedField("images")}
                     onBlur={() => setFocusedField("")}
@@ -1522,828 +1306,417 @@ const RoomAdd = () => {
                     multiple
                     accept="image/*"
                   />
-                </div>
-                {roomData.images.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {roomData.images.map((img, i) => (
-                      <div key={i} className="relative">
-                        {img instanceof File ? (
+                </FormField>
+
+                {/* Existing Images */}
+                {roomData.existingImages.length > 0 && (
+                  <div className="mt-8">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-4">Existing Images</h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                      {roomData.existingImages.map((img, i) => (
+                        <motion.div
+                          key={`existing-${i}`}
+                          className="relative group rounded-lg overflow-hidden border-2 border-gray-200 hover:border-orange-500 transition-all"
+                          whileHover={{ scale: 1.05 }}
+                        >
+                          <img
+                            src={img}
+                            alt={`Existing ${i + 1}`}
+                            className="w-full h-24 object-cover"
+                          />
+                          <motion.button
+                            type="button"
+                            onClick={() => removeImage(i, true)}
+                            className="absolute inset-0 bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition-all"
+                            whileHover={{ backgroundColor: "rgba(0,0,0,0.4)" }}
+                          >
+                            <FaTrash className="text-white opacity-0 group-hover:opacity-100" size={16} />
+                          </motion.button>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* New Images */}
+                {roomData.newImages.length > 0 && (
+                  <div className="mt-8">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-4">New Images</h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                      {roomData.newImages.map((img, i) => (
+                        <motion.div
+                          key={`new-${i}`}
+                          className="relative group rounded-lg overflow-hidden border-2 border-blue-200 hover:border-orange-500 transition-all bg-blue-50"
+                          whileHover={{ scale: 1.05 }}
+                        >
                           <img
                             src={URL.createObjectURL(img)}
-                            alt={`Preview ${i + 1}`}
-                            className="h-16 w-16 object-cover rounded border"
-                            loading="lazy"
+                            alt={`New ${i + 1}`}
+                            className="w-full h-24 object-cover"
                           />
-                        ) : (
-                          <>
-                            <img
-                              src={img}
-                              alt={`Room Image ${i + 1}`}
-                              className="h-16 w-16 object-cover rounded border"
-                              loading="lazy"
-                            />
-                            <button
-                              onClick={() => deleteRoomImage(editingId || roomId, img)}
-                              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600 transition-colors"
-                              title="Delete Image"
-                            >
-                              <FaTrash size={10} />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* <div>
-                <label className="block font-semibold mb-1">Security Deposit (₹)</label>
-                <div className={getFieldStyle("securityDeposit")}>
-                  <FaMoneyBillWave style={getIconStyle("securityDeposit")} />
-                  <input
-                    type="number"
-                    name="securityDeposit"
-                    value={roomData.securityDeposit || ""}
-                    onChange={handleChange}
-                    onFocus={() => setFocusedField("securityDeposit")}
-                    onBlur={() => setFocusedField("")}
-                    className="w-full outline-none bg-transparent"
-                    placeholder="Enter security deposit"
-                  />
-                </div>
-              </div> */}
-              <div>
-                <label className="block font-semibold mb-1">Notice Period (days)</label>
-                <div className={getFieldStyle("noticePeriod")}>
-                  <FaToggleOn style={getIconStyle("noticePeriod")} />
-                  <input
-                    type="number"
-                    name="noticePeriod"
-                    value={roomData.noticePeriod || ""}
-                    onChange={handleChange}
-                    onFocus={() => setFocusedField("noticePeriod")}
-                    onBlur={() => setFocusedField("")}
-                    className="w-full outline-none bg-transparent"
-                    placeholder="Enter notice period"
-                  />
-                </div>
-              </div>
-            </div>
-            <div>
-              <label className="block font-semibold mb-2">Facilities</label>
-              <div className="flex flex-wrap gap-3">
-                {Object.entries(amenitiesOptionsState).map(
-                  ([category, options]) => (
-                    <div key={category} className="w-full">
-                      <h4 className="text-lg font-medium mb-2 capitalize">
-                        {category.replace(/([A-Z])/g, " $1").trim()}
-                      </h4>
-                      <div className="flex flex-wrap gap-3">
-                        {options.map((option) => {
-                          const isActive = roomData.facilities[category]?.[option] || false;
-                          return (
-                            <button
-                              key={option}
-                              onClick={() =>
-                                handleFacilityToggle(category, option)
-                              }
-                              type="button"
-                              className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all duration-300
-              ${
-                isActive
-                  ? "bg-green-500 border-green-600 text-white shadow-lg scale-105"
-                  : "bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200 hover:text-black"
-              }`}
-                            >
-                              <div
-                                className={`w-6 h-6 flex items-center justify-center rounded-md
-                ${
-                  isActive
-                    ? "bg-gradient-to-br from-green-400 to-green-600 shadow-md shadow-green-700"
-                    : "bg-gradient-to-br from-gray-400 to-gray-600 shadow-inner"
-                }
-                `}
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  strokeWidth={3}
-                                  stroke="white"
-                                  className={`w-4 h-4 transition-opacity duration-200
-                  ${isActive ? "opacity-100" : "opacity-40"}`}
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M5 13l4 4L19 7"
-                                  />
-                                </svg>
-                              </div>
-                              <span className="text-sm font-medium">
-                                {option}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )
-                )}
-              </div>
-              <div className="mt-4">
-                {/* <motion.button
-                  type="button"
-                  className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-orange-600 transition-all duration-200"
-                  onClick={() => setShowAddFacilityForm(!showAddFacilityForm)}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  Add More Facilities
-                </motion.button> */}
-                {/* {showAddFacilityForm && (
-                  <div className="mt-4 p-4 bg-gray-100 rounded-lg">
-                    <label className="block font-semibold mb-1">Category</label>
-                    <select
-                      value={newFacilityCategory}
-                      onChange={(e) => setNewFacilityCategory(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-transparent text-black mb-2"
-                    >
-                      <option value="">Select Category</option>
-                      {Object.keys(amenitiesOptionsState).map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat.replace(/([A-Z])/g, " $1").trim()}
-                        </option>
+                          <motion.button
+                            type="button"
+                            onClick={() => removeImage(i, false)}
+                            className="absolute inset-0 bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition-all"
+                            whileHover={{ backgroundColor: "rgba(0,0,0,0.4)" }}
+                          >
+                            <FaTrash className="text-white opacity-0 group-hover:opacity-100" size={16} />
+                          </motion.button>
+                        </motion.div>
                       ))}
-                    </select>
-                    <label className="block font-semibold mb-1">
-                      Facility Name
-                    </label>
-                    <input
-                      type="text"
-                      value={newFacilityName}
-                      onChange={(e) => setNewFacilityName(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-transparent text-black mb-2"
-                      placeholder="Enter new facility name"
-                    />
-                    <motion.button
-                      type="button"
-                      className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition-all duration-200"
-                      onClick={handleAddNewFacility}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      Add Facility
-                    </motion.button>
-                  </div>
-                )} */}
-              </div>
-            </div>
-            <motion.button
-              type="submit"
-              className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-all duration-200"
-              whileTap={{ scale: 0.95 }}
-            >
-              {action === "add" ? "Add Room" : "Update Room"}
-            </motion.button>
-          </form>
-        </motion.div>
-      </div>
-    );
-  }
-  return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 bg-gray-100 min-h-screen text-black rounded-xl shadow-lg relative">
-      <motion.h2
-        className="text-3xl font-bold mb-6 text-center"
-        initial={{ y: -50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-      >
-        Rooms
-      </motion.h2>
-      {error && (
-        <motion.p
-          className="text-red-500 text-center mb-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-        >
-          {error}
-        </motion.p>
-      )}
-      {loading && <p className="text-center text-gray-500">Loading...</p>}
-      {globalTotalBeds > totalLimit && (
-        <motion.div
-          className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <FaExclamationTriangle className="h-5 w-5" />
-            </div>
-            <div className="ml-3">
-              <p className="text-sm">
-                <span className="font-medium">Total Properties Beds: {globalTotalBeds}</span>
-                <br />
-                <span className="font-medium">Total Subscribed Beds: {totalLimit}</span>
-                <br />
-                You have more properties beds ({globalTotalBeds}) than subscribed. Upgrade your plan to utilize all!
-              </p>
-              <div className="mt-2">
-                <button
-                  onClick={() => navigate("/landlord/subscription-plans")}
-                  className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700"
-                >
-                  Upgrade Plan
-                </button>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      )}
-      <div className="text-center mb-6">
-        <motion.button
-          className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-all duration-200"
-          onClick={handleAddRoom}
-          whileTap={{ scale: 0.95 }}
-        >
-          <FaPlus className="inline mr-2" /> Add Room
-        </motion.button>
-      </div>
-      {rooms.length === 0 && !loading && !error ? (
-        <p className="text-center text-gray-500">No rooms added yet.</p>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {rooms.map((room, index) => {
-            if (!room) {
-              console.warn("Undefined room found in rooms array:", room);
-              return null;
-            }
-            return (
-              <motion.div
-                key={`${room.roomId}-${index}`}
-                className="rounded-xl overflow-hidden shadow-md bg-white border border-blue-400 hover:shadow-xl transition-all duration-300 flex flex-col relative"
-                initial={{ opacity: 0, y: 50 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <ImageCarousel images={room.images} onImageClick={handleOpenImageModal} roomId={room.roomId} />
-                {room.beds && room.beds.length > 0 && (
-                  <div className="flex flex-wrap gap-2 p-3">
-                    {room.beds.map((bed, bidx) => (
-                      <React.Fragment key={bed.bedId || bidx}>
-                        <BedImagesDisplay
-                          propertyId={propertyId}
-                          roomId={room.roomId}
-                          bedId={bed.bedId}
-                          images={bed.images}
-                          onDeleteImage={(imageUrl) => deleteBedImage(room.roomId, bed.bedId, imageUrl)}
-                          onImageClick={handleOpenImageModal}
-                        />
-                      </React.Fragment>
-                    ))}
+                    </div>
                   </div>
                 )}
-                <div className="p-3 flex flex-col justify-between flex-grow">
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-lg font-semibold text-black">
-                      {room.name || room.roomId || "Unnamed Room"}
-                    </h3>
-                    <span className="text-xs bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full">
-                      {room.type || "N/A"}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-1 mb-3">
-                    <div className="text-xs text-gray-700">
-                      <FaBed className="inline mr-1 text-blue-400" /> Beds:{" "}
-                      <span className="font-medium">
-                        {room.beds && room.beds.length
-                          ? room.beds.length
-                          : room.availableBeds || "N/A"}
-                      </span>
+
+                {/* Upload Progress */}
+                {uploadProgress > 0 && uploadProgress < 100 && (
+                  <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-blue-900">Uploading images...</span>
+                      <span className="text-sm font-semibold text-blue-600">{uploadProgress}%</span>
                     </div>
-                    <div className="text-xs text-gray-700">
-                      <FaUsers className="inline mr-1 text-pink-400" />{" "}
-                      Capacity:{" "}
-                      <span className="font-medium">
-                        {room.capacity || room.totalBeds || "N/A"}
-                      </span>
-                    </div>
-                    <div className="text-xs text-gray-700">
-                      <FaMoneyBillWave className="inline mr-1 text-green-400" />{" "}
-                      Rent:{" "}
-                      <span className="font-medium">
-                        ₹{room.price || "N/A"}
-                      </span>
-                    </div>
-                    <div className="text-xs text-gray-700">
-                      <FaToggleOn className="inline mr-1 text-yellow-400" />{" "}
-                      Status:{" "}
-                      <span className="font-medium">
-                        {room.status || "N/A"}
-                      </span>
-                    </div>
-                    {room.floorNumber && (
-                      <div className="text-xs text-gray-700">
-                        <FaLayerGroup className="inline mr-1 text-purple-400" />{" "}
-                        Floor:{" "}
-                        <span className="font-medium">
-                          {room.floorNumber}
-                        </span>
-                      </div>
-                    )}
-                    {room.roomSize && (
-                      <div className="text-xs text-gray-700">
-                        <FaThLarge className="inline mr-1 text-indigo-400" />{" "}
-                        Size:{" "}
-                        <span className="font-medium">
-                          {room.roomSize} sq ft
-                        </span>
-                      </div>
-                    )}
-                    {room.securityDeposit > 0 && (
-                      <div className="text-xs text-gray-700">
-                        <FaMoneyBillWave className="inline mr-1 text-green-400" />{" "}
-                        Deposit:{" "}
-                        <span className="font-medium">
-                          ₹{room.securityDeposit}
-                        </span>
-                      </div>
-                    )}
-                    {room.noticePeriod > 0 && (
-                      <div className="text-xs text-gray-700">
-                        <FaToggleOn className="inline mr-1 text-orange-400" />{" "}
-                        Notice:{" "}
-                        <span className="font-medium">
-                          {room.noticePeriod} days
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="mt-2 flex justify-end gap-1 flex-nowrap">
-                    <button
-                      onClick={() => handleEdit(room)}
-                      className="text-xs px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleAddBeds(room)}
-                      className="text-xs px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition"
-                    >
-                      Add Beds
-                    </button>
-                    <button
-                      onClick={() => handleViewBeds(room.roomId)}
-                      className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
-                    >
-                      <FaEye className="inline mr-1" /> View Beds
-                    </button>
-                    <button
-                      onClick={() => handleDelete(room.roomId)}
-                      className="text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-      )}
-      {/* Image Modal */}
-      <ImageModal
-        isOpen={imageModal.open}
-        onClose={handleCloseImageModal}
-        type={imageModal.type}
-        images={imageModal.images}
-        currentIndex={imageModal.currentIndex}
-        roomId={imageModal.roomId}
-        bedId={imageModal.bedId}
-      />
-      {showBedsModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-lg max-w-2xl w-full p-6 relative">
-            <button
-              className="absolute top-2 right-2 text-gray-500 hover:text-black text-xl"
-              onClick={() => setShowBedsModal(false)}
-            >
-              <FaTimes />
-            </button>
-            <h3 className="text-xl font-bold mb-4">Beds</h3>
-            {bedsModalData.length === 0 ? (
-              <p className="text-center text-gray-500">No beds found.</p>
-            ) : (
-              <table className="min-w-full text-sm mb-4">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="p-2 text-left">Bed Name</th>
-                    <th className="p-2 text-left">Bed ID</th>
-                    <th className="p-2 text-left">Price</th>
-                    <th className="p-2 text-left">Status</th>
-                    <th className="p-2 text-left">Tenants</th>
-                    <th className="p-2 text-left">Images</th>
-                    <th className="p-2 text-left">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bedsModalData.map((bed) => (
-                    <tr key={bed.bedId} className="border-b">
-                      <td className="p-2">{bed.name}</td>
-                      <td className="p-2">{bed.bedId}</td>
-                      <td className="p-2">₹{bed.price}</td>
-                      <td className="p-2">{bed.status}</td>
-                      <td className="p-2">
-                        {bed.tenants && bed.tenants.length > 0
-                          ? bed.tenants.map((t) => t.name).join(", ")
-                          : "None"}
-                      </td>
-                      <td className="p-2">
-                        {bed.images && bed.images.length > 0 ? (
-                          <div className="flex flex-wrap gap-2">
-                            {bed.images.slice(0, 3).map((img, i) => (
-                              <div key={i} className="relative">
-                                <motion.img
-                                  src={img}
-                                  alt={`Bed ${bed.bedId} Image ${i + 1}`}
-                                  className="h-20 w-20 object-cover rounded border border-gray-300 cursor-pointer"
-                                  loading="lazy"
-                                  initial={{ opacity: 0, scale: 0.8 }}
-                                  animate={{ opacity: 1, scale: 1 }}
-                                  transition={{ delay: i * 0.1 }}
-                                  onClick={() => handleOpenImageModal('bed', bed.images, i, bed.roomId, bed.bedId)}
-                                />
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); deleteBedImage(bed.roomId, bed.bedId, img); }}
-                                  className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600 transition-colors"
-                                  title="Delete Image"
-                                >
-                                  <FaTrash size={10} />
-                                </button>
-                              </div>
-                            ))}
-                            {bed.images.length > 3 && (
-                              <div className="h-20 w-20 bg-gray-200 rounded border flex items-center justify-center text-xs text-gray-500 cursor-pointer" onClick={() => handleOpenImageModal('bed', bed.images, 0, bed.roomId, bed.bedId)}>
-                                +{bed.images.length - 3}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          "No images"
-                        )}
-                      </td>
-                      <td className="p-2 flex gap-2">
-                        <button
-                          className="px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-xs"
-                          onClick={() => handleEditBed(bed)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-xs"
-                          onClick={() => handleDeleteBed(bed)}
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-          {editBedModal.open && (
-            <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-              <div className="bg-white rounded-xl shadow-lg max-w-md w-full p-6 relative">
-                <button
-                  className="absolute top-2 right-2 text-gray-500 hover:text-black text-xl"
-                  onClick={() => {
-                    setEditBedModal({ open: false, bed: null });
-                    setEditBedNewImages([]);
-                  }}
-                >
-                  <FaTimes />
-                </button>
-                <h3 className="text-lg font-bold mb-4">Edit Bed</h3>
-                <form onSubmit={handleEditBedSubmit} className="space-y-4">
-                  <div>
-                    <label className="block font-semibold mb-1">Bed Name</label>
-                    <input
-                      type="text"
-                      value={editBedModal.bed.name}
-                      disabled
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-black"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold mb-1">Bed ID</label>
-                    <input
-                      type="text"
-                      value={editBedModal.bed.bedId}
-                      disabled
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-black"
-                    />
-                  </div>
-               
-                  <div>
-                    <label className="block font-semibold mb-1">Status</label>
-                    <select
-                      value={editBedModal.bed.status}
-                      onChange={(e) =>
-                        handleEditBedChange("status", e.target.value)
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-black"
-                      required
-                    >
-                      <option value="Available">Available</option>
-                      <option value="Reserved">Reserved</option>
-                      <option value="Not Available">Not Available</option>
-                      <option value="Unavailable">Unavailable</option>
-                      <option value="Maintenance">Maintenance</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block font-semibold mb-1">Upload New Bed Images</label>
-                    <input
-                      type="file"
-                      onChange={handleEditBedImageChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-black"
-                      multiple
-                      accept="image/*"
-                    />
-                    {editBedNewImages.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {editBedNewImages.map((file, i) => (
-                          <img
-                            key={i}
-                            src={URL.createObjectURL(file)}
-                            alt={`New Preview ${i + 1}`}
-                            className="h-16 w-16 object-cover rounded border"
-                            loading="lazy"
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  {editBedModal.bed.images && editBedModal.bed.images.length > 0 && (
-                    <div>
-                      <label className="block font-semibold mb-1">Existing Images</label>
-                      <div className="flex flex-wrap gap-2">
-                        {editBedModal.bed.images.slice(0, 3).map((img, i) => (
-                          <div key={i} className="relative">
-                            <img
-                              src={img}
-                              alt={`Existing ${i + 1}`}
-                              className="h-16 w-16 object-cover rounded border cursor-pointer"
-                              loading="lazy"
-                              onClick={() => handleOpenImageModal('bed', editBedModal.bed.images, i, editBedModal.bed.roomId, editBedModal.bed.bedId)}
-                            />
-                            <button
-                              onClick={() => deleteBedImage(editBedModal.bed.roomId, editBedModal.bed.bedId, img)}
-                              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600 transition-colors"
-                              title="Delete Image"
-                            >
-                              <FaTrash size={10} />
-                            </button>
-                          </div>
-                        ))}
-                        {editBedModal.bed.images.length > 3 && (
-                          <div className="h-16 w-16 bg-gray-200 rounded border flex items-center justify-center text-xs text-gray-500 cursor-pointer" onClick={() => handleOpenImageModal('bed', editBedModal.bed.images, 0, editBedModal.bed.roomId, editBedModal.bed.bedId)}>
-                            +{editBedModal.bed.images.length - 3}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {editBedError && (
-                    <div className="text-red-500 text-sm">{editBedError}</div>
-                  )}
-                  <button
-                    type="submit"
-                    className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-all duration-200"
-                    disabled={editBedLoading}
-                  >
-                    {editBedLoading ? "Saving..." : "Save"}
-                  </button>
-                </form>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-     {showBedForm && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <motion.div
-      className="bg-gray-50 p-6 rounded-2xl shadow-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto"
-      initial={{ opacity: 0, y: 50 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 50 }}
-    >
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-xl font-semibold">Add Beds</h3>
-        <button
-          onClick={() => resetBedForm()}
-          className="text-gray-600 hover:text-black"
-        >
-          <FaTimes />
-        </button>
-      </div>
-      <form onSubmit={handleBedSubmit} className="space-y-6">
-        {beds.map((bed, index) => (
-          <div
-            key={index}
-            className="grid grid-cols-1 gap-4" // Changed from md:grid-cols-4 to column layout
-          >
-            <div>
-              <label className="block font-semibold mb-1">Bed Name</label>
-              <input
-                type="text"
-                value={bed.name}
-                onChange={(e) =>
-                  handleBedChange(index, "name", e.target.value)
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-transparent text-black"
-                placeholder="Enter bed name"
-                required
-              />
-            </div>
-            <div>
-              <label className="block font-semibold mb-1">Status</label>
-              <select
-                value={bed.status}
-                onChange={(e) =>
-                  handleBedChange(index, "status", e.target.value)
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-transparent text-black"
-                required
-              >
-                <option value="Available">Available</option>
-                <option value="Not Available">Not Available</option>
-                <option value="Unavailable">Unavailable</option>
-                <option value="Maintenance">Maintenance</option>
-                <option value="Reserved">Reserved</option>
-              </select>
-            </div>
-           
-            <div>
-              <label className="block font-semibold mb-1">
-                Upload Bed Image
-              </label>
-              <input
-                type="file"
-                onChange={(e) => handleBedImageChange(index, e)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-transparent text-black"
-                multiple
-                accept="image/*"
-              />
-              {bed.images.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {bed.images.map((img, i) => (
-                    <div key={i} className="relative">
-                      <img
-                        src={img instanceof File ? URL.createObjectURL(img) : img}
-                        alt={`Preview ${i + 1}`}
-                        className="h-16 w-16 object-cover rounded border"
-                        loading="lazy"
+                    <div className="w-full bg-blue-200 rounded-full h-2">
+                      <motion.div
+                        className="bg-gradient-to-r from-orange-500 to-orange-600 h-full rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${uploadProgress}%` }}
+                        transition={{ duration: 0.3 }}
                       />
                     </div>
+                  </div>
+                )}
+              </Section>
+
+              {/* Form Actions */}
+              <div className="flex gap-4 pt-6 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => navigate(`/landlord/property/${propertyId}`)}
+                  className="flex-1 px-6 py-3 bg-gray-100 text-gray-900 rounded-lg hover:bg-gray-200 transition-all duration-200 font-semibold"
+                >
+                  Cancel
+                </button>
+                <motion.button
+                  type="submit"
+                  disabled={loading || !propertyValid}
+                  className={`flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-200 font-semibold shadow-lg ${
+                    loading || !propertyValid ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                  whileTap={{ scale: loading || !propertyValid ? 1 : 0.95 }}
+                >
+                  {loading ? (
+                    <span className="flex items-center gap-2 justify-center">
+                      <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Saving...
+                    </span>
+                  ) : roomId ? (
+                    "Update Room"
+                  ) : (
+                    "Create Room"
+                  )}
+                </motion.button>
+              </div>
+            </form>
+          </motion.div>
+        ) : (
+          // Bulk Rooms Form
+          <div className="space-y-6">
+            <motion.div
+              className="bg-white rounded-2xl shadow-xl p-6 sm:p-10"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                  <span className="text-3xl">📋</span>
+                  Rooms ({bulkRooms.length})
+                </h2>
+                <motion.button
+                  type="button"
+                  onClick={addBulkRoom}
+                  className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-all font-semibold"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <FaPlus size={18} />
+                  Add Room
+                </motion.button>
+              </div>
+
+              {bulkRooms.length === 0 ? (
+                <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                  <FaListUl className="text-4xl text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-600 font-medium mb-2">No rooms added yet</p>
+                  <p className="text-gray-500 text-sm">Click "Add Room" button to start creating rooms</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {bulkRooms.map((room, index) => (
+                    <motion.div
+                      key={index}
+                      className="bg-gradient-to-br from-gray-50 to-white rounded-xl border-2 border-gray-200 p-6 hover:border-orange-300 transition-all"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                    >
+                      {/* Room Header */}
+                      <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
+                        <h3 className="text-lg font-bold text-gray-900">
+                          Room {index + 1} {room.roomNumber && `- #${room.roomNumber}`}
+                        </h3>
+                        <motion.button
+                          type="button"
+                          onClick={() => removeBulkRoom(index)}
+                          className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-all"
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          <FaMinus size={18} />
+                        </motion.button>
+                      </div>
+
+                      {/* Room Form Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {/* Room Number */}
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-900 mb-2">
+                            Room Number *
+                          </label>
+                          <input
+                            type="text"
+                            value={room.roomNumber}
+                            onChange={(e) => updateBulkRoom(index, "roomNumber", e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all text-gray-900"
+                            placeholder="e.g., 101"
+                            required
+                          />
+                        </div>
+
+                        {/* Room Type */}
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-900 mb-2">
+                            Room Type *
+                          </label>
+                          <select
+                            value={room.roomType}
+                            onChange={(e) => updateBulkRoom(index, "roomType", e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all text-gray-900"
+                            required
+                          >
+                            <option value="">Select Type</option>
+                            <option value="Single">Single</option>
+                            <option value="Double Sharing">Double Sharing</option>
+                            <option value="Triple Sharing">Triple Sharing</option>
+                            <option value="Dormitory">Dormitory</option>
+                            <option value="1 BHK">1 BHK</option>
+                            <option value="2 BHK">2 BHK</option>
+                            <option value="3 BHK">3 BHK</option>
+                          </select>
+                        </div>
+
+                        {/* Floor */}
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-900 mb-2">
+                            Floor
+                          </label>
+                          <input
+                            type="number"
+                            value={room.floor}
+                            onChange={(e) => updateBulkRoom(index, "floor", e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all text-gray-900"
+                            placeholder="Floor number"
+                          />
+                        </div>
+
+                        {/* Total Beds */}
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-900 mb-2">
+                            Total Beds *
+                          </label>
+                          <input
+                            type="number"
+                            value={room.totalBeds}
+                            onChange={(e) => updateBulkRoom(index, "totalBeds", e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all text-gray-900"
+                            placeholder="Number of beds"
+                            required
+                            min="1"
+                          />
+                        </div>
+
+                        {/* Rent Per Bed */}
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-900 mb-2">
+                            Rent Per Bed (₹)
+                          </label>
+                          <input
+                            type="number"
+                            value={room.rentPerBed}
+                            onChange={(e) => updateBulkRoom(index, "rentPerBed", e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all text-gray-900"
+                            placeholder="Rent per bed"
+                          />
+                        </div>
+
+                        {/* Security Deposit */}
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-900 mb-2">
+                            Security Deposit (₹) *
+                          </label>
+                          <input
+                            type="number"
+                            value={room.securityDeposit}
+                            onChange={(e) => updateBulkRoom(index, "securityDeposit", e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all text-gray-900"
+                            placeholder="Security deposit"
+                            required
+                          />
+                        </div>
+
+                        {/* Furnishing */}
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-900 mb-2">
+                            Furnishing
+                          </label>
+                          <select
+                            value={room.furnishing}
+                            onChange={(e) => updateBulkRoom(index, "furnishing", e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all text-gray-900"
+                          >
+                            <option value="Unfurnished">Unfurnished</option>
+                            <option value="Semi-Furnished">Semi-Furnished</option>
+                            <option value="Fully-Furnished">Fully-Furnished</option>
+                          </select>
+                        </div>
+
+                        {/* Gender Preference */}
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-900 mb-2">
+                            Gender
+                          </label>
+                          <select
+                            value={room.genderPreference}
+                            onChange={(e) => updateBulkRoom(index, "genderPreference", e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all text-gray-900"
+                          >
+                            <option value="Any">Any</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                          </select>
+                        </div>
+
+                        {/* Carpet Area */}
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-900 mb-2">
+                            Carpet Area
+                          </label>
+                          <input
+                            type="number"
+                            value={room.carpetArea}
+                            onChange={(e) => updateBulkRoom(index, "carpetArea", e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all text-gray-900"
+                            placeholder="Area size"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Features Checkboxes */}
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <p className="text-sm font-semibold text-gray-900 mb-3">Features</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                          {[
+                            { name: "hasAttachedBathroom", label: "Bathroom" },
+                            { name: "hasBalcony", label: "Balcony" },
+                            { name: "hasAC", label: "AC" },
+                            { name: "hasWardrobe", label: "Wardrobe" },
+                            { name: "hasFridge", label: "Fridge" },
+                          ].map((feature) => (
+                            <label
+                              key={feature.name}
+                              className="flex items-center gap-2 cursor-pointer"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={room[feature.name]}
+                                onChange={() => updateBulkRoom(index, feature.name, "", true)}
+                                className="w-4 h-4 text-orange-500 rounded cursor-pointer"
+                              />
+                              <span className="text-sm text-gray-700">{feature.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    </motion.div>
                   ))}
                 </div>
               )}
-            </div>
-            {index > 0 && (
+            </motion.div>
+
+            {/* Bulk Submit Button */}
+            <div className="flex gap-4">
               <button
                 type="button"
-                onClick={() => removeBedField(index)}
-                className="mt-6 px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                onClick={() => navigate(`/landlord/property/${propertyId}`)}
+                className="flex-1 px-6 py-3 bg-gray-100 text-gray-900 rounded-lg hover:bg-gray-200 transition-all duration-200 font-semibold"
               >
-                <FaTrash />
+                Cancel
               </button>
-            )}
+              <motion.button
+                onClick={handleBulkSubmit}
+                disabled={loading || !propertyValid || bulkRooms.length === 0}
+                className={`flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-200 font-semibold shadow-lg ${
+                  loading || !propertyValid || bulkRooms.length === 0
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
+                }`}
+                whileTap={{
+                  scale:
+                    loading || !propertyValid || bulkRooms.length === 0 ? 1 : 0.95,
+                }}
+              >
+                {loading ? (
+                  <span className="flex items-center gap-2 justify-center">
+                    <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Creating {bulkRooms.length} Rooms...
+                  </span>
+                ) : (
+                  `Create ${bulkRooms.length} Room${bulkRooms.length !== 1 ? "s" : ""}`
+                )}
+              </motion.button>
+            </div>
           </div>
-        ))}
-        <motion.button
-          type="button"
-          className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition-all duration-200"
-          onClick={addBedField}
-          whileTap={{ scale: 0.95 }}
-        >
-          <FaPlus className="inline mr-2" /> Add Another Bed
-        </motion.button>
-        <motion.button
-          type="submit"
-          className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-all duration-200"
-          whileTap={{ scale: 0.95 }}
-        >
-          Save Beds
-        </motion.button>
-      </form>
-    </motion.div>
-  </div>
-)}
-      <CustomDialog
-        isOpen={dialog.isOpen}
-        onClose={() => setDialog({ ...dialog, isOpen: false })}
-        title={dialog.title}
-        message={dialog.message}
-        onConfirm={dialog.onConfirm}
-        confirmText={dialog.confirmText}
-        cancelText={dialog.cancelText}
-        isConfirmDialog={dialog.isConfirmDialog}
-      />
+        )}
+      </div>
     </div>
   );
 };
-function BedImagesDisplay({ propertyId, roomId, bedId, images, onDeleteImage, onImageClick }) {
-  const [bedImages, setBedImages] = useState(images || []);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  useEffect(() => {
-    if (!images && propertyId && roomId && bedId) {
-      const fetchImages = async () => {
-        setLoading(true);
-        try {
-          const token = localStorage.getItem("token");
-          if (!token) {
-            throw new Error("No authentication token found. Please log in.");
-          }
-          const res = await axios.get(
-            `${baseurl}api/landlord/properties/${propertyId}/rooms/${roomId}/beds/${bedId}/images`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-            }
-          );
-          setBedImages(res.data.images || []);
-        } catch (err) {
-          console.error(
-            `Error fetching images for bed ${bedId} in room ${roomId}:`,
-            err.response?.data || err
-          );
-          setError(err.response?.data?.message || "Failed to load bed images.");
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchImages();
-    } else {
-      setBedImages(images || []);
-    }
-  }, [propertyId, roomId, bedId, images]);
-  if (loading) {
-    return (
-      <div className="flex items-center text-xs text-gray-500 px-2">
-        <FaImage className="mr-1" /> Loading images...
-      </div>
-    );
-  }
-  if (error) {
-    return (
-      <div className="flex items-center text-xs text-red-500 px-2">
-        <FaImage className="mr-1" /> {error}
-      </div>
-    );
-  }
-  if (!bedImages || bedImages.length === 0) {
-    return (
-      <div className="flex items-center text-xs text-gray-500 px-2">
-        <FaImage className="mr-1" /> No images
-      </div>
-    );
-  }
-  return (
-    <div className="flex flex-row flex-wrap gap-1">
-      {bedImages.slice(0, 3).map((img, i) => (
-        <div key={i} className="relative">
-          <motion.img
-            src={img}
-            alt={`Bed ${bedId} Image ${i + 1}`}
-            className="h-24 w-24 object-cover rounded border border-gray-300 cursor-pointer"
-            loading="lazy"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: i * 0.1 }}
-            onClick={() => onImageClick('bed', bedImages, i, roomId, bedId)}
-          />
-          {onDeleteImage && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onDeleteImage(img); }}
-              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600 transition-colors"
-              title="Delete Image"
-            >
-              <FaTrash size={10} />
-            </button>
-          )}
-        </div>
-      ))}
-      {bedImages.length > 3 && (
-        <div className="h-24 w-24 bg-gray-200 rounded border flex items-center justify-center text-xs text-gray-500 cursor-pointer" onClick={() => onImageClick('bed', bedImages, 0, roomId, bedId)}>
-          +{bedImages.length - 3}
-        </div>
-      )}
+
+// Helper Components
+const Section = ({ title, icon, children }) => (
+  <div>
+    <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+      <span className="text-3xl">{icon}</span>
+      {title}
+    </h2>
+    <div className="bg-gray-50 p-6 rounded-xl">{children}</div>
+  </div>
+);
+
+const FormField = ({
+  label,
+  icon,
+  focusedField,
+  setFocusedField,
+  getFieldStyle,
+  getIconStyle,
+  children,
+}) => (
+  <div>
+    <label className="block text-sm font-semibold text-gray-900 mb-2">{label}</label>
+    <div className={getFieldStyle(label)}>
+      <span style={getIconStyle(label)}>{icon}</span>
+      {children}
     </div>
-  );
-}
+  </div>
+);
+
 export default RoomAdd;

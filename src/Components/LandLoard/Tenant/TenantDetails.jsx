@@ -1,232 +1,56 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { FaUser, FaEdit, FaArrowLeft, FaTrash, FaEye } from "react-icons/fa";
-import axios from "axios";
+import { motion } from "framer-motion";
+import {
+  User,
+  Building2,
+  DollarSign,
+  Calendar,
+  Phone,
+  Mail,
+  MapPin,
+  FileText,
+  AlertCircle,
+  Home,
+  Briefcase,
+  Shield,
+  ChevronLeft,
+  Download,
+  Eye,
+  Clock,
+  CheckCircle,
+  AlertTriangle,
+} from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-const TenantDetails = () => {
-  const { tenantId } = useParams();
-  const [tenant, setTenant] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [documents, setDocuments] = useState([]);
-  const [tenantDocuments, setTenantDocuments] = useState([]);
-  const [file, setFile] = useState(null);
-  const [documentName, setDocumentName] = useState("");
-  const [isVisible, setIsVisible] = useState(true);
-  const [landlordId, setLandlordId] = useState(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [isUploading, setIsUploading] = useState(false);
+const TenancyDetails = () => {
+  const { tenancyId } = useParams();
   const navigate = useNavigate();
+  const [tenancy, setTenancy] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [imageGalleryIndex, setImageGalleryIndex] = useState({
+    property: 0,
+    room: 0,
+  });
 
-  // Fetch landlord-uploaded documents
-  const fetchDocuments = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get("https://api.gharzoreality.com/api/documents/landlord", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.data.success) {
-        setDocuments(
-          response.data.documents.map((doc) => ({
-            id: doc._id,
-            name: doc.documentType,
-            date: new Date(doc.uploadedAt).toLocaleDateString("en-GB", {
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
-            }),
-            visible: !!doc.isVisibleToTenants,
-            raw: doc,
-          }))
-        );
-      } else {
-        setDocuments([]);
-      }
-    } catch (error) {
-      console.error("fetchDocuments error:", error);
-      toast.error("Failed to load documents.", {
-        position: "top-right",
-        autoClose: 5000,
-        theme: "colored",
-      });
-    }
-  };
-
-  // Fetch tenant-uploaded documents for a given landlordId (pass id to avoid stale state)
-  const fetchTenantDocuments = async (id) => {
-    const usedId = id || landlordId;
-    if (!usedId) return;
-
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        toast.error("Please login again.");
-        return;
-      }
-
-      const response = await axios.get(
-        `https://api.gharzoreality.com/api/tenant-documents/landlord/${usedId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (response.data.success && Array.isArray(response.data.documents)) {
-        const documents = response.data.documents.map((doc) => {
-          const filePath = doc.filePath || "";
-          const url = filePath.startsWith("http")
-            ? filePath
-            : `https://api.gharzoreality.com${filePath.startsWith("/") ? "" : "/"}${filePath}`;
-
-          return {
-            id: doc._id,
-            tenantId: doc.tenantId,
-            name: doc.documentType || "Untitled Document",
-            originalName: doc.originalName || "Unknown File",
-            date: new Date(doc.uploadedAt).toLocaleDateString("en-GB", {
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
-            }),
-            visible: doc.isVisibleToLandlord ?? true,
-            url: url,
-            size: doc.size,
-            mimeType: doc.mimeType,
-            uploadedAt: doc.uploadedAt,
-            raw: doc,
-          };
-        });
-
-        setTenantDocuments(documents);
-      } else {
-        setTenantDocuments([]);
-      }
-    } catch (error) {
-      console.error("fetchTenantDocuments error:", error);
-      toast.error("Failed to load documents.", {
-        position: "top-right",
-        autoClose: 5000,
-        theme: "colored",
-      });
-    }
-  };
-
-  // Helper: enrich accommodations and bookingRequests with property/room/bed names
-  const enrichAccommodations = async (tenantData, token) => {
-    let enrichedTenant = { ...tenantData };
-
-    if (enrichedTenant.accommodations && enrichedTenant.accommodations.length > 0) {
-      const enrichedAccom = await Promise.all(
-        enrichedTenant.accommodations.map(async (acc) => {
-          let propertyName = "N/A";
-          let roomName = "N/A";
-          let bedName = "N/A";
-
-          try {
-            const propRes = await axios.get(
-              `https://api.gharzoreality.com/api/landlord/properties/${acc.propertyId}`,
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
-            propertyName = propRes.data.property?.name || "N/A";
-          } catch (err) {}
-
-          try {
-            const roomRes = await axios.get(
-              `https://api.gharzoreality.com/api/landlord/properties/${acc.propertyId}/rooms/${acc.roomId}`,
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
-            roomName = roomRes.data.room?.name || "N/A";
-          } catch (err) {}
-
-          try {
-            if (acc.bedId) {
-              const bedsRes = await axios.get(
-                `https://api.gharzoreality.com/api/landlord/properties/${acc.propertyId}/rooms/${acc.roomId}/beds`,
-                { headers: { Authorization: `Bearer ${token}` } }
-              );
-              const matchingBed =
-                bedsRes.data.beds?.find((b) => b.bedId === acc.bedId) ||
-                bedsRes.data.beds?.find((b) => b.id === acc.bedId);
-              bedName = matchingBed?.name || "N/A";
-            }
-          } catch (err) {}
-
-          return {
-            ...acc,
-            propertyName,
-            roomName,
-            bedName,
-          };
-        })
-      );
-      enrichedTenant.accommodations = enrichedAccom;
-    }
-
-    if (enrichedTenant.bookingRequests && enrichedTenant.bookingRequests.length > 0) {
-      const enrichedBookings = await Promise.all(
-        enrichedTenant.bookingRequests.map(async (req) => {
-          let propertyName = "N/A";
-          let roomName = "N/A";
-          let bedName = "N/A";
-
-          try {
-            const propRes = await axios.get(
-              `https://api.gharzoreality.com/api/landlord/properties/${req.propertyId}`,
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
-            propertyName = propRes.data.property?.name || "N/A";
-          } catch (err) {}
-
-          try {
-            const roomRes = await axios.get(
-              `https://api.gharzoreality.com/api/landlord/properties/${req.propertyId}/rooms/${req.roomId}`,
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
-            roomName = roomRes.data.room?.name || "N/A";
-          } catch (err) {}
-
-          if (req.bedId) {
-            try {
-              const bedsRes = await axios.get(
-                `https://api.gharzoreality.com/api/landlord/properties/${req.propertyId}/rooms/${req.roomId}/beds`,
-                { headers: { Authorization: `Bearer ${token}` } }
-              );
-              const matchingBed =
-                bedsRes.data.beds?.find((b) => b.bedId === req.bedId) ||
-                bedsRes.data.beds?.find((b) => b.id === req.bedId);
-              bedName = matchingBed?.name || "N/A";
-            } catch (err) {}
-          }
-
-          return {
-            ...req,
-            propertyName,
-            roomName,
-            bedName,
-          };
-        })
-      );
-      enrichedTenant.bookingRequests = enrichedBookings;
-    }
-
-    return enrichedTenant;
-  };
-
-  // Fetch tenant details and then documents
+  // Fetch tenancy details
   useEffect(() => {
-    const fetchTenantDetails = async () => {
+    const fetchTenancyDetails = async () => {
       setLoading(true);
+      setError(null);
       try {
-        const token = localStorage.getItem("token");
-        const response = await axios.get(
-          `https://api.gharzoreality.com/api/landlord/tenant/${tenantId}`,
+        const token = localStorage.getItem("usertoken");
+        if (!token) {
+          throw new Error("No authentication token found. Please login again.");
+        }
+
+        const response = await fetch(
+          `https://api.gharzoreality.com/api/tenancies/${tenancyId}/details`,
           {
+            method: "GET",
             headers: {
               Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
@@ -234,790 +58,860 @@ const TenantDetails = () => {
           }
         );
 
-        let tenantData = response.data.tenant || response.data;
-        if (!tenantData) throw new Error("No tenant data found");
-
-        tenantData = await enrichAccommodations(tenantData, token);
-
-        setTenant(tenantData);
-
-        let extractedLandlordId =
-          tenantData.accommodations?.[0]?.landlordId ||
-          tenantData.landlordId ||
-          response.data.landlordId ||
-          null;
-
-        setLandlordId(extractedLandlordId);
-
-        await fetchDocuments();
-
-        if (extractedLandlordId) {
-          await fetchTenantDocuments(extractedLandlordId);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status} - Failed to fetch tenancy details`);
         }
-      } catch (error) {
-        console.error("fetchTenantDetails error:", error);
-        toast.error(error.response?.data?.message || "Failed to load tenant details.", {
+
+        const data = await response.json();
+
+        if (data.success && data.data) {
+          setTenancy(data.data);
+        } else if (data.data) {
+          setTenancy(data.data);
+        } else {
+          throw new Error("Invalid response format from server");
+        }
+      } catch (err) {
+        console.error("Error fetching tenancy details:", err);
+        setError(err.message);
+        toast.error(err.message || "Failed to load tenancy details", {
           position: "top-right",
           autoClose: 5000,
           theme: "colored",
         });
-        navigate("/landlord/tenant-list");
       } finally {
         setLoading(false);
       }
     };
 
-    if (tenantId) {
-      fetchTenantDetails();
+    if (tenancyId) {
+      fetchTenancyDetails();
     } else {
-      toast.error("Invalid tenant ID.", {
-        position: "top-right",
-        autoClose: 5000,
-        theme: "colored",
-      });
-      navigate("/landlord/tenant-list");
+      setError("Invalid tenancy ID");
+      setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenantId, navigate]);
+  }, [tenancyId]);
 
-  const handleEditToggle = () => setIsEditing(!isEditing);
-  const handleDeleteToggle = () => setIsDeleting(!isDeleting);
-
-  const handleFileSelect = (selectedFile) => {
-    if (!selectedFile) return;
-    if (selectedFile.size > 5 * 1024 * 1024) {
-      toast.error("File size should be less than 5MB", {
-        position: "top-right",
-        autoClose: 5000,
-        theme: "colored",
-      });
-      return;
-    }
-
-    const allowedTypes = [
-      "image/jpeg",
-      "image/png",
-      "application/pdf",
-      "text/plain",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ];
-    if (!allowedTypes.includes(selectedFile.type)) {
-      toast.error("Only JPEG, PNG, PDF, DOC files are allowed", {
-        position: "top-right",
-        autoClose: 5000,
-        theme: "colored",
-      });
-      return;
-    }
-
-    setFile(selectedFile);
-  };
-
-  const handleUpload = async (e) => {
-    e.preventDefault();
-
-    if (!file || !documentName.trim() || !landlordId) {
-      toast.error(
-        !file
-          ? "Please select a file first."
-          : !documentName.trim()
-          ? "Please enter a document name."
-          : "Landlord information not available.",
-        {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "colored",
-        }
-      );
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("landlordId", landlordId);
-    formData.append("isVisibleToTenants", isVisible);
-    formData.append("document", file);
-    formData.append("documentType", documentName);
-
-    setIsUploading(true);
-    setUploadProgress(0);
-
-    try {
-      const token = localStorage.getItem("token");
-      const response = await axios.post("https://api.gharzoreality.com/api/documents/upload", formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
-        onUploadProgress: (progressEvent) => {
-          if (progressEvent.total) {
-            setUploadProgress(Math.round((progressEvent.loaded * 100) / progressEvent.total));
-          }
-        },
-      });
-
-      if (response.data.success) {
-        await fetchDocuments();
-        await fetchTenantDocuments(landlordId);
-
-        toast.success("Document uploaded successfully.", {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "colored",
-        });
-        setFile(null);
-        setDocumentName("");
-        setIsVisible(true);
-        setUploadProgress(0);
-
-        if (e.target) e.target.reset?.();
-      } else {
-        throw new Error(response.data.message || "Upload failed");
-      }
-    } catch (error) {
-      console.error("handleUpload error:", error);
-      toast.error(error.response?.data?.message || "Failed to upload document.", {
-        position: "top-right",
-        autoClose: 5000,
-        theme: "colored",
-      });
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleDelete = async (documentId) => {
-    if (!window.confirm("Are you sure you want to delete this document?")) return;
-
-    try {
-      const token = localStorage.getItem("token");
-      const response = await axios.delete(`https://api.gharzoreality.com/api/documents/${documentId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (response.data.success) {
-        setDocuments((prev) => prev.filter((doc) => doc.id !== documentId));
-        await fetchTenantDocuments(landlordId);
-
-        toast.success("Document deleted successfully.", {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "colored",
-        });
-      } else {
-        throw new Error(response.data.message || "Failed to delete document");
-      }
-    } catch (error) {
-      console.error("handleDelete error:", error);
-      toast.error(error.response?.data?.message || "Failed to delete document.", {
-        position: "top-right",
-        autoClose: 5000,
-        theme: "colored",
-      });
-    }
-  };
-
-  const handleViewTenantDocument = (url) => {
-    if (url) {
-      window.open(url, "_blank");
-    } else {
-      toast.error("Document URL not available.", {
-        position: "top-right",
-        autoClose: 5000,
-        theme: "colored",
-      });
-    }
-  };
-
-  // Delete tenant modal form component
-  const DeleteTenantForm = ({ tenantId, onCancel, tenant, navigate }) => {
-    let firstBooking = tenant.bookingRequests?.[0] || tenant.bills?.[0] || tenant.accommodations?.[0] || {};
-    const [formData, setFormData] = useState({
-      propertyId: firstBooking.propertyId || "",
-      roomId: firstBooking.roomId || "",
-      bedId: firstBooking.bedId || "",
-      moveOutDate: "",
+  // Helper functions
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
     });
-
-    const [missingData, setMissingData] = useState(!formData.propertyId || !formData.roomId);
-
-    const today = new Date().toISOString().split("T")[0];
-
-    const handleChange = (e) => {
-      const { name, value } = e.target;
-      setFormData((prev) => {
-        const updated = { ...prev, [name]: value };
-        setMissingData(!updated.propertyId || !updated.roomId);
-        return updated;
-      });
-    };
-
-    const handleSubmit = async (e) => {
-      e.preventDefault();
-      try {
-        const token = localStorage.getItem("token");
-        await axios.post(
-          `https://api.gharzoreality.com/api/landlord/tenant/remove`,
-          { tenantId, ...formData },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        toast.success("Tenant deleted successfully.", {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "colored",
-        });
-        setTimeout(() => {
-          navigate("/landlord/tenant-list");
-        }, 1200);
-      } catch (error) {
-        console.error("DeleteTenantForm submit error:", error);
-        toast.error(error.response?.data?.message || "Failed to delete tenant.", {
-          position: "top-right",
-          autoClose: 5000,
-          theme: "colored",
-        });
-      }
-    };
-
-    return (
-      <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4">
-        <div className="bg-white/10 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/30 p-8 max-w-md w-full">
-          <h2 className="text-2xl font-bold text-white mb-6 text-center">Delete Tenant</h2>
-          {missingData && (
-            <p className="text-red-400 text-center mb-4 text-sm">
-              Some accommodation details are missing. Please verify or enter manually.
-            </p>
-          )}
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-base font-medium text-gray-200 mb-2">Move Out Date *</label>
-              <input
-                type="date"
-                name="moveOutDate"
-                value={formData.moveOutDate}
-                onChange={handleChange}
-                min={today}
-                className="w-full px-5 py-3 bg-white/10 backdrop-blur-md border border-white/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-orange-400/50"
-                required
-              />
-            </div>
-            <div className="flex justify-center gap-4">
-              <button
-                type="submit"
-                className="px-8 py-3 bg-red-600/80 text-white font-semibold rounded-xl hover:bg-red-500 transition"
-              >
-                Confirm Delete
-              </button>
-              <button
-                type="button"
-                onClick={onCancel}
-                className="px-8 py-3 bg-white/10 text-gray-300 font-semibold rounded-xl hover:bg-white/20 transition"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    );
   };
 
-  // Edit tenant form component
-  const EditTenantForm = ({ tenant, onCancel }) => {
-    const [formData, setFormData] = useState({
-      name: tenant.name || "",
-      email: tenant.email || "",
-      mobile: tenant.mobile || "",
-      aadhaar: tenant.aadhaar || "",
-      dob: tenant.dob?.split("T")[0] || "",
-      work: tenant.work || "",
-      moveInDate: tenant.moveInDate?.split("T")[0] || "",
-      moveOutDate: tenant.moveOutDate?.split("T")[0] || "",
-      fatherName: tenant.fatherName || "",
-      fatherMobile: tenant.fatherMobile || "",
-      motherName: tenant.motherName || "",
-      motherMobile: tenant.motherMobile || "",
-      permanentAddress: tenant.permanentAddress || "",
-      maritalStatus: tenant.maritalStatus || "",
-    });
-
-    const handleChange = (e) => {
-      const { name, value } = e.target;
-      setFormData((prev) => ({ ...prev, [name]: value }));
-    };
-
-    const handleSubmit = async (e) => {
-      e.preventDefault();
-      try {
-        const token = localStorage.getItem("token");
-        await axios.put(`https://api.gharzoreality.com/api/landlord/tenant/${tenantId}`, formData, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-        toast.success("Tenant updated successfully.", {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "colored",
-        });
-        setTenant({ ...tenant, ...formData });
-        setIsEditing(false);
-      } catch (error) {
-        console.error("EditTenantForm submit error:", error);
-        toast.error(error.response?.data?.message || "Failed to update tenant.", {
-          position: "top-right",
-          autoClose: 5000,
-          theme: "colored",
-        });
-      }
-    };
-
-    return (
-      <div className="bg-white/10 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/30 p-8 max-w-3xl mx-auto">
-        <h2 className="text-3xl font-bold text-white mb-8 text-center">Edit Tenant Details</h2>
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div>
-            <label className="block text-base font-medium text-gray-200 mb-2">Name *</label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              className="w-full px-5 py-3 bg-white/10 backdrop-blur-md border border-white/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-orange-400/50"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-base font-medium text-gray-200 mb-2">Email *</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              className="w-full px-5 py-3 bg-white/10 backdrop-blur-md border border-white/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-orange-400/50"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-base font-medium text-gray-200 mb-2">Mobile *</label>
-            <input
-              type="tel"
-              name="mobile"
-              value={formData.mobile}
-              onChange={handleChange}
-              className="w-full px-5 py-3 bg-white/10 backdrop-blur-md border border-white/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-orange-400/50"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-base font-medium text-gray-200 mb-2">Aadhaar</label>
-            <input
-              type="text"
-              name="aadhaar"
-              value={formData.aadhaar}
-              onChange={handleChange}
-              className="w-full px-5 py-3 bg-white/10 backdrop-blur-md border border-white/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-orange-400/50"
-            />
-          </div>
-          <div>
-            <label className="block text-base font-medium text-gray-200 mb-2">Date of Birth</label>
-            <input
-              type="date"
-              name="dob"
-              value={formData.dob}
-              onChange={handleChange}
-              className="w-full px-5 py-3 bg-white/10 backdrop-blur-md border border-white/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-orange-400/50"
-            />
-          </div>
-          <div>
-            <label className="block text-base font-medium text-gray-200 mb-2">Work</label>
-            <input
-              type="text"
-              name="work"
-              value={formData.work}
-              onChange={handleChange}
-              className="w-full px-5 py-3 bg-white/10 backdrop-blur-md border border-white/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-orange-400/50"
-            />
-          </div>
-          <div>
-            <label className="block text-base font-medium text-gray-200 mb-2">Father's Name</label>
-            <input
-              type="text"
-              name="fatherName"
-              value={formData.fatherName}
-              onChange={handleChange}
-              className="w-full px-5 py-3 bg-white/10 backdrop-blur-md border border-white/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-orange-400/50"
-            />
-          </div>
-          <div>
-            <label className="block text-base font-medium text-gray-200 mb-2">Father's Mobile</label>
-            <input
-              type="tel"
-              name="fatherMobile"
-              value={formData.fatherMobile}
-              onChange={handleChange}
-              className="w-full px-5 py-3 bg-white/10 backdrop-blur-md border border-white/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-orange-400/50"
-            />
-          </div>
-          <div>
-            <label className="block text-base font-medium text-gray-200 mb-2">Mother's Name</label>
-            <input
-              type="text"
-              name="motherName"
-              value={formData.motherName}
-              onChange={handleChange}
-              className="w-full px-5 py-3 bg-white/10 backdrop-blur-md border border-white/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-orange-400/50"
-            />
-          </div>
-          <div>
-            <label className="block text-base font-medium text-gray-200 mb-2">Mother's Mobile</label>
-            <input
-              type="tel"
-              name="motherMobile"
-              value={formData.motherMobile}
-              onChange={handleChange}
-              className="w-full px-5 py-3 bg-white/10 backdrop-blur-md border border-white/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-orange-400/50"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-base font-medium text-gray-200 mb-2">Permanent Address</label>
-            <textarea
-              name="permanentAddress"
-              value={formData.permanentAddress}
-              onChange={handleChange}
-              rows={3}
-              className="w-full px-5 py-3 bg-white/10 backdrop-blur-md border border-white/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-orange-400/50 resize-none"
-            />
-          </div>
-          <div>
-            <label className="block text-base font-medium text-gray-200 mb-2">Marital Status</label>
-            <select
-              name="maritalStatus"
-              value={formData.maritalStatus}
-              onChange={handleChange}
-              className="w-full px-5 py-3 bg-white/10 backdrop-blur-md border border-white/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-orange-400/50"
-            >
-              <option value="">Select</option>
-              <option value="Unmarried">Unmarried</option>
-              <option value="Married">Married</option>
-            </select>
-          </div>
-          <div className="md:col-span-2 flex justify-center gap-6 mt-6">
-            <button
-              type="submit"
-              className="px-10 py-3 bg-orange-600/80 text-white font-semibold rounded-xl hover:bg-orange-500 transition"
-            >
-              Save Changes
-            </button>
-            <button
-              type="button"
-              onClick={onCancel}
-              className="px-10 py-3 bg-white/10 text-gray-300 font-semibold rounded-xl hover:bg-white/20 transition"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      </div>
-    );
+  const formatCurrency = (amount) => {
+    if (!amount) return "₹0";
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+    }).format(amount);
   };
 
+  const getDaysRemaining = (endDate) => {
+    if (!endDate) return 0;
+    const end = new Date(endDate);
+    const today = new Date();
+    const diffTime = end - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 0;
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "Active":
+        return "bg-green-100 text-green-800 border-green-300";
+      case "Terminated":
+        return "bg-red-100 text-red-800 border-red-300";
+      case "Pending":
+        return "bg-yellow-100 text-yellow-800 border-yellow-300";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-300";
+    }
+  };
+
+  const getConditionColor = (condition) => {
+    switch (condition?.toLowerCase()) {
+      case "good":
+        return "bg-green-100 text-green-800";
+      case "fair":
+        return "bg-yellow-100 text-yellow-800";
+      case "poor":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  // Loading state
   if (loading) {
     return (
-      <div
-        className="min-h-screen flex items-center justify-center"
-        style={{
-          background: `radial-gradient(circle at center bottom, rgba(245, 124, 0, 0.35), transparent 60%), linear-gradient(rgb(7, 26, 47) 0%, rgb(13, 47, 82) 45%, rgb(18, 62, 107) 75%, rgb(11, 42, 74) 100%)`,
-        }}
-      >
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-6 border-orange-400 mx-auto mb-6"></div>
-          <p className="text-xl text-gray-300">Loading tenant details...</p>
+          <div className="inline-flex items-center justify-center w-16 h-16 border-4 border-orange-400/20 border-t-orange-400 rounded-full animate-spin mb-6"></div>
+          <p className="text-xl text-gray-300 font-medium">Loading tenancy details...</p>
         </div>
       </div>
     );
   }
 
-  if (!tenant) {
+  // Error state
+  if (error || !tenancy) {
     return (
-      <div
-        className="min-h-screen flex items-center justify-center"
-        style={{
-          background: `radial-gradient(circle at center bottom, rgba(245, 124, 0, 0.35), transparent 60%), linear-gradient(rgb(7, 26, 47) 0%, rgb(13, 47, 82) 45%, rgb(18, 62, 107) 75%, rgb(11, 42, 74) 100%)`,
-        }}
-      >
-        <div className="text-center">
-          <p className="text-xl text-gray-300 mb-6">No tenant details found.</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white/10 backdrop-blur-xl border border-red-500/50 rounded-2xl p-8 max-w-md w-full text-center"
+        >
+          <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
+          <p className="text-xl text-white font-semibold mb-2">Failed to Load</p>
+          <p className="text-gray-300 mb-6">{error || "No tenancy details found"}</p>
           <button
-            onClick={() => navigate("/landlord/tenant-list")}
-            className="px-8 py-3 bg-orange-600/80 text-white font-semibold rounded-xl hover:bg-orange-500 transition shadow-xl flex items-center gap-3 mx-auto"
+            onClick={() => navigate(-1)}
+            className="px-6 py-2 bg-orange-500/80 hover:bg-orange-600 text-white font-semibold rounded-lg transition"
           >
-            <FaArrowLeft className="text-xl" />
-            Back to Tenant List
+            Go Back
           </button>
-        </div>
+        </motion.div>
       </div>
     );
   }
+
+  const daysRemaining = getDaysRemaining(tenancy.agreement?.endDate);
+  const propertyImages = tenancy.propertyId?.images || [];
+  const roomImages = tenancy.roomId?.media?.images || [];
+  const moveInChecklist = tenancy.occupancy?.moveInChecklist || [];
+  const moveOutChecklist = tenancy.occupancy?.moveOutChecklist || [];
 
   return (
-    <div
-      className="min-h-screen py-8 px-4 text-gray-100"
-      style={{
-        background: `radial-gradient(circle at center bottom, rgba(245, 124, 0, 0.35), transparent 60%), linear-gradient(rgb(7, 26, 47) 0%, rgb(13, 47, 82) 45%, rgb(18, 62, 107) 75%, rgb(11, 42, 74) 100%)`,
-      }}
-    >
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-8 px-4 text-gray-100">
       <ToastContainer theme="dark" position="top-right" autoClose={3000} />
 
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         {/* Back Button */}
-        <button
-          onClick={() => navigate("/landlord/tenant-list")}
-          className="mb-6 flex items-center gap-3 text-gray-300 hover:text-white transition text-base"
+        <motion.button
+          onClick={() => navigate(-1)}
+          className="mb-8 flex items-center gap-2 text-gray-300 hover:text-white transition-colors group"
+          whileHover={{ x: -5 }}
         >
-          <FaArrowLeft className="text-xl" />
-          Back to Tenant List
-        </button>
+          <ChevronLeft className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          <span>Back</span>
+        </motion.button>
 
-        {isEditing ? (
-          <EditTenantForm tenant={tenant} onCancel={() => setIsEditing(false)} />
-        ) : isDeleting ? (
-          <DeleteTenantForm tenantId={tenantId} onCancel={() => setIsDeleting(false)} tenant={tenant} navigate={navigate} />
-        ) : (
-          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-8">
-            {/* Profile Section */}
-            <div className="flex flex-col items-center mb-10">
-              {tenant.photo ? (
-                <img
-                  src={tenant.photo}
-                  alt="Tenant"
-                  className="w-32 h-32 rounded-full object-cover shadow-xl border-6 border-white/30"
+        {/* Header Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-8 mb-8"
+        >
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-6">
+            <div>
+              <h1 className="text-4xl font-bold text-white mb-2">
+                {tenancy.tenantId?.name || "Tenant"}
+              </h1>
+              <p className="text-gray-400">
+                {tenancy.propertyId?.title || "Property"}
+              </p>
+            </div>
+            <motion.div
+              className={`px-6 py-3 rounded-xl font-semibold border-2 text-lg ${getStatusColor(
+                tenancy.status
+              )}`}
+              whileHover={{ scale: 1.05 }}
+            >
+              {tenancy.status || "N/A"}
+            </motion.div>
+          </div>
+
+          {/* Key Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StatCard
+              icon={<DollarSign className="w-5 h-5" />}
+              label="Monthly Rent"
+              value={formatCurrency(tenancy.financials?.monthlyRent)}
+              color="from-green-500 to-emerald-600"
+            />
+            <StatCard
+              icon={<Calendar className="w-5 h-5" />}
+              label="Days Remaining"
+              value={daysRemaining > 0 ? `${daysRemaining}d` : "Ended"}
+              color={daysRemaining > 30 ? "from-blue-500 to-cyan-600" : "from-orange-500 to-red-600"}
+            />
+            <StatCard
+              icon={<Home className="w-5 h-5" />}
+              label="Duration"
+              value={`${tenancy.agreement?.durationMonths || 0}m`}
+              color="from-purple-500 to-pink-600"
+            />
+            <StatCard
+              icon={<Shield className="w-5 h-5" />}
+              label="Security Deposit"
+              value={formatCurrency(tenancy.financials?.securityDeposit)}
+              color="from-indigo-500 to-blue-600"
+            />
+          </div>
+        </motion.div>
+
+        {/* Notice Alert */}
+        {tenancy.notice?.isUnderNotice && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-orange-500/20 border-2 border-orange-500/50 rounded-xl p-6 mb-8 flex gap-4"
+          >
+            <AlertTriangle className="w-6 h-6 text-orange-400 flex-shrink-0 mt-1" />
+            <div>
+              <h3 className="text-lg font-semibold text-orange-300 mb-2">
+                Under Notice
+              </h3>
+              <p className="text-gray-300">
+                Notice given by: <span className="font-semibold">{tenancy.notice?.noticeGivenBy}</span>
+              </p>
+              <p className="text-gray-300">
+                Reason: <span className="font-semibold">{tenancy.notice?.reason}</span>
+              </p>
+              <p className="text-gray-300 mt-2">
+                Vacate by: <span className="font-semibold text-orange-300">{formatDate(tenancy.notice?.vacateByDate)}</span>
+              </p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Tabs Navigation */}
+        <motion.div className="flex gap-2 mb-8 overflow-x-auto pb-2">
+          {["overview",  "property", "financials", "occupancy", "documents"].map(
+            (tab) => (
+              <motion.button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-6 py-3 rounded-lg font-semibold whitespace-nowrap transition-all ${
+                  activeTab === tab
+                    ? "bg-orange-500 text-white"
+                    : "bg-white/10 text-gray-300 hover:bg-white/20"
+                }`}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </motion.button>
+            )
+          )}
+        </motion.div>
+
+        {/* Tab Content */}
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.3 }}
+        >
+          {/* Overview Tab */}
+          {activeTab === "overview" && (
+            <div className="space-y-6">
+              {/* Agreement Overview */}
+              <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-8">
+                <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                  <FileText className="w-6 h-6 text-orange-400" />
+                  Agreement Details
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <InfoItem label="Start Date" value={formatDate(tenancy.agreement?.startDate)} />
+                  <InfoItem label="End Date" value={formatDate(tenancy.agreement?.endDate)} />
+                  <InfoItem label="Duration" value={`${tenancy.agreement?.durationMonths} months`} />
+                  <InfoItem label="Renewal Option" value={tenancy.agreement?.renewalOption ? "Yes" : "No"} />
+                  <InfoItem label="Auto Renew" value={tenancy.agreement?.autoRenew ? "Yes" : "No"} />
+                  <InfoItem
+                    label="Landlord Signed"
+                    value={
+                      <span className={tenancy.agreement?.signedByLandlord ? "text-green-400" : "text-red-400"}>
+                        {tenancy.agreement?.signedByLandlord ? "✓ Signed" : "✗ Not Signed"}
+                      </span>
+                    }
+                  />
+                  <InfoItem
+                    label="Tenant Signed"
+                    value={
+                      <span className={tenancy.agreement?.signedByTenant ? "text-green-400" : "text-red-400"}>
+                        {tenancy.agreement?.signedByTenant ? "✓ Signed" : "✗ Not Signed"}
+                      </span>
+                    }
+                  />
+                </div>
+              </div>
+
+              {/* Quick Contact */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <ContactCard
+                  title="Tenant Contact"
+                  name={tenancy.tenantId?.name}
+                  phone={tenancy.tenantId?.phone}
+                  email={tenancy.tenantId?.email}
                 />
-              ) : (
-                <div className="w-32 h-32 bg-orange-600/80 rounded-full flex items-center justify-center text-5xl text-white shadow-xl">
-                  <FaUser />
+                <ContactCard
+                  title="Landlord Contact"
+                  name={tenancy.landlordId?.name}
+                  phone={tenancy.landlordId?.phone}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Tenant Tab */}
+          {activeTab === "tenant" && (
+            <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-8">
+              <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                <User className="w-6 h-6 text-orange-400" />
+                Tenant Information
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Basic Info */}
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-4">Basic Details</h3>
+                  <div className="space-y-3">
+                    <InfoItem label="Name" value={tenancy.tenantId?.name} />
+                    <InfoItem label="Phone" value={tenancy.tenantId?.phone} />
+                    <InfoItem label="Email" value={tenancy.tenantId?.email} />
+                  </div>
+                </div>
+
+                {/* Employment */}
+                {tenancy.tenantInfo?.employmentDetails && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                      <Briefcase className="w-5 h-5 text-orange-400" />
+                      Employment
+                    </h3>
+                    <div className="space-y-3">
+                      <InfoItem
+                        label="Type"
+                        value={tenancy.tenantInfo.employmentDetails.type}
+                      />
+                      <InfoItem
+                        label="Company"
+                        value={tenancy.tenantInfo.employmentDetails.companyName}
+                      />
+                      <InfoItem
+                        label="Designation"
+                        value={tenancy.tenantInfo.employmentDetails.designation}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Emergency Contact */}
+                {tenancy.tenantInfo?.emergencyContact && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-4">Emergency Contact</h3>
+                    <div className="space-y-3">
+                      <InfoItem
+                        label="Name"
+                        value={tenancy.tenantInfo.emergencyContact.name}
+                      />
+                      <InfoItem
+                        label="Phone"
+                        value={tenancy.tenantInfo.emergencyContact.phone}
+                      />
+                      <InfoItem
+                        label="Relation"
+                        value={tenancy.tenantInfo.emergencyContact.relation}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* ID Proof */}
+                {tenancy.tenantInfo?.idProof && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                      <Shield className="w-5 h-5 text-orange-400" />
+                      ID Proof
+                    </h3>
+                    <div className="space-y-3">
+                      <InfoItem label="Type" value={tenancy.tenantInfo.idProof.type} />
+                      <InfoItem
+                        label="Number"
+                        value={tenancy.tenantInfo.idProof.number}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Police Verification */}
+                {tenancy.tenantInfo?.policeVerification && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-4">Police Verification</h3>
+                    <div className="space-y-3">
+                      <InfoItem
+                        label="Status"
+                        value={
+                          <span className={tenancy.tenantInfo.policeVerification.done ? "text-green-400" : "text-red-400"}>
+                            {tenancy.tenantInfo.policeVerification.done ? "✓ Done" : "✗ Pending"}
+                          </span>
+                        }
+                      />
+                      {tenancy.tenantInfo.policeVerification.done && (
+                        <InfoItem
+                          label="Verified On"
+                          value={formatDate(tenancy.tenantInfo.policeVerification.verifiedOn)}
+                        />
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Ratings */}
+              {tenancy.ratings && (
+                <div className="mt-8 pt-8 border-t border-white/20">
+                  <h3 className="text-lg font-semibold text-white mb-4">Ratings & Reviews</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {tenancy.ratings.byTenant && (
+                      <RatingCard
+                        title="Tenant's Review"
+                        rating={tenancy.ratings.byTenant.rating}
+                        review={tenancy.ratings.byTenant.review}
+                        date={tenancy.ratings.byTenant.givenAt}
+                      />
+                    )}
+                    {tenancy.ratings.byLandlord && (
+                      <RatingCard
+                        title="Landlord's Review"
+                        rating={tenancy.ratings.byLandlord.rating}
+                        review={tenancy.ratings.byLandlord.review}
+                        date={tenancy.ratings.byLandlord.givenAt}
+                      />
+                    )}
+                  </div>
                 </div>
               )}
-              <h2 className="text-3xl font-bold mt-6 text-white">
-                {tenant.name || "N/A"}
-              </h2>
             </div>
+          )}
 
-            {/* Details Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-base">
-              <div className="space-y-4">
-                <p><strong className="text-white">Email:</strong> <span className="text-gray-300">{tenant.email || "N/A"}</span></p>
-                <p><strong className="text-white">Mobile:</strong> <span className="text-gray-300">{tenant.mobile || "N/A"}</span></p>
-                <p><strong className="text-white">Aadhaar:</strong> <span className="text-gray-300">{tenant.aadhaar || "N/A"}</span></p>
-                <p><strong className="text-white">Work:</strong> <span className="text-gray-300">{tenant.work || "N/A"}</span></p>
-                <p><strong className="text-white">DOB:</strong> <span className="text-gray-300">
-                  {tenant.dob
-                    ? new Date(tenant.dob).toLocaleDateString("en-GB", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                      })
-                    : "N/A"}
-                </span></p>
-                <p><strong className="text-white">Marital Status:</strong> <span className="text-gray-300">{tenant.maritalStatus || "N/A"}</span></p>
-              </div>
-              <div className="space-y-4">
-                <p><strong className="text-white">Father:</strong> <span className="text-gray-300">{tenant.fatherName || "N/A"} - {tenant.fatherMobile || "N/A"}</span></p>
-                <p><strong className="text-white">Mother:</strong> <span className="text-gray-300">{tenant.motherName || "N/A"} - {tenant.motherMobile || "N/A"}</span></p>
-                <p><strong className="text-white">Address:</strong> <span className="text-gray-300">{tenant.permanentAddress || "N/A"}</span></p>
-                <p><strong className="text-white">Joined:</strong> <span className="text-gray-300">
-                  {tenant.createdAt
-                    ? new Date(tenant.createdAt).toLocaleDateString("en-GB", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                      })
-                    : "N/A"}
-                </span></p>
-                <p><strong className="text-white">Accommodation:</strong> <span className="text-gray-300">
-                  {tenant.bookingRequests?.length > 0
-                    ? tenant.bookingRequests.map((req, index) => (
-                        <span key={index}>
-                          {req.propertyName || req.propertyId || "N/A"} → Room {req.roomName || req.roomId || "N/A"}
-                          {req.bedId ? ` → Bed ${req.bedName || req.bedId || "N/A"}` : ""}
-                          {index < tenant.bookingRequests.length - 1 ? "; " : ""}
-                        </span>
-                      ))
-                    : tenant.accommodations?.length > 0
-                    ? tenant.accommodations.map((acc, index) => (
-                        <span key={index}>
-                          {acc.propertyName || acc.propertyId || "N/A"} → Room {acc.roomName || acc.roomId || "N/A"}
-                          {acc.bedId ? ` → Bed ${acc.bedName || acc.bedId || "N/A"}` : ""}
-                          {index < tenant.accommodations.length - 1 ? "; " : ""}
-                        </span>
-                      ))
-                    : "N/A"}
-                </span></p>
-              </div>
-            </div>
+          {/* Property Tab */}
+          {activeTab === "property" && (
+            <div className="space-y-6">
+              {/* Property Images */}
+              {propertyImages.length > 0 && (
+                <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-8">
+                  <h3 className="text-xl font-bold text-white mb-6">Property Images</h3>
+                  <div className="space-y-4">
+                    <motion.div
+                      className="relative w-full aspect-video rounded-xl overflow-hidden bg-black/30 border border-white/20"
+                      whileHover={{ scale: 1.02 }}
+                    >
+                      <img
+                        src={propertyImages[imageGalleryIndex.property]?.url}
+                        alt={`Property ${imageGalleryIndex.property + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute bottom-4 right-4 bg-black/50 text-white px-3 py-1 rounded-lg text-sm">
+                        {imageGalleryIndex.property + 1} / {propertyImages.length}
+                      </div>
+                    </motion.div>
 
-            {/* Bills Section - Compact */}
-            {tenant.bills?.length > 0 && (
-              <div className="mt-12">
-                <h3 className="text-2xl font-bold text-white mb-6">Bills History</h3>
+                    {propertyImages.length > 1 && (
+                      <div className="flex gap-2 overflow-x-auto pb-2">
+                        {propertyImages.map((img, idx) => (
+                          <motion.button
+                            key={idx}
+                            onClick={() =>
+                              setImageGalleryIndex((prev) => ({
+                                ...prev,
+                                property: idx,
+                              }))
+                            }
+                            className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 ${
+                              imageGalleryIndex.property === idx
+                                ? "border-orange-400"
+                                : "border-white/20"
+                            }`}
+                            whileHover={{ scale: 1.05 }}
+                          >
+                            <img
+                              src={img.url}
+                              alt={`Thumbnail ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </motion.button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Property Details */}
+              <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-8">
+                <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                  <Building2 className="w-6 h-6 text-orange-400" />
+                  Property Details
+                </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {tenant.bills.map((bill, index) => (
-                    <div key={index} className="bg-white/10 backdrop-blur-xl rounded-xl p-5 border border-white/20">
-                      <p><strong>Type:</strong> {bill.type || "N/A"}</p>
-                      <p><strong>Property:</strong> {bill.propertyName || bill.propertyId || "N/A"}</p>
-                      <p><strong>Amount:</strong> ₹{bill.amount || "N/A"}</p>
-                      <p><strong>Due:</strong> {bill.dueDate ? new Date(bill.dueDate).toLocaleDateString("en-GB") : "N/A"}</p>
-                      <p><strong>Status:</strong> <span className={bill.paid ? "text-teal-400" : "text-red-400"}>{bill.paid ? "Paid" : "Pending"}</span></p>
-                    </div>
-                  ))}
+                  <InfoItem label="Title" value={tenancy.propertyId?.title} />
+                  <InfoItem label="City" value={tenancy.propertyId?.location?.city} />
+                  <InfoItem label="Locality" value={tenancy.propertyId?.location?.locality} />
+                  <InfoItem label="Sub-Locality" value={tenancy.propertyId?.location?.subLocality} />
+                  <InfoItem label="Pin Code" value={tenancy.propertyId?.location?.pincode} />
+                  <InfoItem label="State" value={tenancy.propertyId?.location?.state} />
+                  <InfoItem
+                    label="Full Address"
+                    value={tenancy.propertyId?.location?.address}
+                    fullWidth
+                  />
+                  <InfoItem label="Landmark" value={tenancy.propertyId?.location?.landmark} />
+                  <InfoItem
+                    label="Coordinates"
+                    value={`${tenancy.propertyId?.location?.coordinates?.latitude}, ${tenancy.propertyId?.location?.coordinates?.longitude}`}
+                  />
+                  <InfoItem label="Room Number" value={tenancy.roomId?.roomNumber} />
+                  <InfoItem label="Room Type" value={tenancy.roomId?.roomType} />
+                  <InfoItem label="Bed Number" value={tenancy.bedNumber} />
                 </div>
               </div>
-            )}
 
-            {/* Document Upload Section - Compact */}
-            <div className="mt-12">
-              <h3 className="text-2xl font-bold text-white mb-6">Upload Document</h3>
-              <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
-                <form onSubmit={handleUpload} className="space-y-6">
-                  <div>
-                    <label className="block text-base font-medium text-gray-200 mb-2">Document Name *</label>
-                    <input
-                      type="text"
-                      value={documentName}
-                      onChange={(e) => setDocumentName(e.target.value)}
-                      className="w-full px-5 py-3 bg-white/10 backdrop-blur-md border border-white/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-orange-400/50"
-                      required
-                      disabled={isUploading}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-base font-medium text-gray-200 mb-2">Select File *</label>
-                    <input
-                      type="file"
-                      onChange={(e) => e.target.files[0] && handleFileSelect(e.target.files[0])}
-                      className="block w-full text-base text-gray-300 file:mr-6 file:py-2.5 file:px-6 file:rounded-xl file:border-0 file:bg-orange-600/80 file:text-white hover:file:bg-orange-500"
-                      disabled={isUploading}
-                      required
-                    />
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={isVisible}
-                      onChange={(e) => setIsVisible(e.target.checked)}
-                      className="w-5 h-5 text-orange-500 rounded"
-                      disabled={isUploading}
-                    />
-                    <label className="text-base text-gray-300">Visible to tenant</label>
-                  </div>
-                  {isUploading && (
-                    <div className="w-full bg-white/20 rounded-full h-3">
-                      <div className="bg-orange-500 h-full rounded-full transition-all" style={{ width: `${uploadProgress}%` }} />
-                      <p className="text-center mt-2">{uploadProgress}%</p>
-                    </div>
-                  )}
-                  <button
-                    type="submit"
-                    disabled={isUploading}
-                    className="w-full py-3 bg-orange-600/80 text-white font-semibold rounded-xl hover:bg-orange-500 disabled:opacity-60 transition"
-                  >
-                    {isUploading ? "Uploading..." : "Upload Document"}
-                  </button>
-                </form>
-              </div>
-            </div>
+              {/* Room Images */}
+              {roomImages.length > 0 && (
+                <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-8">
+                  <h3 className="text-xl font-bold text-white mb-6">Room Images</h3>
+                  <div className="space-y-4">
+                    <motion.div
+                      className="relative w-full aspect-video rounded-xl overflow-hidden bg-black/30 border border-white/20"
+                      whileHover={{ scale: 1.02 }}
+                    >
+                      <img
+                        src={roomImages[imageGalleryIndex.room]?.url}
+                        alt={`Room ${imageGalleryIndex.room + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute bottom-4 right-4 bg-black/50 text-white px-3 py-1 rounded-lg text-sm">
+                        {imageGalleryIndex.room + 1} / {roomImages.length}
+                      </div>
+                    </motion.div>
 
-            {/* Landlord & Tenant Documents - Compact */}
-            <div className="mt-12 space-y-12">
-              <div>
-                <h3 className="text-2xl font-bold text-white mb-6">Landlord Documents</h3>
-                {documents.length === 0 ? (
-                  <p className="text-gray-400 text-center py-6">No documents uploaded yet.</p>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {documents.map((doc) => (
-                      <div key={doc.id} className="bg-white/10 backdrop-blur-xl rounded-xl p-5 border border-white/20 flex justify-between items-center">
-                        <div>
-                          <p className="text-lg font-semibold text-white">{doc.name}</p>
-                          <p className="text-gray-400 text-sm">{doc.date}</p>
-                        </div>
-                        <div className="flex gap-3">
-                          <button
-                            onClick={() => {
-                              const filePath = doc.raw?.filePath || "";
-                              const url = filePath.startsWith("http") ? filePath : `https://api.gharzoreality.com${filePath}`;
-                              if (filePath) window.open(url, "_blank");
-                            }}
-                            className="p-3 bg-orange-600/80 rounded-lg hover:bg-orange-500 transition"
+                    {roomImages.length > 1 && (
+                      <div className="flex gap-2 overflow-x-auto pb-2">
+                        {roomImages.map((img, idx) => (
+                          <motion.button
+                            key={idx}
+                            onClick={() =>
+                              setImageGalleryIndex((prev) => ({
+                                ...prev,
+                                room: idx,
+                              }))
+                            }
+                            className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 ${
+                              imageGalleryIndex.room === idx
+                                ? "border-orange-400"
+                                : "border-white/20"
+                            }`}
+                            whileHover={{ scale: 1.05 }}
                           >
-                            <FaEye className="text-lg" />
-                          </button>
-                          <button onClick={() => handleDelete(doc.id)} className="p-3 bg-red-600/80 rounded-lg hover:bg-red-500 transition">
-                            <FaTrash className="text-lg" />
-                          </button>
-                        </div>
+                            <img
+                              src={img.url}
+                              alt={`Thumbnail ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </motion.button>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
-                )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Financials Tab */}
+          {activeTab === "financials" && (
+            <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-8">
+              <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                <DollarSign className="w-6 h-6 text-orange-400" />
+                Financial Details
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-white">Rent Details</h3>
+                  <InfoItem
+                    label="Monthly Rent"
+                    value={formatCurrency(tenancy.financials?.monthlyRent)}
+                  />
+                  <InfoItem
+                    label="Maintenance Charges"
+                    value={formatCurrency(tenancy.financials?.maintenanceCharges)}
+                  />
+                  <InfoItem label="Rent Due Day" value={`${tenancy.financials?.rentDueDay}th of month`} />
+                  <InfoItem
+                    label="Late Fee per Day"
+                    value={formatCurrency(tenancy.financials?.lateFeePerDay)}
+                  />
+                  <InfoItem label="Grace Period" value={`${tenancy.financials?.gracePeriodDays} days`} />
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-white">Security Deposit</h3>
+                  <InfoItem
+                    label="Amount"
+                    value={formatCurrency(tenancy.financials?.securityDeposit)}
+                  />
+                  <InfoItem
+                    label="Status"
+                    value={
+                      <span className={tenancy.financials?.securityDepositPaid ? "text-green-400" : "text-red-400"}>
+                        {tenancy.financials?.securityDepositPaid ? "✓ Paid" : "✗ Not Paid"}
+                      </span>
+                    }
+                  />
+                  {tenancy.financials?.securityDepositPaid && (
+                    <InfoItem
+                      label="Paid On"
+                      value={formatDate(tenancy.financials?.securityDepositPaidDate)}
+                    />
+                  )}
+                </div>
               </div>
 
-              <div>
-                <h3 className="text-2xl font-bold text-white mb-6">Tenant Uploaded Documents</h3>
-                {tenantDocuments.length === 0 ? (
-                  <p className="text-gray-400 text-center py-6">No documents uploaded by tenant.</p>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {tenantDocuments.map((doc) => (
-                      <div key={doc.id} className="bg-white/10 backdrop-blur-xl rounded-xl p-5 border border-white/20 flex justify-between items-center">
-                        <div>
-                          <p className="text-lg font-semibold text-white">{doc.name}</p>
-                          <p className="text-gray-400 text-sm">{doc.date}</p>
-                        </div>
-                        <button
-                          onClick={() => handleViewTenantDocument(doc.url)}
-                          className="p-3 bg-orange-600/80 rounded-lg hover:bg-orange-500 transition"
-                        >
-                          <FaEye className="text-lg" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              {/* Financial Summary Card */}
+              <div className="bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-500/50 rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-white mb-4">Monthly Summary</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <SummaryItem
+                    label="Rent"
+                    value={formatCurrency(tenancy.financials?.monthlyRent)}
+                  />
+                  <SummaryItem
+                    label="Maintenance"
+                    value={formatCurrency(tenancy.financials?.maintenanceCharges)}
+                  />
+                  <SummaryItem
+                    label="Total"
+                    value={formatCurrency(
+                      (tenancy.financials?.monthlyRent || 0) +
+                        (tenancy.financials?.maintenanceCharges || 0)
+                    )}
+                  />
+                </div>
               </div>
             </div>
+          )}
 
-            {/* Action Buttons - Compact */}
-            <div className="mt-12 flex justify-center gap-8">
-              <button
-                onClick={() => setIsEditing(true)}
-                className="px-8 py-3 bg-orange-600/80 text-white font-semibold rounded-xl hover:bg-orange-500 transition shadow-xl flex items-center gap-3"
-              >
-                <FaEdit className="text-lg" />
-                Edit Tenant
-              </button>
-              <button
-                onClick={() => setIsDeleting(true)}
-                className="px-8 py-3 bg-red-600/80 text-white font-semibold rounded-xl hover:bg-red-500 transition shadow-xl flex items-center gap-3"
-              >
-                <FaTrash className="text-lg" />
-                Delete Tenant
-              </button>
+          {/* Occupancy Tab */}
+          {activeTab === "occupancy" && (
+            <div className="space-y-6">
+              {/* Move In/Out Dates */}
+              <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-8">
+                <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                  <Clock className="w-6 h-6 text-orange-400" />
+                  Occupancy Timeline
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-4">Move In</h3>
+                    <div className="space-y-3">
+                      <InfoItem
+                        label="Scheduled"
+                        value={formatDate(tenancy.occupancy?.moveInDate)}
+                      />
+                      <InfoItem
+                        label="Actual"
+                        value={formatDate(tenancy.occupancy?.actualMoveInDate)}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-4">Move Out</h3>
+                    <div className="space-y-3">
+                      <InfoItem
+                        label="Scheduled"
+                        value={formatDate(tenancy.occupancy?.moveOutDate)}
+                      />
+                      <InfoItem
+                        label="Actual"
+                        value={formatDate(tenancy.occupancy?.actualMoveOutDate)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Move In Checklist */}
+              {moveInChecklist.length > 0 && (
+                <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-8">
+                  <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
+                    <CheckCircle className="w-6 h-6 text-green-400" />
+                    Move In Checklist
+                  </h3>
+                  <div className="space-y-4">
+                    {moveInChecklist.map((item, idx) => (
+                      <ChecklistItem key={idx} item={item} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Move Out Checklist */}
+              {moveOutChecklist.length > 0 && (
+                <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-8">
+                  <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
+                    <CheckCircle className="w-6 h-6 text-blue-400" />
+                    Move Out Checklist
+                  </h3>
+                  <div className="space-y-4">
+                    {moveOutChecklist.map((item, idx) => (
+                      <ChecklistItem key={idx} item={item} />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          )}
+
+          {/* Documents Tab */}
+          {activeTab === "documents" && (
+            <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-8">
+              <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                <FileText className="w-6 h-6 text-orange-400" />
+                Documents
+              </h2>
+              <p className="text-gray-400 text-center py-8">
+                Document management features coming soon. Upload and manage documents through the main interface.
+              </p>
+            </div>
+          )}
+        </motion.div>
       </div>
     </div>
   );
 };
 
-export default TenantDetails;
+// Helper Components
+const StatCard = ({ icon, label, value, color }) => (
+  <motion.div
+    whileHover={{ scale: 1.05, y: -5 }}
+    className={`bg-gradient-to-br ${color} rounded-xl p-4 text-white shadow-lg`}
+  >
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm opacity-90">{label}</p>
+        <p className="text-2xl font-bold mt-1">{value}</p>
+      </div>
+      <div className="text-3xl opacity-50">{icon}</div>
+    </div>
+  </motion.div>
+);
+
+const InfoItem = ({ label, value, fullWidth = false }) => (
+  <div className={fullWidth ? "col-span-full" : ""}>
+    <p className="text-gray-400 text-sm mb-1">{label}</p>
+    <p className="text-white font-medium">{value || "N/A"}</p>
+  </div>
+);
+
+const ContactCard = ({ title, name, phone, email }) => (
+  <motion.div
+    whileHover={{ scale: 1.02 }}
+    className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl p-6"
+  >
+    <h3 className="text-lg font-semibold text-white mb-4">{title}</h3>
+    <div className="space-y-3">
+      {name && (
+        <div className="flex items-center gap-3">
+          <User className="w-5 h-5 text-orange-400" />
+          <span className="text-gray-300">{name}</span>
+        </div>
+      )}
+      {phone && (
+        <div className="flex items-center gap-3">
+          <Phone className="w-5 h-5 text-orange-400" />
+          <a href={`tel:${phone}`} className="text-gray-300 hover:text-white transition">
+            {phone}
+          </a>
+        </div>
+      )}
+      {email && (
+        <div className="flex items-center gap-3">
+          <Mail className="w-5 h-5 text-orange-400" />
+          <a href={`mailto:${email}`} className="text-gray-300 hover:text-white transition">
+            {email}
+          </a>
+        </div>
+      )}
+    </div>
+  </motion.div>
+);
+
+const RatingCard = ({ title, rating, review, date }) => (
+  <motion.div
+    whileHover={{ scale: 1.02 }}
+    className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl p-6"
+  >
+    <h4 className="text-lg font-semibold text-white mb-2">{title}</h4>
+    {rating && (
+      <div className="flex items-center gap-2 mb-3">
+        <div className="flex gap-1">
+          {[...Array(5)].map((_, i) => (
+            <span key={i} className={i < rating ? "text-yellow-400" : "text-gray-500"}>
+              ★
+            </span>
+          ))}
+        </div>
+        <span className="text-sm text-gray-400">{rating}/5</span>
+      </div>
+    )}
+    {review && <p className="text-gray-300 text-sm mb-2">{review}</p>}
+    {date && <p className="text-gray-500 text-xs">{formatDate(date)}</p>}
+  </motion.div>
+);
+
+const ChecklistItem = ({ item }) => (
+  <motion.div
+    whileHover={{ x: 5 }}
+    className={`flex gap-4 p-4 rounded-lg ${getConditionColor(item.condition)}`}
+  >
+    <div className="flex-shrink-0">
+      {item.photo ? (
+        <img
+          src={item.photo}
+          alt={item.item}
+          className="w-16 h-16 rounded-lg object-cover border border-white/20"
+        />
+      ) : (
+        <div className="w-16 h-16 bg-white/20 rounded-lg flex items-center justify-center">
+          <Eye className="w-6 h-6" />
+        </div>
+      )}
+    </div>
+    <div className="flex-grow">
+      <p className="font-semibold text-lg">{item.item}</p>
+      <p className="text-sm opacity-75 mb-1">Condition: {item.condition}</p>
+      {item.notes && <p className="text-sm opacity-75">{item.notes}</p>}
+    </div>
+  </motion.div>
+);
+
+const SummaryItem = ({ label, value }) => (
+  <div className="text-center">
+    <p className="text-gray-300 text-sm mb-1">{label}</p>
+    <p className="text-white font-bold text-lg">{value}</p>
+  </div>
+);
+
+const getConditionColor = (condition) => {
+  switch (condition?.toLowerCase()) {
+    case "good":
+      return "bg-green-500/20 border border-green-500/50";
+    case "fair":
+      return "bg-yellow-500/20 border border-yellow-500/50";
+    case "poor":
+      return "bg-red-500/20 border border-red-500/50";
+    default:
+      return "bg-gray-500/20 border border-gray-500/50";
+  }
+};
+
+export default TenancyDetails;

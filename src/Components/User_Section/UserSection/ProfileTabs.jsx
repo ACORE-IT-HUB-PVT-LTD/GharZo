@@ -40,9 +40,12 @@ const ProfileTabs = ({ role }) => {
   const [uploadModal, setUploadModal] = useState(false);
   const [serviceModal, setServiceModal] = useState(false);
   const [reelForm, setReelForm] = useState({
-    title: '',
-    description: '',
-    propertyType: '',
+    propertyId: '',
+    caption: '',
+    tags: '',
+    duration: '',
+    city: '',
+    locality: '',
     file: null
   });
   const [serviceForm, setServiceForm] = useState({
@@ -54,45 +57,18 @@ const ProfileTabs = ({ role }) => {
     description: ''
   });
 
-  // ── States for real API (only Listings tab) ──
+  // ── States for real API (Listings tab) ──
   const [myProperties, setMyProperties] = useState([]);
   const [loadingProperties, setLoadingProperties] = useState(false);
   const [propertiesError, setPropertiesError] = useState(null);
 
-  // Dummy Data (unchanged)
-  const myReels = [
-    {
-      id: 1,
-      title: 'Luxury Villa Tour',
-      thumbnail: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=500',
-      views: 12500,
-      likes: 856,
-      comments: 42,
-      duration: '0:45',
-      uploadDate: '2 days ago'
-    },
-    {
-      id: 2,
-      title: 'Modern Kitchen Design',
-      thumbnail: 'https://images.unsplash.com/photo-1556911220-bff31c812dba?w=500',
-      views: 8900,
-      likes: 624,
-      comments: 28,
-      duration: '0:32',
-      uploadDate: '5 days ago'
-    },
-    {
-      id: 3,
-      title: 'Dream Home Interior',
-      thumbnail: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=500',
-      views: 15200,
-      likes: 1245,
-      comments: 67,
-      duration: '1:05',
-      uploadDate: '1 week ago'
-    }
-  ];
+  // ── States for real API (Reels tab) ──
+  const [myReels, setMyReels] = useState([]);
+  const [loadingReels, setLoadingReels] = useState(false);
+  const [reelsError, setReelsError] = useState(null);
+  const [uploadingReel, setUploadingReel] = useState(false);
 
+  // Dummy Data (unchanged)
   const myServices = [
     {
       id: 1,
@@ -221,6 +197,14 @@ const ProfileTabs = ({ role }) => {
     { id: 'subscriptions', label: 'Subscriptions', icon: <FaCrown /> }
   ];
 
+  // Helper function to get token
+  const getToken = () => {
+    let token = localStorage.getItem("usertoken");
+    if (!token) token = localStorage.getItem("authToken");
+    if (!token) token = localStorage.getItem("access_token");
+    return token;
+  };
+
   // Fetch real properties when listings tab is active
   useEffect(() => {
     if (activeTab !== 'listings') return;
@@ -229,20 +213,7 @@ const ProfileTabs = ({ role }) => {
       setLoadingProperties(true);
       setPropertiesError(null);
 
-      // Get token from localStorage - Try multiple possible key names
-      let token = localStorage.getItem("usertoken");
-      
-      if (!token) {
-        token = localStorage.getItem("authToken");
-      }
-      
-      if (!token) {
-        token = localStorage.getItem("access_token");
-      }
-
-      // Debug: Log what's in localStorage
-      console.log("Available localStorage keys:", Object.keys(localStorage));
-      console.log("Token found:", token ? "Yes" : "No");
+      const token = getToken();
 
       if (!token) {
         setPropertiesError("Authentication token not found. Please login again.");
@@ -251,8 +222,6 @@ const ProfileTabs = ({ role }) => {
       }
 
       try {
-        console.log("Fetching properties with token:", token.substring(0, 20) + "...");
-        
         const res = await axios.get(
           "https://api.gharzoreality.com/api/v2/properties/my-properties",
           {
@@ -263,19 +232,13 @@ const ProfileTabs = ({ role }) => {
           }
         );
 
-        console.log("API Response:", res.data);
-
         if (res.data.success && Array.isArray(res.data.data)) {
           setMyProperties(res.data.data);
-          console.log(`Successfully loaded ${res.data.data.length} properties`);
         } else {
           setMyProperties([]);
-          console.log("No properties found or invalid response format");
         }
       } catch (err) {
         console.error("My properties fetch failed:", err);
-        console.error("Error response:", err.response?.data);
-        console.error("Error status:", err.response?.status);
         
         if (err.response?.status === 401) {
           setPropertiesError("Your session has expired. Please login again.");
@@ -295,14 +258,149 @@ const ProfileTabs = ({ role }) => {
     fetchMyProperties();
   }, [activeTab]);
 
+  // Fetch real reels when reels tab is active
+  useEffect(() => {
+    if (activeTab !== 'reels') return;
+
+    const fetchMyReels = async () => {
+      setLoadingReels(true);
+      setReelsError(null);
+
+      const token = getToken();
+
+      if (!token) {
+        setReelsError("Authentication token not found. Please login again.");
+        setLoadingReels(false);
+        return;
+      }
+
+      try {
+        const res = await axios.get(
+          "https://api.gharzoreality.com/api/reels/my-reels?page=1&limit=20",
+          {
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json"
+            },
+          }
+        );
+
+        if (res.data.success && Array.isArray(res.data.data)) {
+          setMyReels(res.data.data);
+        } else {
+          setMyReels([]);
+        }
+      } catch (err) {
+        console.error("My reels fetch failed:", err);
+        
+        if (err.response?.status === 401) {
+          setReelsError("Your session has expired. Please login again.");
+        } else if (err.response?.status === 403) {
+          setReelsError("You don't have permission to view reels.");
+        } else {
+          setReelsError(
+            err.response?.data?.message ||
+            "Failed to load your reels. Please try again."
+          );
+        }
+      } finally {
+        setLoadingReels(false);
+      }
+    };
+
+    fetchMyReels();
+  }, [activeTab]);
+
   const navigate = useNavigate();
 
-  const handleReelUpload = (e) => {
+  const handleReelUpload = async (e) => {
     e.preventDefault();
-    console.log('Reel uploaded:', reelForm);
-    alert('Reel uploaded successfully!');
-    setUploadModal(false);
-    setReelForm({ title: '', description: '', propertyType: '', file: null });
+    
+    const token = getToken();
+    if (!token) {
+      alert('Please login to upload reels');
+      return;
+    }
+
+    if (!reelForm.file) {
+      alert('Please select a video file');
+      return;
+    }
+
+    setUploadingReel(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('video', reelForm.file);
+      formData.append('propertyId', reelForm.propertyId);
+      formData.append('caption', reelForm.caption);
+      
+      // Convert comma-separated tags to array
+      if (reelForm.tags) {
+        const tagsArray = reelForm.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+        tagsArray.forEach(tag => {
+          formData.append('tags[]', tag);
+        });
+      }
+      
+      if (reelForm.duration) {
+        formData.append('duration', reelForm.duration);
+      }
+      
+      if (reelForm.city) {
+        formData.append('location[city]', reelForm.city);
+      }
+      
+      if (reelForm.locality) {
+        formData.append('location[locality]', reelForm.locality);
+      }
+
+      const res = await axios.post(
+        'https://api.gharzoreality.com/api/reels',
+        formData,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
+
+      if (res.data.success) {
+        alert('Reel uploaded successfully!');
+        setUploadModal(false);
+        setReelForm({
+          propertyId: '',
+          caption: '',
+          tags: '',
+          duration: '',
+          city: '',
+          locality: '',
+          file: null
+        });
+        
+        // Refresh reels list
+        if (activeTab === 'reels') {
+          const reelsRes = await axios.get(
+            "https://api.gharzoreality.com/api/reels/my-reels?page=1&limit=20",
+            {
+              headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json"
+              },
+            }
+          );
+          if (reelsRes.data.success && Array.isArray(reelsRes.data.data)) {
+            setMyReels(reelsRes.data.data);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Reel upload failed:', err);
+      alert(err.response?.data?.message || 'Failed to upload reel. Please try again.');
+    } finally {
+      setUploadingReel(false);
+    }
   };
 
   const handleServiceUpload = (e) => {
@@ -324,6 +422,7 @@ const ProfileTabs = ({ role }) => {
         return 'bg-blue-500 text-white';
       case 'Cancelled':
       case 'Inactive':
+      case 'Blocked':
         return 'bg-red-500 text-white';
       default:
         return 'bg-gray-500 text-white';
@@ -491,36 +590,107 @@ const ProfileTabs = ({ role }) => {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {myReels.map((reel) => (
-                <div
-                  key={reel.id}
-                  onClick={() => setSelectedReel(reel)}
-                  className="bg-white rounded-xl shadow-md overflow-hidden cursor-pointer hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-purple-200"
-                >
-                  <div className="relative aspect-[9/16]">
-                    <img src={reel.thumbnail} alt={reel.title} className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 hover:scale-105" />
-                    <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300">
-                      <FaPlay className="text-white text-5xl" />
-                    </div>
-                    <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs font-semibold">
-                      {reel.duration}
-                    </div>
-                  </div>
-                  
-                  <div className="p-5">
-                    <h3 className="font-bold text-xl text-gray-800 mb-2">{reel.title}</h3>
-                    <div className="flex justify-between items-center text-sm text-gray-600">
-                      <div className="flex gap-4">
-                        <span className="flex items-center gap-1"><FaEye className="text-green-500" /> {reel.views.toLocaleString()}</span>
-                        <span className="flex items-center gap-1"><FaHeart className="text-red-500" /> {reel.likes}</span>
-                      </div>
-                      <span className="text-xs text-gray-500">{reel.uploadDate}</span>
-                    </div>
-                  </div>
+            {loadingReels ? (
+              <div className="flex justify-center items-center py-20">
+                <FaSpinner className="animate-spin text-5xl text-purple-600 mr-4" />
+                <span className="text-xl text-gray-700">Loading your reels...</span>
+              </div>
+            ) : reelsError ? (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center">
+                <p className="text-red-600 font-medium text-lg mb-4">{reelsError}</p>
+                <div className="flex gap-4 justify-center">
+                  <button 
+                    onClick={() => window.location.reload()}
+                    className="px-8 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                  >
+                    Try Again
+                  </button>
+                  <button 
+                    onClick={() => {
+                      localStorage.clear();
+                      window.location.href = '/login';
+                    }}
+                    className="px-8 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+                  >
+                    Login Again
+                  </button>
                 </div>
-              ))}
-            </div>
+              </div>
+            ) : myReels.length === 0 ? (
+              <div className="text-center py-16 bg-white rounded-xl shadow">
+                <p className="text-xl text-gray-600 mb-6">You haven't uploaded any reels yet.</p>
+                <button 
+                  onClick={() => setUploadModal(true)}
+                  className="px-10 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-semibold hover:shadow-lg transition shadow-md"
+                >
+                  Upload Your First Reel
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {myReels.map((reel) => (
+                  <div
+                    key={reel._id}
+                    onClick={() => setSelectedReel(reel)}
+                    className="bg-white rounded-xl shadow-md overflow-hidden cursor-pointer hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-purple-200"
+                  >
+                    <div className="relative aspect-[9/16]">
+                      {reel.thumbnail?.url ? (
+                        <img 
+                          src={reel.thumbnail.url} 
+                          alt={reel.caption} 
+                          className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 hover:scale-105" 
+                        />
+                      ) : (
+                        <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                          <FaVideo className="text-white text-6xl" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300">
+                        <FaPlay className="text-white text-5xl" />
+                      </div>
+                      <div className="absolute top-3 right-3">
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(reel.status)}`}>
+                          {reel.status}
+                        </span>
+                      </div>
+                      {reel.duration && (
+                        <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs font-semibold">
+                          {reel.duration}s
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="p-5">
+                      <h3 className="font-bold text-xl text-gray-800 mb-2 line-clamp-2">
+                        {reel.caption || 'Untitled Reel'}
+                      </h3>
+                      {reel.location && (
+                        <div className="flex items-center text-gray-600 text-sm mb-3">
+                          <FaMapMarkerAlt className="mr-1 text-blue-500" />
+                          <span className="line-clamp-1">
+                            {reel.location.locality || reel.location.city || 'Location'}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center text-sm text-gray-600">
+                        <div className="flex gap-4">
+                          <span className="flex items-center gap-1">
+                            <FaEye className="text-green-500" /> {reel.views || 0}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <FaHeart className="text-red-500" /> {reel.likes || 0}
+                          </span>
+                        </div>
+                        <span className="text-xs text-gray-500">
+                          {new Date(reel.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </motion.div>
         )}
 
@@ -691,42 +861,72 @@ const ProfileTabs = ({ role }) => {
             
             <form onSubmit={handleReelUpload} className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Title</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Property ID</label>
                 <input
                   type="text"
-                  value={reelForm.title}
-                  onChange={(e) => setReelForm({...reelForm, title: e.target.value})}
+                  value={reelForm.propertyId}
+                  onChange={(e) => setReelForm({...reelForm, propertyId: e.target.value})}
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition-colors"
-                  placeholder="Enter reel title"
+                  placeholder="Enter property ID"
                   required
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Caption</label>
                 <textarea
-                  value={reelForm.description}
-                  onChange={(e) => setReelForm({...reelForm, description: e.target.value})}
+                  value={reelForm.caption}
+                  onChange={(e) => setReelForm({...reelForm, caption: e.target.value})}
                   rows="3"
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition-colors resize-none"
                   placeholder="Describe your reel"
+                  required
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Property Type</label>
-                <select
-                  value={reelForm.propertyType}
-                  onChange={(e) => setReelForm({...reelForm, propertyType: e.target.value})}
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Tags (comma-separated)</label>
+                <input
+                  type="text"
+                  value={reelForm.tags}
+                  onChange={(e) => setReelForm({...reelForm, tags: e.target.value})}
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition-colors"
-                  required
-                >
-                  <option value="">Select type</option>
-                  <option value="apartment">Apartment</option>
-                  <option value="villa">Villa</option>
-                  <option value="office">Office</option>
-                  <option value="shop">Shop</option>
-                </select>
+                  placeholder="e.g. indore, 2bhk, palasia, luxury"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Duration (seconds)</label>
+                <input
+                  type="number"
+                  value={reelForm.duration}
+                  onChange={(e) => setReelForm({...reelForm, duration: e.target.value})}
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition-colors"
+                  placeholder="e.g. 40"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">City</label>
+                  <input
+                    type="text"
+                    value={reelForm.city}
+                    onChange={(e) => setReelForm({...reelForm, city: e.target.value})}
+                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition-colors"
+                    placeholder="e.g. Indore"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Locality</label>
+                  <input
+                    type="text"
+                    value={reelForm.locality}
+                    onChange={(e) => setReelForm({...reelForm, locality: e.target.value})}
+                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition-colors"
+                    placeholder="e.g. Sukhliya"
+                  />
+                </div>
               </div>
               
               <div>
@@ -742,9 +942,17 @@ const ProfileTabs = ({ role }) => {
               
               <button
                 type="submit"
-                className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300"
+                disabled={uploadingReel}
+                className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Upload Reel
+                {uploadingReel ? (
+                  <>
+                    <FaSpinner className="animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  'Upload Reel'
+                )}
               </button>
             </form>
           </motion.div>
@@ -879,19 +1087,35 @@ const ProfileTabs = ({ role }) => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-2xl font-bold text-gray-800">{selectedReel.title}</h3>
+              <h3 className="text-2xl font-bold text-gray-800">{selectedReel.caption || 'Reel'}</h3>
               <button onClick={() => setSelectedReel(null)} className="text-gray-500 hover:text-gray-700 transition-colors">
                 <FaTimes size={24} />
               </button>
             </div>
             
-            <img src={selectedReel.thumbnail} alt={selectedReel.title} className="w-full h-96 object-cover rounded-xl mb-4 shadow-md" />
+            {selectedReel.videoUrl ? (
+              <video 
+                src={selectedReel.videoUrl} 
+                controls 
+                className="w-full h-96 object-cover rounded-xl mb-4 shadow-md bg-black"
+              />
+            ) : selectedReel.thumbnail?.url ? (
+              <img 
+                src={selectedReel.thumbnail.url} 
+                alt={selectedReel.caption} 
+                className="w-full h-96 object-cover rounded-xl mb-4 shadow-md" 
+              />
+            ) : (
+              <div className="w-full h-96 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl mb-4 shadow-md flex items-center justify-center">
+                <FaVideo className="text-white text-8xl" />
+              </div>
+            )}
             
             <div className="flex justify-between items-center text-gray-600">
               <div className="flex gap-6">
-                <span className="flex items-center gap-2"><FaHeart className="text-red-500" /> {selectedReel.likes} Likes</span>
-                <span className="flex items-center gap-2"><FaComment className="text-blue-500" /> {selectedReel.comments} Comments</span>
-                <span className="flex items-center gap-2"><FaEye className="text-green-500" /> {selectedReel.views.toLocaleString()} Views</span>
+                <span className="flex items-center gap-2"><FaHeart className="text-red-500" /> {selectedReel.likes || 0} Likes</span>
+                <span className="flex items-center gap-2"><FaComment className="text-blue-500" /> {selectedReel.comments || 0} Comments</span>
+                <span className="flex items-center gap-2"><FaEye className="text-green-500" /> {selectedReel.views || 0} Views</span>
               </div>
               <button className="text-blue-600 hover:text-blue-700 transition-colors">
                 <FaShare size={20} />
