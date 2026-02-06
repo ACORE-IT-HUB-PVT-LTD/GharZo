@@ -150,43 +150,47 @@ const PG = () => {
   };
 
   // Unified role-based redirect function
- const redirectBasedOnRole = (targetRole, pg = null) => {
-  if (loading) return;
+  const redirectBasedOnRole = (targetRole, pg = null) => {
+    if (loading) return;
 
-  if (!user) {
-    sessionStorage.setItem("pendingRole", targetRole);
-    setShowLogin(true);
-    return;
-  }
+    if (!user) {
+      // User not logged in - show login modal
+      sessionStorage.setItem("pendingRole", targetRole);
+      setShowLogin(true);
+      return;
+    }
 
-  switch (targetRole) {
-    case "tenant":
+    // Normalize roles for comparison
+    const normalizeRole = (role) => {
+      if (!role) return '';
+      return role.toLowerCase().replace(/[_\s-]/g, '');
+    };
+
+    const userRoleNormalized = normalizeRole(user.role);
+    const targetRoleNormalized = normalizeRole(targetRole);
+
+    // Check if user already has the correct role
+    if (userRoleNormalized === targetRoleNormalized) {
+      // User has correct role, redirect directly
       redirectByRole(navigate, user.role);
-      break;
-
-    case "landlord":
-      redirectByRole(navigate, user.role);
-      break;
-
-    case "subOwner":
-      redirectByRole(navigate, user.role);
-      break;
-
-    case "worker":
-      redirectByRole(navigate, user.role);
-      break;
-
-    case "viewProperty":
-      if (pg) {
-        navigate(`/property/${pg.id}`, { state: pg });
+    } else {
+      // User has different role, redirect to that role's login page
+      const loginPaths = {
+        tenant: "/tensor_login",
+        landlord: "/landlord_login",
+        subowner: "/sub_owner_login",
+        worker: "/dr_worker_login",
+      };
+      
+      const loginPath = loginPaths[targetRoleNormalized];
+      if (loginPath) {
+        navigate(loginPath, { replace: true });
+      } else {
+        setRoleModalMessage(`Cannot redirect to ${targetRole}. Login page not found.`);
+        setShowRoleModal(true);
       }
-      break;
-
-    default:
-      setRoleModalMessage(`Invalid role: ${user.role}`);
-      setShowRoleModal(true);
-  }
-};
+    }
+  };
 
 
 const showRoleError = () => {
@@ -215,7 +219,8 @@ const showRoleError = () => {
   };
 
   const handlePgClick = (pg) => {
-    redirectBasedOnRole('viewProperty', pg);
+    // Allow viewing property details without role check
+    navigate(`/property/${pg.id}`, { state: pg });
   };
 
   // Handle successful login
@@ -284,13 +289,13 @@ const showRoleError = () => {
           <span>Back</span>
         </button>
 
-        <button
+        {/* <button
           onClick={handleLandlordLogin}
           className="px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white transition-all duration-300 transform hover:-translate-y-1 flex items-center gap-2 rounded-2xl"
         >
           <FaPlus className="w-5 h-5" />
           Add Your Properties
-        </button>
+        </button> */}
       </div>
 
       {/* Header with Action Buttons */}
@@ -306,7 +311,7 @@ const showRoleError = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4">
+          {/* <div className="flex flex-col sm:flex-row gap-4">
             <button
               onClick={handleTenantLogin}
               className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-800 to-blue-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:from-orange-600 hover:to-blue-700 transition-all duration-300 transform hover:-translate-y-1 flex items-center gap-2"
@@ -336,7 +341,7 @@ const showRoleError = () => {
               <FaUser className="w-5 h-5" />
               Worker
             </button>
-          </div>
+          </div> */}
         </div>
       </div>
 

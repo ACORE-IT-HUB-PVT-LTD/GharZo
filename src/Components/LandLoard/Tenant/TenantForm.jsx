@@ -17,11 +17,13 @@ import {
   FaBolt,
   FaBed,
   FaSpinner,
+  FaCheckCircle,
+  FaInfoCircle,
 } from "react-icons/fa";
 import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 const TenantForm = () => {
   const location = useLocation();
@@ -35,194 +37,317 @@ const TenantForm = () => {
   const [availableRooms, setAvailableRooms] = useState([]);
   const [availableBeds, setAvailableBeds] = useState([]);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [loadingRooms, setLoadingRooms] = useState(false);
+  const [loadingBeds, setLoadingBeds] = useState(false);
   const today = new Date().toISOString().split("T")[0];
 
   const [formData, setFormData] = useState({
+    // Tenant Info (from tenantInfo in tenancy)
     name: "",
-    email: "",
-    mobile: "",
-    aadhaar: "",
-    permanentAddress: "",
-    work: "",
-    dob: "",
-    maritalStatus: "",
-    fatherName: "",
-    fatherMobile: "",
-    motherName: "",
-    motherMobile: "",
-    photo: null,
+    phone: "",
+
+    // Property & Room Selection
     propertyId: "",
     roomId: "",
-    bedId: "",
-    moveInDate: "",
-    noticePeriod: "",
-    agreementPeriod: "",
-    agreementPeriodType: "months",
-    rentOnDate: "",
-    rentDateOption: "fixed",
-    rentalFrequency: "Monthly",
-    referredBy: "",
-    remarks: "",
-    bookedBy: "",
-    electricityPerUnit: "",
-    initialReading: "",
-    finalReading: "",
-    initialReadingDate: "",
-    finalReadingDate: "",
-    electricityDueDescription: "",
-    openingBalanceStartDate: "",
-    openingBalanceEndDate: "",
-    openingBalanceAmount: "",
+    bedNumber: 1,
+
+    // Agreement
+    startDate: "",
+    endDate: "",
+    durationMonths: 12,
+    renewalOption: true,
+    autoRenew: false,
+
+    // Financials
+    monthlyRent: 8000,
+    securityDeposit: 10000,
+    securityDepositPaid: false,
+    securityDepositPaidDate: "",
+    maintenanceCharges: 500,
+    rentDueDay: 5,
+    lateFeePerDay: 50,
+    gracePeriodDays: 3,
+
+    // Tenant Info
+    emergencyContactName: "",
+    emergencyContactPhone: "",
+    emergencyContactRelation: "Father",
+    idProofType: "Aadhaar",
+    idProofNumber: "",
+    policeVerificationDone: false,
+    policeVerificationDate: "",
+    employmentType: "Student",
+    companyName: "",
+    designation: "",
   });
 
-  // Fetch Properties
+  // Fetch Properties from my-properties endpoint
   useEffect(() => {
     const fetchProperties = async () => {
       try {
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("token") || localStorage.getItem("usertoken");
         const response = await axios.get(
-          "https://api.gharzoreality.com/api/landlord/properties",
-          { headers: { Authorization: `Bearer ${token}` } }
+          "https://api.gharzoreality.com/api/v2/properties/my-properties",
+          { 
+            headers: { 
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json"
+            } 
+          }
         );
-        setProperties(response.data.properties || []);
+        
+        if (response.data?.success && response.data?.data) {
+          const propertiesData = response.data.data.map(property => ({
+            _id: property._id,
+            title: property.title || property.name || `${property.propertyType}`,
+            type: property.propertyType,
+            category: property.category,
+            location: property.location?.city ? 
+              `${property.location?.locality || ''}, ${property.location.city}` : 
+              'Location not set',
+            totalRooms: property.roomStats?.totalRooms || 0,
+            availableRooms: property.roomStats?.availableRooms || 0,
+            monthlyRent: property.price?.amount || 0,
+            status: property.status,
+            verificationStatus: property.verificationStatus,
+          }));
+          
+          setProperties(propertiesData);
+        } else {
+          setProperties([]);
+        }
       } catch (error) {
+        console.error("Error fetching properties:", error);
         toast.error("Failed to fetch properties");
+        setProperties([]);
       }
     };
+    
     fetchProperties();
   }, []);
 
-  // Fetch Available Rooms
+  // Fetch Rooms when property is selected
   useEffect(() => {
-    const fetchAvailableRooms = async () => {
+    if (!formData.propertyId) {
       setAvailableRooms([]);
-      if (!formData.propertyId) return;
-      const token = localStorage.getItem("token");
+      setFormData(prev => ({ ...prev, roomId: "", bedNumber: 1 }));
+      return;
+    }
+    
+    const fetchRooms = async () => {
+      setLoadingRooms(true);
       try {
-        const res = await axios.get(
-          `https://api.gharzoreality.com/api/landlord/properties/${formData.propertyId}/rooms/available`,
-          { headers: { Authorization: `Bearer ${token}` } }
+        const token = localStorage.getItem("token") || localStorage.getItem("usertoken");
+        
+        // Fetch rooms from /api/rooms/property/{propertyId} endpoint
+        const response = await axios.get(
+          `https://api.gharzoreality.com/api/rooms/property/${formData.propertyId}`,
+          { 
+            headers: { 
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json"
+            } 
+          }
         );
-        setAvailableRooms(res.data?.rooms || []);
+        
+        if (response.data?.success && response.data?.data) {
+          // Parse rooms data according to API response structure
+          const roomsData = response.data.data.map(room => {
+            const totalBeds = room.capacity?.totalBeds || 0;
+            const occupiedBeds = room.capacity?.occupiedBeds || 0;
+            const availableBeds = totalBeds - occupiedBeds;
+            
+            return {
+              _id: room._id,
+              roomNumber: room.roomNumber,
+              roomType: room.roomType,
+              label: `Room ${room.roomNumber} (${room.roomType}) - ${availableBeds} beds available`,
+              status: availableBeds > 0 ? 'Available' : 'Occupied',
+              totalBeds: totalBeds,
+              availableBeds: availableBeds,
+              occupiedBeds: occupiedBeds,
+              rentPerBed: room.pricing?.rentPerBed || 0,
+              securityDeposit: room.pricing?.securityDeposit || 0,
+              maintenanceCharges: room.pricing?.maintenanceCharges?.amount || 0,
+              floor: room.floor || 0,
+              furnishing: room.features?.furnishing || 'Unfurnished',
+            };
+          });
+          
+          // Filter only rooms with available beds
+          const availRooms = roomsData.filter(room => room.availableBeds > 0);
+          
+          if (availRooms.length > 0) {
+            setAvailableRooms(availRooms);
+          } else {
+            setAvailableRooms([]);
+            toast.info("No rooms with available beds for this property");
+          }
+        } else {
+          setAvailableRooms([]);
+          toast.error("No rooms found for this property");
+        }
       } catch (error) {
-        toast.error("Failed to fetch rooms");
+        console.error("Error fetching rooms:", error);
+        toast.error("Failed to fetch rooms. Please ensure rooms are properly configured.");
         setAvailableRooms([]);
+      } finally {
+        setLoadingRooms(false);
       }
     };
-    fetchAvailableRooms();
-  }, [formData.propertyId]);
+    
+    fetchRooms();
+  }, [formData.propertyId, properties]);
 
-  // Fetch Available Beds
+  // Generate Available Beds when room is selected
   useEffect(() => {
-    const fetchAvailableBeds = async () => {
+    if (!formData.propertyId || !formData.roomId) {
       setAvailableBeds([]);
-      if (!formData.propertyId || !formData.roomId) return;
-      const token = localStorage.getItem("token");
-      try {
-        const res = await axios.get(
-          `https://api.gharzoreality.com/api/landlord/properties/${formData.propertyId}/rooms/${formData.roomId}/available-beds`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        setAvailableBeds(res.data?.beds || []);
-      } catch (error) {
-        toast.error("Failed to fetch beds");
-        setAvailableBeds([]);
+      setFormData(prev => ({ ...prev, bedNumber: 1 }));
+      return;
+    }
+    
+    // Get available beds from selected room
+    const selectedRoom = availableRooms.find(r => r._id === formData.roomId);
+    if (selectedRoom && selectedRoom.availableBeds > 0) {
+      // Generate bed numbers from 1 to availableBeds
+      const beds = Array.from(
+        { length: selectedRoom.availableBeds }, 
+        (_, i) => ({
+          _id: `${selectedRoom._id}-bed-${i + 1}`,
+          bedNumber: i + 1,
+          status: 'available',
+          rentPerBed: selectedRoom.rentPerBed,
+          securityDeposit: selectedRoom.securityDeposit,
+        })
+      );
+      setAvailableBeds(beds);
+      
+      // Auto-set first bed as default
+      if (beds.length > 0) {
+        setFormData(prev => ({ ...prev, bedNumber: 1 }));
       }
-    };
-    fetchAvailableBeds();
-  }, [formData.propertyId, formData.roomId]);
+    } else {
+      setAvailableBeds([]);
+      setFormData(prev => ({ ...prev, bedNumber: 1 }));
+    }
+  }, [formData.roomId, availableRooms]);
+
+  // Auto-populate rent and security deposit from selected room
+  useEffect(() => {
+    if (!formData.roomId) return;
+    
+    const selectedRoom = availableRooms.find(r => r._id === formData.roomId);
+    if (selectedRoom) {
+      setFormData(prev => ({
+        ...prev,
+        monthlyRent: selectedRoom.rentPerBed || prev.monthlyRent,
+        securityDeposit: selectedRoom.securityDeposit || prev.securityDeposit,
+        maintenanceCharges: selectedRoom.maintenanceCharges || prev.maintenanceCharges,
+      }));
+    }
+  }, [formData.roomId, availableRooms]);
+
+  // Auto-calculate end date based on start date and duration
+  useEffect(() => {
+    if (formData.startDate && formData.durationMonths) {
+      const start = new Date(formData.startDate);
+      const end = new Date(start);
+      end.setMonth(end.getMonth() + parseInt(formData.durationMonths));
+      setFormData((prev) => ({
+        ...prev,
+        endDate: end.toISOString().split("T")[0],
+      }));
+    }
+  }, [formData.startDate, formData.durationMonths]);
 
   // Load editing data
   useEffect(() => {
     if (editingTenant) {
+      // Map tenancy data to form fields
       setFormData({
-        name: editingTenant.name ?? "",
-        email: editingTenant.email ?? "",
-        mobile: editingTenant.mobile ?? "",
-        aadhaar: editingTenant.aadhaar ?? "",
-        permanentAddress: editingTenant.permanentAddress ?? "",
-        work: editingTenant.work ?? "",
-        dob: editingTenant.dob ?? "",
-        maritalStatus: editingTenant.maritalStatus ?? "",
-        fatherName: editingTenant.fatherName ?? "",
-        fatherMobile: editingTenant.fatherMobile ?? "",
-        motherName: editingTenant.motherName ?? "",
-        motherMobile: editingTenant.motherMobile ?? "",
-        photo: editingTenant.photo ?? null,
-        propertyId: editingTenant.propertyId ?? "",
-        roomId: editingTenant.roomId ?? "",
-        bedId: editingTenant.bedId ?? "",
-        moveInDate: editingTenant.moveInDate ?? "",
-        noticePeriod: editingTenant.noticePeriod ?? "",
-        agreementPeriod: editingTenant.agreementPeriod ?? "",
-        agreementPeriodType: editingTenant.agreementPeriodType ?? "months",
-        rentOnDate: editingTenant.rentOnDate ?? "",
-        rentDateOption: editingTenant.rentDateOption ?? "fixed",
-        rentalFrequency: editingTenant.rentalFrequency ?? "Monthly",
-        referredBy: editingTenant.referredBy ?? "",
-        remarks: editingTenant.remarks ?? "",
-        bookedBy: editingTenant.bookedBy ?? "",
-        electricityPerUnit: editingTenant.electricityPerUnit ?? "",
-        initialReading: editingTenant.initialReading ?? "",
-        finalReading: editingTenant.finalReading ?? "",
-        initialReadingDate: editingTenant.initialReadingDate ?? "",
-        finalReadingDate: editingTenant.finalReadingDate ?? "",
-        electricityDueDescription: editingTenant.electricityDueDescription ?? "",
-        openingBalanceStartDate: editingTenant.openingBalanceStartDate ?? "",
-        openingBalanceEndDate: editingTenant.openingBalanceEndDate ?? "",
-        openingBalanceAmount: editingTenant.openingBalanceAmount ?? "",
+        name: editingTenant.tenantId?.name || "",
+        phone: editingTenant.tenantId?.phone || "",
+        propertyId: editingTenant.propertyId?._id || "",
+        roomId: editingTenant.roomId?._id || "",
+        bedNumber: editingTenant.bedNumber || 1,
+        startDate: editingTenant.agreement?.startDate?.split("T")[0] || "",
+        endDate: editingTenant.agreement?.endDate?.split("T")[0] || "",
+        durationMonths: editingTenant.agreement?.durationMonths || 12,
+        renewalOption: editingTenant.agreement?.renewalOption ?? true,
+        autoRenew: editingTenant.agreement?.autoRenew ?? false,
+        monthlyRent: editingTenant.financials?.monthlyRent || 8000,
+        securityDeposit: editingTenant.financials?.securityDeposit || 10000,
+        securityDepositPaid: editingTenant.financials?.securityDepositPaid || false,
+        securityDepositPaidDate: editingTenant.financials?.securityDepositPaidDate?.split("T")[0] || "",
+        maintenanceCharges: editingTenant.financials?.maintenanceCharges || 500,
+        rentDueDay: editingTenant.financials?.rentDueDay || 5,
+        lateFeePerDay: editingTenant.financials?.lateFeePerDay || 50,
+        gracePeriodDays: editingTenant.financials?.gracePeriodDays || 3,
+        emergencyContactName: editingTenant.tenantInfo?.emergencyContact?.name || "",
+        emergencyContactPhone: editingTenant.tenantInfo?.emergencyContact?.phone || "",
+        emergencyContactRelation: editingTenant.tenantInfo?.emergencyContact?.relation || "Father",
+        idProofType: editingTenant.tenantInfo?.idProof?.type || "Aadhaar",
+        idProofNumber: editingTenant.tenantInfo?.idProof?.number || "",
+        policeVerificationDone: editingTenant.tenantInfo?.policeVerification?.done || false,
+        policeVerificationDate: editingTenant.tenantInfo?.policeVerification?.verifiedOn?.split("T")[0] || "",
+        employmentType: editingTenant.tenantInfo?.employmentDetails?.type || "Student",
+        companyName: editingTenant.tenantInfo?.employmentDetails?.companyName || "",
+        designation: editingTenant.tenantInfo?.employmentDetails?.designation || "",
       });
     }
   }, [editingTenant]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    let newValue = value;
+    const { name, value, type, checked } = e.target;
+    let newValue = type === "checkbox" ? checked : value;
 
-    if (name === "aadhaar") {
-      newValue = value.replace(/\D/g, "").slice(0, 12);
-    }
-
-    if (["mobile", "fatherMobile", "motherMobile"].includes(name)) {
+    // Phone validation
+    if (["phone", "emergencyContactPhone"].includes(name)) {
       newValue = value.replace(/\D/g, "").slice(0, 10);
     }
 
-    setFormData((prev) => ({ ...prev, [name]: newValue }));
-    setFieldErrors((prev) => ({ ...prev, [name]: "" }));
-  };
-
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        toast.error("Image size must be less than 2MB");
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prev) => ({ ...prev, photo: reader.result }));
-      };
-      reader.readAsDataURL(file);
+    // Reset dependent fields when parent changes
+    if (name === "propertyId") {
+      setFormData((prev) => ({ 
+        ...prev, 
+        [name]: newValue,
+        roomId: "",
+        bedNumber: 1
+      }));
+    } else if (name === "roomId") {
+      setFormData((prev) => ({ 
+        ...prev, 
+        [name]: newValue,
+        bedNumber: 1
+      }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: newValue }));
     }
-  };
-
-  const handleRemoveImage = () => {
-    setFormData((prev) => ({ ...prev, photo: null }));
+    
+    setFieldErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const validateCurrentStep = () => {
     const errors = {};
 
     if (step === 1) {
-      if (!formData.name.trim() || formData.name.trim().split(/\s+/).length < 2)
-        errors.name = "Enter full name";
-      if (!formData.email || !/^[^\s@]+@gmail\.com$/i.test(formData.email))
-        errors.email = "Valid Gmail required";
-      if (!formData.mobile || formData.mobile.length !== 10)
-        errors.mobile = "10-digit mobile required";
-      if (!formData.aadhaar || formData.aadhaar.length !== 12)
-        errors.aadhaar = "12-digit Aadhaar required";
-      if (!formData.photo) errors.photo = "Photo is required";
+      if (!formData.name.trim()) errors.name = "Name is required";
+      if (!formData.phone || formData.phone.length !== 10)
+        errors.phone = "10-digit mobile required";
+    }
+
+    if (step === 2) {
+      if (!formData.propertyId) errors.propertyId = "Property is required";
+      if (!formData.roomId) errors.roomId = "Room is required";
+      if (!formData.startDate) errors.startDate = "Start date is required";
+    }
+
+    if (step === 3) {
+      if (!formData.monthlyRent || formData.monthlyRent <= 0)
+        errors.monthlyRent = "Monthly rent is required";
+      if (!formData.securityDeposit || formData.securityDeposit <= 0)
+        errors.securityDeposit = "Security deposit is required";
     }
 
     setFieldErrors(errors);
@@ -241,31 +366,80 @@ const TenantForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateCurrentStep()) {
+      toast.error("Please fill all required fields correctly");
+      return;
+    }
+
+    // Validate that we have real room ID
+    if (!formData.roomId) {
+      toast.error("Please select a valid room");
+      return;
+    }
+
     setIsLoading(true);
 
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token") || localStorage.getItem("usertoken");
     if (!token) {
       toast.error("Please login again");
       setIsLoading(false);
       return;
     }
 
+    // Build payload according to API format
     const payload = {
-      ...formData,
-      aadhaar: formData.aadhaar,
-      noticePeriod: Number(formData.noticePeriod) || 0,
-      agreementPeriod: Number(formData.agreementPeriod) || 0,
-      rentOnDate: Number(formData.rentOnDate) || 0,
-      electricityPerUnit: Number(formData.electricityPerUnit) || 0,
-      initialReading: Number(formData.initialReading) || 0,
-      finalReading: formData.finalReading ? Number(formData.finalReading) : null,
-      openingBalanceAmount: Number(formData.openingBalanceAmount) || 0,
+      propertyId: formData.propertyId,
+      roomId: formData.roomId,
+      bedNumber: Number(formData.bedNumber),
+      tenantInfo: {
+        name: formData.name,
+        phone: formData.phone,
+        emergencyContact: {
+          name: formData.emergencyContactName,
+          phone: formData.emergencyContactPhone,
+          relation: formData.emergencyContactRelation,
+        },
+        idProof: {
+          type: formData.idProofType,
+          number: formData.idProofNumber,
+        },
+        policeVerification: {
+          done: formData.policeVerificationDone,
+          verifiedOn: formData.policeVerificationDate || undefined,
+        },
+        employmentDetails: {
+          type: formData.employmentType,
+          companyName: formData.companyName || undefined,
+          designation: formData.designation || undefined,
+        },
+      },
+      agreement: {
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        durationMonths: Number(formData.durationMonths),
+        renewalOption: formData.renewalOption,
+        autoRenew: formData.autoRenew,
+      },
+      financials: {
+        monthlyRent: Number(formData.monthlyRent),
+        securityDeposit: Number(formData.securityDeposit),
+        securityDepositPaid: formData.securityDepositPaid,
+        securityDepositPaidDate: formData.securityDepositPaidDate || undefined,
+        maintenanceCharges: Number(formData.maintenanceCharges),
+        rentDueDay: Number(formData.rentDueDay),
+        lateFeePerDay: Number(formData.lateFeePerDay),
+        gracePeriodDays: Number(formData.gracePeriodDays),
+      },
     };
+
+    console.log("Submitting payload:", payload); // Debug log
 
     try {
       const response = await axios({
         method: isEdit ? "PUT" : "POST",
-        url: `https://api.gharzoreality.com/api/landlord/tenant${isEdit ? `/${editingTenant.id}` : ""}`,
+        url: isEdit
+          ? `https://api.gharzoreality.com/api/tenancies/${editingTenant._id}`
+          : "https://api.gharzoreality.com/api/tenancies/create",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -273,158 +447,202 @@ const TenantForm = () => {
         data: payload,
       });
 
-      // Reserve bed only on new tenant
-      if (!isEdit && formData.propertyId && formData.roomId && formData.bedId) {
-        await axios.put(
-          `https://api.gharzoreality.com/api/landlord/properties/${formData.propertyId}/rooms/${formData.roomId}/beds/${formData.bedId}/status`,
-          { status: "Reserved" },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-      }
-
-      toast.success(response.data.message || `Tenant ${isEdit ? "updated" : "added"} successfully!`);
-      setTimeout(() => navigate("/landlord/tenant-list"), 1500);
+      toast.success(
+        response.data.message ||
+          `Tenant ${isEdit ? "updated" : "created"} successfully!`
+      );
+      setTimeout(() => navigate("/landlord/tenant-form"), 1500);
     } catch (error) {
-      toast.error(error.response?.data?.message || "Submission failed");
+      console.error("Submission error:", error.response?.data || error);
+      toast.error(
+        error.response?.data?.message || "Submission failed. Please check if the room exists in the system."
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
+  const stepLabels = ["Tenant Info", "Property & Agreement", "Financials", "Additional Details"];
+  const totalSteps = 4;
+
   return (
-    <div
-      className="min-h-screen py-8 px-4 text-gray-100"
-      style={{
-        background: `radial-gradient(circle at center bottom, rgba(245, 124, 0, 0.35), transparent 60%), linear-gradient(rgb(7, 26, 47) 0%, rgb(13, 47, 82) 45%, rgb(18, 62, 107) 75%, rgb(11, 42, 74) 100%)`,
-      }}
-    >
-      <ToastContainer theme="dark" position="top-right" autoClose={3000} />
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-orange-50 py-8 px-4">
+      <ToastContainer position="top-right" autoClose={3000} />
 
       <div className="max-w-5xl mx-auto">
         <motion.div
-          className="bg-white/10 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/20 overflow-hidden"
+          className="bg-white rounded-3xl shadow-2xl border-2 border-gray-100 overflow-hidden"
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7 }}
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-orange-600/80 to-orange-500/80 backdrop-blur-md text-white py-8 text-center">
-            <h2 className="text-4xl font-extrabold drop-shadow-lg">
-              {isEdit ? "Update Tenant" : "Add New Tenant"}
+          <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white py-8 px-8">
+            <h2 className="text-4xl font-extrabold drop-shadow-lg mb-2">
+              {isEdit ? "Update Tenancy" : "Create New Tenancy"}
             </h2>
-            <p className="mt-2 text-gray-200">Complete the form step by step</p>
+            <p className="text-orange-100">Complete the form step by step</p>
           </div>
 
           <div className="p-8 md:p-12">
             {/* Progress Bar */}
-            <div className="flex items-center justify-between mb-12">
-              {["Personal Info", "Family & Address", "Property & Rental", "Electricity & Balance"].map((label, i) => (
-                <div key={i} className="flex items-center w-full">
-                  <div
-                    className={`w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg transition-all ${
-                      step > i + 1
-                        ? "bg-orange-500"
-                        : step === i + 1
-                        ? "bg-orange-600 ring-8 ring-orange-400/40 scale-110"
-                        : "bg-white/20"
-                    }`}
-                  >
-                    {i + 1}
+            <div className="mb-12">
+              <div className="flex items-center justify-between mb-4">
+                {stepLabels.map((label, i) => (
+                  <div key={i} className="flex items-center flex-1">
+                    <div className="flex flex-col items-center flex-1">
+                      <div
+                        className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold shadow-lg transition-all ${
+                          step > i + 1
+                            ? "bg-green-500"
+                            : step === i + 1
+                            ? "bg-orange-500 ring-4 ring-orange-200 scale-110"
+                            : "bg-gray-300"
+                        }`}
+                      >
+                        {step > i + 1 ? (
+                          <FaCheckCircle className="text-xl" />
+                        ) : (
+                          i + 1
+                        )}
+                      </div>
+                      <p
+                        className={`text-xs mt-2 font-medium ${
+                          step === i + 1
+                            ? "text-orange-600"
+                            : "text-gray-600"
+                        }`}
+                      >
+                        {label}
+                      </p>
+                    </div>
+                    {i < totalSteps - 1 && (
+                      <div
+                        className={`flex-1 h-1 mx-2 rounded-full transition-all ${
+                          step > i + 1 ? "bg-green-500" : "bg-gray-300"
+                        }`}
+                      />
+                    )}
                   </div>
-                  {i < 3 && (
-                    <div
-                      className={`flex-1 h-2 mx-4 rounded-full transition-all ${
-                        step > i + 1 ? "bg-orange-500" : "bg-white/20"
-                      }`}
-                    />
-                  )}
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
 
-            <div className="text-center text-orange-300 font-semibold text-xl mb-10">
-              Step {step}: {["Personal Info", "Family & Address", "Property & Rental", "Electricity & Balance"][step - 1]}
+            <div className="text-center text-orange-600 font-semibold text-xl mb-10">
+              Step {step}: {stepLabels[step - 1]}
             </div>
 
             <form onSubmit={handleSubmit}>
-              {/* Step 1: Personal Info */}
-              {step === 1 && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <Input label="Name *" name="name" value={formData.name} onChange={handleChange} error={fieldErrors.name} />
-                  <Input label="Email *" name="email" type="email" value={formData.email} onChange={handleChange} error={fieldErrors.email} />
-                  <MobileInput label="Mobile *" name="mobile" value={formData.mobile} onChange={handleChange} error={fieldErrors.mobile} />
-                  <Input label="Aadhaar Number *" name="aadhaar" value={formData.aadhaar} onChange={handleChange} maxLength={12} placeholder="12-digit Aadhaar" error={fieldErrors.aadhaar} />
-                  <Input label="Date of Birth *" name="dob" type="date" value={formData.dob} onChange={handleChange} max={today} />
-                  <Input label="Occupation *" name="work" value={formData.work} onChange={handleChange} />
-                  <Select
-                    label="Marital Status *"
-                    name="maritalStatus"
-                    value={formData.maritalStatus}
-                    onChange={handleChange}
-                    options={[
-                      { value: "Unmarried", label: "Unmarried" },
-                      { value: "Married", label: "Married" },
-                      { value: "Other", label: "Other" },
-                    ]}
-                  />
-
-                  <div className="md:col-span-2">
-                    <label className="block text-lg font-medium text-gray-200 mb-3">Tenant Photo *</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="block w-full text-sm text-gray-300 file:mr-6 file:py-3 file:px-8 file:rounded-xl file:border-0 file:bg-orange-600/80 file:text-white hover:file:bg-orange-500 cursor-pointer backdrop-blur-sm"
-                    />
-                    {formData.photo && (
-                      <div className="mt-6 relative inline-block">
-                        <img src={formData.photo} alt="Preview" className="w-40 h-40 object-cover rounded-2xl shadow-2xl border-4 border-white/30" />
-                        <button
-                          type="button"
-                          onClick={handleRemoveImage}
-                          className="absolute -top-3 -right-3 bg-red-600/80 text-white rounded-full p-3 shadow-lg hover:bg-red-500 transition backdrop-blur-sm"
-                        >
-                          <FaTimesCircle className="text-xl" />
-                        </button>
-                      </div>
-                    )}
-                    {fieldErrors.photo && <p className="text-red-400 text-sm mt-2">{fieldErrors.photo}</p>}
-                  </div>
-                </div>
-              )}
-
-              {/* Step 2: Family & Address */}
-              {step === 2 && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <Input label="Father's Name *" name="fatherName" value={formData.fatherName} onChange={handleChange} />
-                  <MobileInput label="Father's Mobile *" name="fatherMobile" value={formData.fatherMobile} onChange={handleChange} />
-                  <Input label="Mother's Name *" name="motherName" value={formData.motherName} onChange={handleChange} />
-                  <MobileInput label="Mother's Mobile *" name="motherMobile" value={formData.motherMobile} onChange={handleChange} />
-
-                  <div className="md:col-span-2">
-                    <label className="block text-lg font-medium text-gray-200 mb-3">Permanent Address *</label>
-                    <textarea
-                      name="permanentAddress"
-                      value={formData.permanentAddress}
+              <AnimatePresence mode="wait">
+                {/* Step 1: Tenant Info */}
+                {step === 1 && (
+                  <motion.div
+                    key="step1"
+                    initial={{ opacity: 0, x: 50 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -50 }}
+                    className="grid grid-cols-1 md:grid-cols-2 gap-6"
+                  >
+                    <Input
+                      label="Tenant Name *"
+                      name="name"
+                      value={formData.name}
                       onChange={handleChange}
-                      rows={5}
-                      className="w-full px-6 py-4 bg-white/10 backdrop-blur-md border border-white/30 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-orange-400/50 transition resize-none"
-                      placeholder="Enter full permanent address"
+                      error={fieldErrors.name}
+                      icon={<FaUser />}
+                      placeholder="Full name"
                     />
-                  </div>
-                </div>
-              )}
+                    <MobileInput
+                      label="Mobile Number *"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      error={fieldErrors.phone}
+                      placeholder="10-digit mobile"
+                    />
+                    <Input
+                      label="Emergency Contact Name *"
+                      name="emergencyContactName"
+                      value={formData.emergencyContactName}
+                      onChange={handleChange}
+                      icon={<FaUserFriends />}
+                      placeholder="Contact person name"
+                    />
+                    <MobileInput
+                      label="Emergency Contact Phone *"
+                      name="emergencyContactPhone"
+                      value={formData.emergencyContactPhone}
+                      onChange={handleChange}
+                      placeholder="10-digit mobile"
+                    />
+                    <Select
+                      label="Emergency Contact Relation *"
+                      name="emergencyContactRelation"
+                      value={formData.emergencyContactRelation}
+                      onChange={handleChange}
+                      options={[
+                        { value: "Father", label: "Father" },
+                        { value: "Mother", label: "Mother" },
+                        { value: "Spouse", label: "Spouse" },
+                        { value: "Sibling", label: "Sibling" },
+                        { value: "Other", label: "Other" },
+                      ]}
+                    />
+                    <Select
+                      label="Employment Type *"
+                      name="employmentType"
+                      value={formData.employmentType}
+                      onChange={handleChange}
+                      options={[
+                        { value: "Student", label: "Student" },
+                        { value: "Working Professional", label: "Working Professional" },
+                        { value: "Business", label: "Business" },
+                        { value: "Retired", label: "Retired" },
+                        { value: "Other", label: "Other" },
+                      ]}
+                    />
+                    {formData.employmentType === "Working Professional" && (
+                      <>
+                        <Input
+                          label="Company Name"
+                          name="companyName"
+                          value={formData.companyName}
+                          onChange={handleChange}
+                          icon={<FaBriefcase />}
+                          placeholder="Company name"
+                        />
+                        <Input
+                          label="Designation"
+                          name="designation"
+                          value={formData.designation}
+                          onChange={handleChange}
+                          icon={<FaBriefcase />}
+                          placeholder="Job title"
+                        />
+                      </>
+                    )}
+                  </motion.div>
+                )}
 
-              {/* Step 3: Property & Rental Terms */}
-              {step === 3 && (
-                <div className="space-y-10">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {/* Step 2: Property & Agreement */}
+                {step === 2 && (
+                  <motion.div
+                    key="step2"
+                    initial={{ opacity: 0, x: 50 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -50 }}
+                    className="grid grid-cols-1 md:grid-cols-2 gap-6"
+                  >
                     <Select
                       label="Property *"
                       name="propertyId"
                       value={formData.propertyId}
                       onChange={handleChange}
-                      options={properties.map((p) => ({ value: p._id, label: p.name || p.propertyName || p._id }))}
+                      error={fieldErrors.propertyId}
+                      options={properties.map((p) => ({
+                        value: p._id,
+                        label: `${p.title} - ${p.location}`,
+                      }))}
                       disabled={properties.length === 0}
                     />
                     <Select
@@ -432,130 +650,274 @@ const TenantForm = () => {
                       name="roomId"
                       value={formData.roomId}
                       onChange={handleChange}
-                      options={availableRooms.map((r) => ({ value: r.roomId, label: r.name || r.roomId }))}
-                      disabled={!formData.propertyId || availableRooms.length === 0}
+                      error={fieldErrors.roomId}
+                      options={availableRooms.map((r) => ({
+                        value: r._id,
+                        label: r.label || `Room ${r.roomNumber}`,
+                      }))}
+                      disabled={!formData.propertyId || availableRooms.length === 0 || loadingRooms}
+                      loading={loadingRooms}
                     />
                     <Select
-                      label="Bed *"
-                      name="bedId"
-                      value={formData.bedId}
+                      label="Bed Number *"
+                      name="bedNumber"
+                      value={formData.bedNumber.toString()}
+                      onChange={(e) => {
+                        handleChange({
+                          ...e,
+                          target: {
+                            ...e.target,
+                            value: parseInt(e.target.value)
+                          }
+                        });
+                      }}
+                      options={availableBeds.map((b) => ({
+                        value: b.bedNumber.toString(),
+                        label: `Bed ${b.bedNumber}`,
+                      }))}
+                      disabled={!formData.roomId || availableBeds.length === 0 || loadingBeds}
+                      icon={<FaBed />}
+                      loading={loadingBeds}
+                    />
+                    <Input
+                      label="Start Date *"
+                      name="startDate"
+                      type="date"
+                      value={formData.startDate}
                       onChange={handleChange}
-                      options={availableBeds.length > 0 
-                        ? availableBeds.map((b) => ({ value: b.bedId, label: b.name || b.bedId }))
-                        : []
-                      }
-                      disabled={!formData.roomId || availableBeds.length === 0}
+                      error={fieldErrors.startDate}
+                      min={today}
+                      icon={<FaCalendar />}
                     />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <Input label="Move-in Date *" name="moveInDate" type="date" value={formData.moveInDate} onChange={handleChange} min={today} />
-                    <Input label="Notice Period (days) *" name="noticePeriod" type="number" value={formData.noticePeriod} onChange={handleChange} />
-                    <Input label="Agreement Period *" name="agreementPeriod" type="number" value={formData.agreementPeriod} onChange={handleChange} />
-                    <Select 
-                      label="Period Type *" 
-                      name="agreementPeriodType" 
-                      value={formData.agreementPeriodType} 
-                      onChange={handleChange} 
-                      options={[
-                        { value: "months", label: "Months" },
-                        { value: "years", label: "Years" }
-                      ]} 
-                    />
-                    <Input label="Rent Due Date (1-31) *" name="rentOnDate" type="number" min="1" max="31" value={formData.rentOnDate} onChange={handleChange} />
-                    <Select 
-                      label="Rent Date Option *" 
-                      name="rentDateOption" 
-                      value={formData.rentDateOption} 
-                      onChange={handleChange} 
-                      options={[
-                        { value: "fixed", label: "Fixed" },
-                        { value: "joining", label: "Joining" },
-                        { value: "month_end", label: "Month End" }
-                      ]} 
-                    />
-                    <Select 
-                      label="Rental Frequency *" 
-                      name="rentalFrequency" 
-                      value={formData.rentalFrequency} 
-                      onChange={handleChange} 
-                      options={[
-                        { value: "Monthly", label: "Monthly" },
-                        { value: "Quarterly", label: "Quarterly" },
-                        { value: "Half-Yearly", label: "Half-Yearly" },
-                        { value: "Yearly", label: "Yearly" }
-                      ]} 
-                    />
-                    <Input label="Referred By *" name="referredBy" value={formData.referredBy} onChange={handleChange} />
-                    <Input label="Booked By *" name="bookedBy" value={formData.bookedBy} onChange={handleChange} />
-                  </div>
-
-                  <div>
-                    <label className="block text-lg font-medium text-gray-200 mb-3">Remarks *</label>
-                    <textarea
-                      name="remarks"
-                      value={formData.remarks}
+                    <Input
+                      label="Duration (months) *"
+                      name="durationMonths"
+                      type="number"
+                      value={formData.durationMonths}
                       onChange={handleChange}
-                      rows={4}
-                      className="w-full px-6 py-4 bg-white/10 backdrop-blur-md border border-white/30 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-orange-400/50 transition resize-none"
+                      min="1"
+                      icon={<FaCalendar />}
                     />
-                  </div>
-                </div>
-              )}
-
-              {/* Step 4: Electricity & Opening Balance */}
-              {step === 4 && (
-                <div className="space-y-12">
-                  <div>
-                    <h3 className="text-2xl font-bold text-orange-300 mb-6">Electricity Details</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <Input label="Per Unit Rate (₹) *" name="electricityPerUnit" type="number" value={formData.electricityPerUnit} onChange={handleChange} />
-                      <Input label="Initial Reading *" name="initialReading" type="number" value={formData.initialReading} onChange={handleChange} />
-                      <Input label="Initial Reading Date *" name="initialReadingDate" type="date" value={formData.initialReadingDate} onChange={handleChange} min={today} />
-                      <Input label="Final Reading" name="finalReading" type="number" value={formData.finalReading} onChange={handleChange} disabled={isEdit} />
-                      <Input label="Final Reading Date" name="finalReadingDate" type="date" value={formData.finalReadingDate} onChange={handleChange} disabled={isEdit} />
-                      <div className="md:col-span-2">
-                        <label className="block text-lg font-medium text-gray-200 mb-3">Electricity Due Description *</label>
-                        <textarea
-                          name="electricityDueDescription"
-                          value={formData.electricityDueDescription}
+                    <Input
+                      label="End Date"
+                      name="endDate"
+                      type="date"
+                      value={formData.endDate}
+                      readOnly
+                      icon={<FaCalendar />}
+                      disabled
+                    />
+                    <div className="flex items-center gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          name="renewalOption"
+                          checked={formData.renewalOption}
                           onChange={handleChange}
-                          rows={4}
-                          className="w-full px-6 py-4 bg-white/10 backdrop-blur-md border border-white/30 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-orange-400/50 transition resize-none"
-                          disabled={isEdit}
+                          className="w-5 h-5 text-orange-500 rounded focus:ring-orange-400"
                         />
+                        <span className="text-gray-700 font-medium">Renewal Option</span>
+                      </label>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          name="autoRenew"
+                          checked={formData.autoRenew}
+                          onChange={handleChange}
+                          className="w-5 h-5 text-orange-500 rounded focus:ring-orange-400"
+                        />
+                        <span className="text-gray-700 font-medium">Auto Renew</span>
+                      </label>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Step 3: Financials */}
+                {step === 3 && (
+                  <motion.div
+                    key="step3"
+                    initial={{ opacity: 0, x: 50 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -50 }}
+                    className="grid grid-cols-1 md:grid-cols-2 gap-6"
+                  >
+                    <Input
+                      label="Monthly Rent (₹) *"
+                      name="monthlyRent"
+                      type="number"
+                      value={formData.monthlyRent}
+                      onChange={handleChange}
+                      error={fieldErrors.monthlyRent}
+                      min="0"
+                      icon={<FaMoneyBillWave />}
+                    />
+                    <Input
+                      label="Security Deposit (₹) *"
+                      name="securityDeposit"
+                      type="number"
+                      value={formData.securityDeposit}
+                      onChange={handleChange}
+                      error={fieldErrors.securityDeposit}
+                      min="0"
+                      icon={<FaMoneyBillWave />}
+                    />
+                    <Input
+                      label="Maintenance Charges (₹)"
+                      name="maintenanceCharges"
+                      type="number"
+                      value={formData.maintenanceCharges}
+                      onChange={handleChange}
+                      min="0"
+                      icon={<FaMoneyBillWave />}
+                    />
+                    <Input
+                      label="Rent Due Day (1-31)"
+                      name="rentDueDay"
+                      type="number"
+                      value={formData.rentDueDay}
+                      onChange={handleChange}
+                      min="1"
+                      max="31"
+                      icon={<FaCalendar />}
+                    />
+                    <Input
+                      label="Late Fee per Day (₹)"
+                      name="lateFeePerDay"
+                      type="number"
+                      value={formData.lateFeePerDay}
+                      onChange={handleChange}
+                      min="0"
+                      icon={<FaMoneyBillWave />}
+                    />
+                    <Input
+                      label="Grace Period (days)"
+                      name="gracePeriodDays"
+                      type="number"
+                      value={formData.gracePeriodDays}
+                      onChange={handleChange}
+                      min="0"
+                      icon={<FaCalendar />}
+                    />
+                    <div className="flex items-center gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          name="securityDepositPaid"
+                          checked={formData.securityDepositPaid}
+                          onChange={handleChange}
+                          className="w-5 h-5 text-orange-500 rounded focus:ring-orange-400"
+                        />
+                        <span className="text-gray-700 font-medium">
+                          Security Deposit Paid
+                        </span>
+                      </label>
+                    </div>
+                    {formData.securityDepositPaid && (
+                      <Input
+                        label="Payment Date"
+                        name="securityDepositPaidDate"
+                        type="date"
+                        value={formData.securityDepositPaidDate}
+                        onChange={handleChange}
+                        max={today}
+                        icon={<FaCalendar />}
+                      />
+                    )}
+                  </motion.div>
+                )}
+
+                {/* Step 4: Additional Details */}
+                {step === 4 && (
+                  <motion.div
+                    key="step4"
+                    initial={{ opacity: 0, x: 50 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -50 }}
+                    className="grid grid-cols-1 md:grid-cols-2 gap-6"
+                  >
+                    <Select
+                      label="ID Proof Type"
+                      name="idProofType"
+                      value={formData.idProofType}
+                      onChange={handleChange}
+                      options={[
+                        { value: "Aadhaar", label: "Aadhaar" },
+                        { value: "PAN", label: "PAN Card" },
+                        { value: "Driving License", label: "Driving License" },
+                        { value: "Voter ID", label: "Voter ID" },
+                        { value: "Passport", label: "Passport" },
+                      ]}
+                    />
+                    <Input
+                      label="ID Proof Number"
+                      name="idProofNumber"
+                      value={formData.idProofNumber}
+                      onChange={handleChange}
+                      placeholder="Enter ID number"
+                    />
+                    <div className="flex items-center gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          name="policeVerificationDone"
+                          checked={formData.policeVerificationDone}
+                          onChange={handleChange}
+                          className="w-5 h-5 text-orange-500 rounded focus:ring-orange-400"
+                        />
+                        <span className="text-gray-700 font-medium">
+                          Police Verification Done
+                        </span>
+                      </label>
+                    </div>
+                    {formData.policeVerificationDone && (
+                      <Input
+                        label="Verification Date"
+                        name="policeVerificationDate"
+                        type="date"
+                        value={formData.policeVerificationDate}
+                        onChange={handleChange}
+                        max={today}
+                        icon={<FaCalendar />}
+                      />
+                    )}
+
+                    <div className="md:col-span-2 bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
+                      <div className="flex items-start gap-3">
+                        <FaInfoCircle className="w-6 h-6 text-blue-600 mt-1" />
+                        <div>
+                          <h3 className="font-bold text-blue-900 mb-2">
+                            Important Note
+                          </h3>
+                          <p className="text-blue-800 text-sm">
+                            After submission, this tenancy will be in "Pending-Approval" status.
+                            You'll need to approve it from the tenancy details page to activate it.
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-2xl font-bold text-orange-300 mb-6">Opening Balance</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                      <Input label="Start Date *" name="openingBalanceStartDate" type="date" value={formData.openingBalanceStartDate} onChange={handleChange} min={today} />
-                      <Input label="End Date *" name="openingBalanceEndDate" type="date" value={formData.openingBalanceEndDate} onChange={handleChange} min={today} />
-                      <Input label="Amount (₹) *" name="openingBalanceAmount" type="number" value={formData.openingBalanceAmount} onChange={handleChange} />
-                    </div>
-                  </div>
-                </div>
-              )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Navigation Buttons */}
-              <div className="flex justify-between mt-16">
+              <div className="flex justify-between mt-12 pt-8 border-t border-gray-200">
                 {step > 1 && (
                   <button
                     type="button"
                     onClick={prevStep}
-                    className="px-10 py-4 bg-white/10 backdrop-blur-md text-gray-300 font-semibold rounded-2xl border border-white/30 hover:bg-white/20 transition shadow-lg"
+                    className="px-8 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-xl transition shadow-md"
                   >
-                    ← Back
+                    ← Previous
                   </button>
                 )}
 
-                {step < 4 ? (
+                {step < totalSteps ? (
                   <button
                     type="button"
                     onClick={nextStep}
-                    className="ml-auto px-10 py-4 bg-orange-600/80 text-white font-semibold rounded-2xl hover:bg-orange-500 transition shadow-lg"
+                    className="ml-auto px-8 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl transition shadow-md"
                   >
                     Next →
                   </button>
@@ -563,10 +925,10 @@ const TenantForm = () => {
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="ml-auto px-12 py-4 bg-orange-600/80 text-white font-bold text-lg rounded-2xl hover:bg-orange-500 disabled:opacity-60 disabled:cursor-not-allowed transition shadow-2xl flex items-center gap-3"
+                    className="ml-auto px-12 py-4 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold text-lg rounded-xl disabled:opacity-60 disabled:cursor-not-allowed transition shadow-2xl flex items-center gap-3"
                   >
                     {isLoading && <FaSpinner className="animate-spin text-2xl" />}
-                    {isEdit ? "Update Tenant" : "Submit Tenant"}
+                    {isEdit ? "Update Tenancy" : "Create Tenancy"}
                   </button>
                 )}
               </div>
@@ -578,56 +940,88 @@ const TenantForm = () => {
   );
 };
 
-// Reusable Components (Glassmorphism Style)
-const Input = ({ label, error, ...props }) => (
+// Reusable Components
+const Input = ({ label, error, icon, ...props }) => (
   <div>
-    <label className="block text-lg font-medium text-gray-200 mb-3">{label}</label>
-    <input
-      {...props}
-      className={`w-full px-6 py-4 bg-white/10 backdrop-blur-md border ${
-        error ? "border-red-500/70" : "border-white/30"
-      } rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-orange-400/50 transition`}
-    />
-    {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
+    <label className="block text-sm font-semibold text-gray-700 mb-2">
+      {label}
+    </label>
+    <div className="relative">
+      {icon && (
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+          {icon}
+        </div>
+      )}
+      <input
+        {...props}
+        className={`w-full ${
+          icon ? "pl-12" : "pl-4"
+        } pr-4 py-3 bg-white border-2 ${
+          error ? "border-red-400" : "border-gray-300"
+        } rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-orange-400 transition`}
+      />
+    </div>
+    {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
   </div>
 );
 
 const MobileInput = ({ label, error, ...props }) => (
   <div>
-    <label className="block text-lg font-medium text-gray-200 mb-3">{label}</label>
+    <label className="block text-sm font-semibold text-gray-700 mb-2">
+      {label}
+    </label>
     <div className="flex">
-      <span className="inline-flex items-center px-6 text-gray-300 bg-white/10 backdrop-blur-md border border-r-0 border-white/30 rounded-l-2xl">+91</span>
+      <span className="inline-flex items-center px-4 text-gray-700 bg-gray-100 border-2 border-r-0 border-gray-300 rounded-l-xl font-medium">
+        +91
+      </span>
       <input
         {...props}
         maxLength={10}
-        className={`flex-1 px-6 py-4 bg-white/10 backdrop-blur-md border rounded-r-2xl focus:outline-none focus:ring-4 focus:ring-orange-400/50 ${
-          error ? "border-red-500/70" : "border-white/30"
-        }`}
+        className={`flex-1 px-4 py-3 bg-white border-2 ${
+          error ? "border-red-400" : "border-gray-300"
+        } rounded-r-xl focus:outline-none focus:border-orange-400 transition`}
       />
     </div>
-    {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
+    {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
   </div>
 );
 
-const Select = ({ label, options = [], disabled = false, ...props }) => (
+const Select = ({ label, options = [], disabled = false, error, loading = false, icon, ...props }) => (
   <div>
-    <label className="block text-lg font-medium text-gray-200 mb-3">{label}</label>
-    <select
-      {...props}
-      disabled={disabled}
-      className={`w-full px-6 py-4 bg-white/10 backdrop-blur-md border border-white/30 rounded-2xl text-white focus:outline-none focus:ring-4 focus:ring-orange-400/50 transition ${
-        disabled ? "opacity-60 cursor-not-allowed" : ""
-      }`}
-    >
-      <option value="" className="bg-gray-800">
-        {disabled ? "No options available" : `Select ${label.toLowerCase()}`}
-      </option>
-      {options.map((opt) => (
-        <option key={opt.value} value={opt.value} className="bg-gray-800">
-          {opt.label}
+    <label className="block text-sm font-semibold text-gray-700 mb-2">
+      {label}
+    </label>
+    <div className="relative">
+      {icon && (
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 z-10">
+          {icon}
+        </div>
+      )}
+      <select
+        {...props}
+        disabled={disabled || loading}
+        className={`w-full ${icon ? "pl-12" : "pl-4"} pr-4 py-3 bg-white border-2 ${
+          error ? "border-red-400" : "border-gray-300"
+        } rounded-xl text-gray-900 focus:outline-none focus:border-orange-400 transition ${
+          disabled || loading ? "opacity-60 cursor-not-allowed bg-gray-50" : ""
+        }`}
+      >
+        <option value="" className="text-gray-500">
+          {loading ? "Loading..." : disabled ? "No options available" : `Select ${label.toLowerCase()}`}
         </option>
-      ))}
-    </select>
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+      {loading && (
+        <div className="absolute right-4 top-1/2 -translate-y-1/2">
+          <FaSpinner className="animate-spin text-orange-500" />
+        </div>
+      )}
+    </div>
+    {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
   </div>
 );
 

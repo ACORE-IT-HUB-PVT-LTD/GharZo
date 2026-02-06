@@ -29,8 +29,8 @@ import TenantList from "../Components/LandLoard/Tenant/TenantList";
 import Reel from "../Components/User_Section/Reels/Reel";
 import TenantDetails from "../Components/LandLoard/Tenant/TenantDetails";
 import SubAdminDashboard from "../Components/LandLoard/SubAdmin/SubAdminDashboard";
-import SubAdminList from "../Components/LandLoard/SubAdmin/SubAdminList";
-import AddSubAdmin from "../Components/LandLoard/SubAdmin/AddSubAdmin";
+// import SubAdminList from "../Components/LandLoard/SubAdmin/SubAdminList";
+// import AddSubAdmin from "../Components/LandLoard/SubAdmin/AddSubAdmin";
 import SubscriptionPlans from "../Components/LandLoard/Subscription/SubscriptionPlans.jsx";
 
 const landlordMainRoutes = (
@@ -73,8 +73,8 @@ const landlordMainRoutes = (
 
 const subAdminRoutes = [
   <Route key="subadmin-dashboard" path="/landlord/subadmin" element={<SubAdminDashboard />} />,
-  <Route key="subadmin-list" path="/landlord/subadmin/list" element={<SubAdminList />} />,
-  <Route key="subadmin-add" path="/landlord/subadmin/add" element={<AddSubAdmin />} />,
+  // <Route key="subadmin-list" path="/landlord/subadmin/list" element={<SubAdminList />} />,
+  // <Route key="subadmin-add" path="/landlord/subadmin/add" element={<AddSubAdmin />} />,
   <Route key="subscription-plans" path="/landlord/subscription-plans" element={<SubscriptionPlans />} />
 ];
 

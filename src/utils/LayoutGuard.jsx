@@ -20,6 +20,12 @@ const LayoutGuard = ({
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
+  // Normalize role by removing underscores and spaces, then lowercase
+  const normalizeRole = (role) => {
+    if (!role) return '';
+    return role.toLowerCase().replace(/[_\s-]/g, '');
+  };
+
   // Still loading - show loading component or nothing
   if (loading) {
     return loadingComponent || <div className="flex items-center justify-center min-h-screen">Loading...</div>;
@@ -31,11 +37,11 @@ const LayoutGuard = ({
     return null;
   }
 
-  // Check role match
-  const userRole = user?.role?.toLowerCase?.();
-  const requiredRoleLower = requiredRole?.toLowerCase?.();
+  // Check role match with normalized comparison
+  const normalizedUserRole = normalizeRole(user?.role);
+  const normalizedRequiredRole = normalizeRole(requiredRole);
 
-  if (requiredRoleLower && userRole !== requiredRoleLower) {
+  if (normalizedRequiredRole && normalizedUserRole !== normalizedRequiredRole) {
     navigate(fallbackPath, { replace: true });
     return null;
   }

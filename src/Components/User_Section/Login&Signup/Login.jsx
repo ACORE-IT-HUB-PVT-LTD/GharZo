@@ -21,7 +21,7 @@ function Login({ onClose }) {
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [name, setName] = useState("");
-  const [role, setRole] = useState("tenant");
+  const [role, setRole] = useState("buyer");
   const [otpSent, setOtpSent] = useState(false);
   const [isNewUser, setIsNewUser] = useState(false);
   const [resendAttempts, setResendAttempts] = useState(0);
@@ -35,13 +35,9 @@ function Login({ onClose }) {
 
   // Available roles for registration (enum provided)
   const roles = [
-    { value: "buyer", label: "Buyer" },
-    { value: "owner", label: "Owner" },
-    { value: "agent", label: "Agent" },
-    { value: "sub-admin", label: "Sub Admin" },
-    { value: "admin", label: "Admin" },
-    { value: "landlord", label: "Landlord" },
-    { value: "tenant", label: "Tenant" }
+    { value: "buyer", label: "Owner / Buyer" },
+    { value: "agent", label: "Broker" },
+    { value: "landlord", label: "PG Landlord" },
   ];
 
   useEffect(() => {
@@ -370,17 +366,6 @@ function Login({ onClose }) {
                   {!otpSent ? (
                     <>
                       New user?{" "}
-                      {/* <button
-                        onClick={() => {
-                          setIsNewUser(true);
-                          if (phone.length === 10) {
-                            handleSendOtp({ preventDefault: () => {} });
-                          }
-                        }}
-                        className="text-cyan-400 hover:text-cyan-300 font-semibold transition-colors"
-                      >
-                        Sign up here →
-                      </button> */}
                     </>
                   ) : isNewUser ? (
                     <span>Please provide your details to continue</span>
@@ -497,17 +482,22 @@ function Login({ onClose }) {
                         <label className="block text-sm font-medium text-slate-300 mb-2">
                           ROLE
                         </label>
-                        <select
-                          className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all duration-300"
-                          value={role}
-                          onChange={(e) => setRole(e.target.value)}
-                        >
+                        {/* TABS SECTION */}
+                        <div className="flex gap-2 bg-slate-800/30 p-1.5 rounded-xl border border-slate-700">
                           {roles.map((r) => (
-                            <option key={r.value} value={r.value}>
+                            <button
+                              key={r.value}
+                              onClick={() => setRole(r.value)}
+                              className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                                role === r.value
+                                  ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30"
+                                  : "bg-transparent text-slate-300 hover:text-white"
+                              }`}
+                            >
                               {r.label}
-                            </option>
+                            </button>
                           ))}
-                        </select>
+                        </div>
                       </div>
                     </motion.div>
                   )}

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import {
   FaUser,
   FaPhone,
@@ -10,6 +11,7 @@ import {
   FaIdBadge,
   FaCheckCircle,
   FaClock,
+  FaTachometerAlt,
 } from "react-icons/fa";
 import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
@@ -25,6 +27,7 @@ const ProfilePage = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [errors, setErrors] = useState({});
+  const navigate = useNavigate();
 
   const token = localStorage.getItem("usertoken");
 
@@ -184,6 +187,17 @@ const ProfilePage = () => {
     setErrors({});
   };
 
+  // Navigate to Dashboard
+  const handleViewDashboard = () => {
+    if (profile?.role === 'landlord') {
+      navigate('/landlord');
+    } else if (profile?.role === 'tenant') {
+      navigate('/tenant');
+    } else if (profile?.role === 'subowner') {
+      navigate('/sub_owner');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center p-4">
@@ -251,61 +265,77 @@ const ProfilePage = () => {
         transition={{ duration: 0.5 }}
         className="max-w-6xl mx-auto"
       >
-        {/* Header with Edit Toggle */}
+        {/* Header with Edit Toggle and Dashboard Button */}
         <div className="flex justify-between items-center mb-8 mt-9 ml-4">
           <div>
             <h1 className="text-4xl font-bold text-gray-800">My Profile</h1>
             <p className="text-gray-500 mt-1">Manage your personal information</p>
           </div>
           
-          {!editMode ? (
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleEdit}
-              className="flex items-center gap-2 px-6 py-3 bg-[#3B9DF8] text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-all"
-            >
-              <FaEdit />
-              Edit Profile
-            </motion.button>
-          ) : (
-            <div className="flex gap-3">
-              <motion.button
-                whileHover={{ scale: updating ? 1 : 1.05 }}
-                whileTap={{ scale: updating ? 1 : 0.95 }}
-                onClick={handleUpdate}
-                disabled={updating || Object.keys(errors).length > 0}
-                className={`flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-all ${
-                  (updating || Object.keys(errors).length > 0) ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
-              >
-                {updating ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <FaSave />
-                    Save
-                  </>
-                )}
-              </motion.button>
+          <div className="flex gap-3">
+            {/* View Dashboard Button - For Landlord, Tenant, and Subowner */}
+            {(profile?.role === 'landlord' || profile?.role === 'tenant' || profile?.role === 'subowner') && (
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={handleCancel}
-                disabled={updating}
-                className="flex items-center gap-2 px-6 py-3 bg-gray-200 text-gray-700 rounded-full font-semibold hover:bg-gray-300 transition-all"
+                onClick={handleViewDashboard}
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#002B5C] to-[#004080] text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-all"
               >
-                <FaTimes />
-                Cancel
+                <FaTachometerAlt />
+                View Dashboard
               </motion.button>
-            </div>
-          )}
+            )}
+
+            {/* Edit/Save/Cancel Buttons */}
+            {!editMode ? (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleEdit}
+                className="flex items-center gap-2 px-6 py-3 bg-[#3B9DF8] text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-all"
+              >
+                <FaEdit />
+                Edit Profile
+              </motion.button>
+            ) : (
+              <>
+                <motion.button
+                  whileHover={{ scale: updating ? 1 : 1.05 }}
+                  whileTap={{ scale: updating ? 1 : 0.95 }}
+                  onClick={handleUpdate}
+                  disabled={updating || Object.keys(errors).length > 0}
+                  className={`flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-all ${
+                    (updating || Object.keys(errors).length > 0) ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                >
+                  {updating ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <FaSave />
+                      Save
+                    </>
+                  )}
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleCancel}
+                  disabled={updating}
+                  className="flex items-center gap-2 px-6 py-3 bg-gray-200 text-gray-700 rounded-full font-semibold hover:bg-gray-300 transition-all"
+                >
+                  <FaTimes />
+                  Cancel
+                </motion.button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Main Content Card */}
@@ -526,15 +556,17 @@ const ProfilePage = () => {
           </div>
         </motion.div>
 
-        {/* ProfileTabs Component - hide tabs for tenant role (handled inside ProfileTabs) */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="mt-8"
-        >
-          <ProfileTabs role={profile?.role} />
-        </motion.div>
+        {/* ProfileTabs Component - hide tabs for tenant and subowner role */}
+        {profile?.role !== 'tenant' && profile?.role !== 'subowner' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="mt-8"
+          >
+            <ProfileTabs role={profile?.role} />
+          </motion.div>
+        )}
 
       </motion.div>
     </div>

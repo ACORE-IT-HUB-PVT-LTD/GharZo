@@ -5,7 +5,7 @@ import TenantProfile from "../Components/TenantSection/Profile/TenantProfile";
 import TenantSidebar from "../Components/TenantSection/TenantSidebar.jsx";
 import TenantProperties from "../Components/TenantSection/Property/AllProperty";
 import TenantPropertyDetails from "../Components/TenantSection/Property/PropertyDetails";
-import RentPayments from "../Components/TenantSection/Rent/RentPayments";
+import TenantNotice from "../Components/TenantSection/Rent/TenantNotice";
 import TenantPoliceVerification from "../Components/TenantSection/Docqments/TenantPoliceVerification.jsx";
 import Roomswitch from "../Components/TenantSection/Roomswitch/Roomswitch.jsx";
 import MyAgreement from "../Components/TenantSection/MyAgreement/MyAgreement.jsx";
@@ -35,7 +35,7 @@ export const tenantRoutes = (
     <Route path="properties" element={<TenantProperties />} />
     <Route path="properties/:id" element={<TenantPropertyDetails />} />
     {/* <Route path="rent-payments/:tenantId" element={<RentPayments />} /> */}
-    <Route path="rent-payments" element={<RentPayments />} />
+    <Route path="notice" element={<TenantNotice />} />
     <Route path="police-verification" element={<TenantPoliceVerification />} />
     <Route path="room-switch" element={<Roomswitch />} />
     <Route path="rent-agreement" element={<MyAgreement />} />

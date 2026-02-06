@@ -6,9 +6,11 @@ import {
   FaSearch, FaMapMarkerAlt, FaHome, FaBuilding, 
   FaWarehouse, FaTimes, FaUserAlt, FaUserTie, FaTools 
 } from "react-icons/fa";
+import { useAuth } from "../Context/AuthContext";
 
 const HeroSection = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   // States
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -111,7 +113,13 @@ const HeroSection = () => {
 
             {/* Highlighted Post Property Button - Mobile Optimized */}
             <button 
-              onClick={() => navigate('/add-listing')}
+              onClick={() => {
+                if (!user) {
+                  navigate('/login');
+                } else {
+                  navigate('/add-listing');
+                }
+              }}
               className="group relative bg-gradient-to-r from-orange-600 to-orange-600 hover:from-white/25 hover:to-orange-600 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full border border-white/30 transition-all shadow-lg hover:shadow-xl w-full sm:w-auto"
             >
               <span className="text-xs sm:text-sm font-bold text-white uppercase tracking-wide">

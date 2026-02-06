@@ -133,10 +133,10 @@ const TenantSidebar = ({ setSidebarWidth, tenantId }) => {
       gradient: "from-purple-400 to-pink-500",
     },
     {
-      name: "Rent Payments",
+      name: "Tenant Notice",
       path: tenantId
-        ? `/tenant/rent-payments/${tenantId}`
-        : "/tenant/rent-payments",
+        ? `/tenant/notice/${tenantId}`
+        : "/tenant/notice",
       icon: CreditCard,
       gradient: "from-green-400 to-teal-500",
     },

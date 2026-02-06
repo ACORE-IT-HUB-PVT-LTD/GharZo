@@ -262,7 +262,16 @@ const Sidebar = ({ propertyId, setSidebarWidth }) => {
                 <NavLink
                   to={to}
                   end={to === "/landlord"}
-                  onClick={handleNavLinkClick}
+                  onClick={(e) => {
+                    // If this is the SubOwner link, navigate directly to avoid unintended guard redirects
+                    if (to === "/landlord/landlord_subadmin") {
+                      e.preventDefault();
+                      navigate(to);
+                      handleNavLinkClick();
+                      return;
+                    }
+                    handleNavLinkClick();
+                  }}
                   className={({ isActive }) =>
                     `${linkClass} ${
                       isActive ? activeClass : ""
