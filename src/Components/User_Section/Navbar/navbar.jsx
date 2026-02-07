@@ -74,8 +74,8 @@ function Navbar() {
 
   const moreMenuItems = [
     { text: "My Visits", to: "/my-visits", icon: <Calendar size={18} />, protected: true },
-    { text: "Add Channel Partner", to: "/add-channel-partner", icon: <UserPlus size={18} />, protected: true },
-    { text: "Home Loan", to: "/home-loan", icon: <Landmark size={18} />, protected: true },
+    { text: "Add Channel Partner", to: "/add-channel-partner", icon: <UserPlus size={18} />, protected: false },
+    { text: "Home Loan", to: "/home-loan", icon: <Landmark size={18} />, protected: false },
     { text: "Franchise Request", to: "/franchise-request", icon: <Briefcase size={18} />, protected: false },
     // { text: "Login", to: "/login", icon: <User size={18} />, protected: false, hideIfAuth: true },
     // { text: "Sub Owner", to: "/sub-owner", icon: <Users size={18} />, protected: true },

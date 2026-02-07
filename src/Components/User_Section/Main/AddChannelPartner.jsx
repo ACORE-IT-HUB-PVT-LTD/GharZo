@@ -32,12 +32,7 @@ const ChannelPartnerPage = () => {
     lastName: '',
     phone: '',
     email: '',
-    company: '',
-    yearsInBusiness: '',
-    currentPortfolio: '',
-    teamSize: '',
-    operatingCities: '',
-    partnershipType: 'Standard'
+    company: ''
   });
 
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -63,11 +58,6 @@ const ChannelPartnerPage = () => {
     setIsSubmitting(true);
     try {
       const fullName = `${formData.firstName} ${formData.lastName}`.trim();
-      
-      // Parse operating cities from comma-separated string to array
-      const citiesArray = formData.operatingCities 
-        ? formData.operatingCities.split(',').map(city => city.trim()).filter(city => city)
-        : [];
 
       const requestBody = {
         contactInfo: {
@@ -79,12 +69,7 @@ const ChannelPartnerPage = () => {
           ? `Channel Partner Inquiry from ${formData.company}` 
           : 'Channel Partner Inquiry',
         channelPartnerDetails: {
-          companyName: formData.company || fullName,
-          yearsInBusiness: formData.yearsInBusiness ? parseInt(formData.yearsInBusiness) : 0,
-          currentPortfolio: formData.currentPortfolio ? parseInt(formData.currentPortfolio) : 0,
-          teamSize: formData.teamSize ? parseInt(formData.teamSize) : 0,
-          operatingCities: citiesArray,
-          partnershipType: formData.partnershipType || "Standard"
+          companyName: formData.company || fullName
         }
       };
 
@@ -110,12 +95,7 @@ const ChannelPartnerPage = () => {
             lastName: '',
             phone: '',
             email: '',
-            company: '',
-            yearsInBusiness: '',
-            currentPortfolio: '',
-            teamSize: '',
-            operatingCities: '',
-            partnershipType: 'Standard'
+            company: ''
           });
         }, 3000);
       } else {
@@ -394,102 +374,7 @@ const ChannelPartnerPage = () => {
                       </div>
                     </div>
 
-                    {/* Years in Business & Current Portfolio */}
-                    <div className="grid sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                          Years in business
-                        </label>
-                        <div className="relative">
-                          <FaBriefcase className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-900/50 text-sm" />
-                          <input
-                            type="number"
-                            name="yearsInBusiness"
-                            value={formData.yearsInBusiness}
-                            onChange={handleChange}
-                            min="0"
-                            className="w-full pl-10 pr-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition-all"
-                            placeholder="10"
-                          />
-                        </div>
-                      </div>
 
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                          Current portfolio
-                        </label>
-                        <div className="relative">
-                          <FaChartLine className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-900/50 text-sm" />
-                          <input
-                            type="number"
-                            name="currentPortfolio"
-                            value={formData.currentPortfolio}
-                            onChange={handleChange}
-                            min="0"
-                            className="w-full pl-10 pr-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition-all"
-                            placeholder="500"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Team Size */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                        Team size
-                      </label>
-                      <div className="relative">
-                        <FaUserFriends className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-900/50 text-sm" />
-                        <input
-                          type="number"
-                          name="teamSize"
-                          value={formData.teamSize}
-                          onChange={handleChange}
-                          min="0"
-                          className="w-full pl-10 pr-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition-all"
-                          placeholder="25"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Operating Cities */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                        Operating cities
-                      </label>
-                      <div className="relative">
-                        <FaMapMarkedAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-900/50 text-sm" />
-                        <input
-                          type="text"
-                          name="operatingCities"
-                          value={formData.operatingCities}
-                          onChange={handleChange}
-                          className="w-full pl-10 pr-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition-all"
-                          placeholder="Indore, Bhopal, Ujjain"
-                        />
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">Separate multiple cities with commas</p>
-                    </div>
-
-                    {/* Partnership Type */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                        Partnership type
-                      </label>
-                      <div className="relative">
-                        <FaHandshake className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-900/50 text-sm" />
-                        <select
-                          name="partnershipType"
-                          value={formData.partnershipType}
-                          onChange={handleChange}
-                          className="w-full pl-10 pr-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition-all appearance-none bg-white"
-                        >
-                          <option value="Standard">Standard</option>
-                          <option value="Exclusive">Exclusive</option>
-                          <option value="Premium">Premium</option>
-                        </select>
-                      </div>
-                    </div>
 
                     {/* Submit Button */}
                     <motion.button

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Phone, MapPin, IndianRupee, Loader, ChevronDown, CheckCircle, X } from 'lucide-react';
+import { Building2, Phone, MapPin, IndianRupee, Loader, ChevronDown, CheckCircle, X, Search } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 
 const API_BASE_URL = 'https://api.gharzoreality.com/api/v2';
@@ -16,6 +16,7 @@ export default function PropertyInquiryForm() {
   const [error, setError] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState(false);   // success banner flag
   const [dropdownOpen, setDropdownOpen] = useState(false);     // custom dropdown toggle
+  const [propertySearch, setPropertySearch] = useState('');   // search term for property dropdown
 
   const [formData, setFormData] = useState({
     enquiryType: '',
@@ -79,6 +80,18 @@ export default function PropertyInquiryForm() {
     if (amt >= 100000) return `${(amt / 100000).toFixed(1)} L`;
     return amt.toLocaleString('en-IN');
   };
+
+  // ─── Filter properties based on search ─────────────────────
+  const filteredProperties = propertiesList.filter((property) => {
+    const searchLower = propertySearch.toLowerCase();
+    return (
+      property.title?.toLowerCase().includes(searchLower) ||
+      property.location?.city?.toLowerCase().includes(searchLower) ||
+      property.location?.locality?.toLowerCase().includes(searchLower) ||
+      property.category?.toLowerCase().includes(searchLower) ||
+      property.listingType?.toLowerCase().includes(searchLower)
+    );
+  });
 
   // ─── Submit handler ────────────────────────────────────
   const handleSubmit = async () => {
@@ -292,58 +305,72 @@ export default function PropertyInquiryForm() {
 
                     {/* Dropdown list */}
                     {dropdownOpen && !loadingProperties && (
-                      <div className="absolute z-50 mt-1 w-full max-h-56 overflow-y-auto rounded-lg border border-white/20 bg-[#0c2344]/95 backdrop-blur-lg shadow-xl">
-                        {propertiesList.length === 0 ? (
-                          <div className="px-4 py-3 text-gray-400 text-sm text-center">No properties available</div>
-                        ) : (
-                          propertiesList.map((property) => {
-                            const isSelected = selectedProperty?._id === property._id;
-                            return (
-                              <div
-                                key={property._id}
-                                onClick={() => handlePropertySelect(property)}
-                                className={`px-4 py-3 cursor-pointer border-b border-white/10 last:border-0 transition-colors duration-150
-                                  ${isSelected ? 'bg-orange-500/15' : 'hover:bg-white/8'}`}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    {isSelected && <CheckCircle className="w-4 h-4 text-orange-400 flex-shrink-0" />}
-                                    <span className={`font-medium truncate ${isSelected ? 'text-orange-300' : 'text-white'}`}>
-                                      {property.title}
+                      <div className="absolute z-50 mt-1 w-full max-h-72 rounded-lg border border-white/20 bg-[#0c2344]/95 backdrop-blur-lg shadow-xl">
+                        {/* Search input */}
+                        <div className="p-2 border-b border-white/20 sticky top-0 bg-[#0c2344]/95">
+                          <input
+                            type="text"
+                            value={propertySearch}
+                            onChange={(e) => setPropertySearch(e.target.value)}
+                            placeholder="Search properties..."
+                            className="w-full px-3 py-2 bg-white/10 border border-white/30 text-white rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-400 placeholder:text-gray-400"
+                            onClick={(e) => e.stopPropagation()}
+                            autoFocus
+                          />
+                        </div>
+                        <div className="overflow-y-auto max-h-52">
+                          {filteredProperties.length === 0 ? (
+                            <div className="px-4 py-3 text-gray-400 text-sm text-center">No properties found</div>
+                          ) : (
+                            filteredProperties.map((property) => {
+                              const isSelected = selectedProperty?._id === property._id;
+                              return (
+                                <div
+                                  key={property._id}
+                                  onClick={() => handlePropertySelect(property)}
+                                  className={`px-4 py-3 cursor-pointer border-b border-white/10 last:border-0 transition-colors duration-150
+                                    ${isSelected ? 'bg-orange-500/15' : 'hover:bg-white/8'}`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      {isSelected && <CheckCircle className="w-4 h-4 text-orange-400 flex-shrink-0" />}
+                                      <span className={`font-medium truncate ${isSelected ? 'text-orange-300' : 'text-white'}`}>
+                                        {property.title}
+                                      </span>
+                                      {/* Type badge */}
+                                      <span
+                                        className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0
+                                          ${property.listingType === 'Sale' ? 'bg-green-500/20 text-green-300' :
+                                            property.listingType === 'Rent' ? 'bg-blue-500/20 text-blue-300' :
+                                              'bg-purple-500/20 text-purple-300'}`}
+                                      >
+                                        {property.listingType}
+                                      </span>
+                                    </div>
+                                    {/* Price */}
+                                    {property.price && (
+                                      <span className="text-orange-300 text-sm font-semibold flex-shrink-0 ml-2">
+                                        ₹{formatPrice(property.price)}
+                                        <span className="text-gray-500 font-normal text-xs">/{property.price.per}</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                  {/* Location line */}
+                                  <div className="flex items-center gap-1 mt-0.5 ml-6">
+                                    <MapPin className="w-3 h-3 text-gray-500" />
+                                    <span className="text-gray-400 text-xs truncate">
+                                      {[property.location?.locality, property.location?.city].filter(Boolean).join(', ')}
                                     </span>
-                                    {/* Type badge */}
-                                    <span
-                                      className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0
-                                        ${property.listingType === 'Sale' ? 'bg-green-500/20 text-green-300' :
-                                          property.listingType === 'Rent' ? 'bg-blue-500/20 text-blue-300' :
-                                            'bg-purple-500/20 text-purple-300'}`}
-                                    >
-                                      {property.listingType}
+                                    {/* Category */}
+                                    <span className="text-gray-600 text-xs ml-auto flex-shrink-0">
+                                      {property.category}
                                     </span>
                                   </div>
-                                  {/* Price */}
-                                  {property.price && (
-                                    <span className="text-orange-300 text-sm font-semibold flex-shrink-0 ml-2">
-                                      ₹{formatPrice(property.price)}
-                                      <span className="text-gray-500 font-normal text-xs">/{property.price.per}</span>
-                                    </span>
-                                  )}
                                 </div>
-                                {/* Location line */}
-                                <div className="flex items-center gap-1 mt-0.5 ml-6">
-                                  <MapPin className="w-3 h-3 text-gray-500" />
-                                  <span className="text-gray-400 text-xs truncate">
-                                    {[property.location?.locality, property.location?.city].filter(Boolean).join(', ')}
-                                  </span>
-                                  {/* Category */}
-                                  <span className="text-gray-600 text-xs ml-auto flex-shrink-0">
-                                    {property.category}
-                                  </span>
-                                </div>
-                              </div>
-                            );
-                          })
-                        )}
+                              );
+                            })
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -364,6 +391,7 @@ export default function PropertyInquiryForm() {
                       <option value="" disabled>Select Type</option>
                       <option value="property_buy" className="text-black">Buy</option>
                       <option value="property_rent" className="text-black">Rent</option>
+                      <option value="property_sale" className="text-black">Sale</option>
                     </select>
                   </div>
 
@@ -420,7 +448,7 @@ export default function PropertyInquiryForm() {
 
                 {/* ── Message ── */}
                 <div>
-                  <label className="block text-sm font-medium text-white mb-1.5">Message (Optional)</label>
+                  <label className="block text-sm font-medium text-white mb-1.5">Message *</label>
                   <textarea
                     name="message"
                     value={formData.message}

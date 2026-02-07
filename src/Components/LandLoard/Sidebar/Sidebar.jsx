@@ -126,6 +126,12 @@ const Sidebar = ({ propertyId, setSidebarWidth }) => {
       gradient: "from-orange-600 to-blue-500",
     },
     {
+      to: "/landlord/workers",
+      icon: FaUser,
+      label: "Workers",
+      gradient: "from-blue-600 to-indigo-500",
+    },
+    {
       to: `/landlord/duespackages`,
       icon: FaBoxOpen,
       label: "Dues Packages",

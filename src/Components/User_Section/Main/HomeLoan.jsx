@@ -39,7 +39,7 @@ const HomeLoanCalculator = () => {
     employmentType: 'Salaried',
     monthlyIncome: '',
     existingLoan: false,
-    creditScore: '750+'
+    priority: 'Medium'
   });
 
   const banks = [
@@ -113,8 +113,8 @@ const HomeLoanCalculator = () => {
           employmentType: inquiryData.employmentType,
           monthlyIncome: inquiryData.monthlyIncome ? parseInt(inquiryData.monthlyIncome) : 0,
           existingLoan: inquiryData.existingLoan,
-          creditScore: inquiryData.creditScore
-        }
+        },
+        priority: inquiryData.priority
       };
 
       const response = await fetch(`${baseurl}api/v2/enquiries/home-loan`, {
@@ -143,7 +143,7 @@ const HomeLoanCalculator = () => {
             employmentType: 'Salaried',
             monthlyIncome: '',
             existingLoan: false,
-            creditScore: '750+'
+              priority: 'Medium'
           });
         }, 3000);
       } else {
@@ -565,15 +565,18 @@ const HomeLoanCalculator = () => {
                         </label>
                         <div className="relative">
                           <FaPhoneAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                          <input
-                            type="tel"
-                            name="phone"
-                            value={inquiryData.phone}
-                            onChange={handleInquiryChange}
-                            required
-                            className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
-                            placeholder="+91 98765 43210"
-                          />
+                         <input
+  type="tel"
+  name="phone"
+  value={inquiryData.phone}
+  onChange={handleInquiryChange}
+  required
+  maxLength={10}
+  pattern="[6-9]{1}[0-9]{9}"
+  className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+  placeholder="9876543210"
+/>
+
                         </div>
                       </div>
                     </div>
@@ -600,7 +603,7 @@ const HomeLoanCalculator = () => {
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Property Value (₹)
+                          Loan Amount Required (₹)
                         </label>
                         <div className="relative">
                           <FaHome className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -656,21 +659,21 @@ const HomeLoanCalculator = () => {
 
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Credit Score
+                            Priority
                         </label>
                         <div className="relative">
                           <FaCreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                          <select
-                            name="creditScore"
-                            value={inquiryData.creditScore}
-                            onChange={handleInquiryChange}
-                            className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all appearance-none bg-white"
-                          >
-                            <option value="750+">750+ (Excellent)</option>
-                            <option value="700-749">700-749 (Good)</option>
-                            <option value="650-699">650-699 (Fair)</option>
-                            <option value="Below 650">Below 650 (Poor)</option>
-                          </select>
+                            <select
+                              name="priority"
+                              value={inquiryData.priority}
+                              onChange={handleInquiryChange}
+                              className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all appearance-none bg-white"
+                            >
+                              <option value="Low">Low</option>
+                              <option value="Medium">Medium</option>
+                              <option value="High">High</option>
+                              <option value="Urgent">Urgent</option>
+                            </select>
                         </div>
                       </div>
                     </div>

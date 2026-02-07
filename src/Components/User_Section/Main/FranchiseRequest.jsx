@@ -10,20 +10,12 @@ const FranchiseRequest = () => {
     mobile: '',
     email: '',
     city: '',
-    investment: '',
     businessExperience: '',
     message: ''
   });
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const investmentRanges = [
-    { label: '₹5–10 Lakhs', value: 750000 },
-    { label: '₹10–25 Lakhs', value: 1750000 },
-    { label: '₹25–50 Lakhs', value: 3750000 },
-    { label: '₹50+ Lakhs', value: 5000000 }
-  ];
 
   const benefits = [
     {
@@ -65,7 +57,6 @@ const FranchiseRequest = () => {
       newErrors.mobile = 'Please enter a valid 10-digit mobile number';
     }
     if (!formData.city.trim()) newErrors.city = 'City is required';
-    if (!formData.investment) newErrors.investment = 'Please select investment range';
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -86,10 +77,10 @@ const FranchiseRequest = () => {
               email: formData.email || '',
               phone: formData.mobile,
             },
-            message: formData.message || `Franchise enquiry for ${formData.city}. Investment capacity: ${investmentRanges.find(r => r.value === parseInt(formData.investment))?.label || formData.investment}`,
+            message: formData.message || `Franchise enquiry for ${formData.city}`,
             typeSpecificData: {
               franchiseDetails: {
-                investmentCapacity: parseInt(formData.investment),
+                investmentCapacity: 0,
                 location: formData.city,
                 businessExperience: formData.businessExperience || '',
                 preferredCities: [formData.city]
@@ -313,28 +304,6 @@ const FranchiseRequest = () => {
 
                   <div>
                     <label className="block text-gray-700 font-semibold mb-2">
-                      Investment Capacity <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      name="investment"
-                      value={formData.investment}
-                      onChange={handleChange}
-                      className={`w-full px-4 py-3 rounded-xl border-2 ${
-                        errors.investment ? 'border-red-500' : 'border-gray-200'
-                      } focus:border-blue-500 focus:outline-none transition-colors text-lg bg-white`}
-                    >
-                      <option value="">Select investment capacity</option>
-                      {investmentRanges.map((range, idx) => (
-                        <option key={idx} value={range.value}>{range.label}</option>
-                      ))}
-                    </select>
-                    {errors.investment && (
-                      <p className="text-red-500 text-sm mt-1">{errors.investment}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-gray-700 font-semibold mb-2">
                       Business Experience
                     </label>
                     <input
@@ -414,7 +383,6 @@ const FranchiseRequest = () => {
                   <p className="text-gray-600">Name: {formData.fullName}</p>
                   <p className="text-gray-600">Mobile: {formData.mobile}</p>
                   <p className="text-gray-600">City: {formData.city}</p>
-                  <p className="text-gray-600">Investment: {investmentRanges.find(r => r.value === parseInt(formData.investment))?.label}</p>
                 </div>
               </motion.div>
             )}

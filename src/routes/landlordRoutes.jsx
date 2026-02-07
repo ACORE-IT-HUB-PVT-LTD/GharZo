@@ -12,6 +12,7 @@ import PoliceVerification from "../Components/LandLoard/Property/PoliceVerificat
 import EditProperty from "../Components/LandLoard/Property/EditProperty.jsx";
 import RoomOverview from "../Components/LandLoard/Property/RoomOverview";
 import Property from "../Components/LandLoard/Property/Property";
+import Workers from "../Components/LandLoard/Workers/Workers";
 import Expenses from "../Components/LandLoard/Property/Expenses.jsx";
 import LandlordAnnouncements from "../Components/LandLoard/Property/LandlordAnnouncements.jsx";
 import Dues from "../Components/LandLoard/Property/Dues.jsx";
@@ -57,6 +58,7 @@ const landlordMainRoutes = (
     <Route path="property/:propertyId/rooms" element={<RoomOverview />} />
     <Route path="visit-requests" element={<VisitRequest />} />
     <Route path="collections" element={<Collections />} />
+    <Route path="workers" element={<Workers />} />
     <Route path="allComplaints" element={<AllComplaints />} />
     <Route path="duespackages" element={<DuePackages />} />
     <Route path="property/:propertyId/add-room" element={<RoomAdd />} />
