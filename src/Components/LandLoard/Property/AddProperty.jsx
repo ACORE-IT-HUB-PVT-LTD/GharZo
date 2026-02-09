@@ -118,6 +118,7 @@ const AddListingForm = () => {
   });
 
   const [imagePreviews, setImagePreviews] = useState([]);
+  const [userProfile, setUserProfile] = useState(null);
 
   const steps = [
     { number: 1, title: 'Property Type' },
@@ -170,6 +171,11 @@ const AddListingForm = () => {
     'Afternoon (12PM-5PM)',
     'Evening (5PM-9PM)'
   ];
+
+  // Fetch user profile and set postedBy automatically
+  useEffect(() => {
+    fetchUserProfile();
+  }, []);
 
   // Fetch master data
   useEffect(() => {
@@ -228,6 +234,38 @@ const AddListingForm = () => {
       console.error('Error fetching amenities:', err);
     } finally {
       setLoadingMasterData(prev => ({ ...prev, amenities: false }));
+    }
+  };
+
+  const fetchUserProfile = async () => {
+    try {
+      const token = localStorage.getItem('usertoken') || localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await axios.get(
+        'https://api.gharzoreality.com/api/auth/me',
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.data.success && response.data.data?.user) {
+        const user = response.data.data.user;
+        setUserProfile(user);
+        
+        // Format the role for postedBy field
+        const roleFormatted = user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'Owner';
+        setFormData(prev => ({
+          ...prev,
+          postedBy: roleFormatted
+        }));
+      }
+    } catch (err) {
+      console.error('Error fetching user profile:', err);
+      // Fallback: keep default value
     }
   };
 
@@ -1112,20 +1150,17 @@ const AddListingForm = () => {
               </div>
             </div>
 
+
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Posted By *
               </label>
-              <select
-                name="postedBy"
-                value={formData.postedBy}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-              >
-                {postedByOptions.map(p => (
-                  <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
-                ))}
-              </select>
+              <div className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-gray-50 flex items-center">
+                <span className="text-gray-700 font-medium">
+                  {formData.postedBy || 'Loading...'}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Based on your account type</p>
             </div>
 
             <div className="flex items-center gap-2">

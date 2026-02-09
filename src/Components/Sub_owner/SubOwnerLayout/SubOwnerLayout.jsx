@@ -1,7 +1,5 @@
-import React, { useState } from "react";
-import { Outlet } from "react-router-dom";
-import { useAuth } from "../../User_Section/Context/AuthContext";
-import LayoutGuard from "../../../utils/LayoutGuard";
+import React, { useState, useEffect } from "react";
+import { Outlet, useNavigate } from "react-router-dom";
 import Sidebar from "../Sidebar/SubOwnerSidebar";
 
 const SubOwnerLayoutContent = () => {
@@ -24,20 +22,24 @@ const SubOwnerLayoutContent = () => {
 };
 
 const SubOwnerLayout = () => {
-  const { loading } = useAuth();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Check if SubOwner token exists
+    const token = localStorage.getItem("usertoken");
+    if (!token) {
+      // No token found, redirect to login
+      navigate("/login", { replace: true });
+    }
+    setLoading(false);
+  }, [navigate]);
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
-  return (
-    <LayoutGuard 
-      requiredRole="sub_owner" 
-      fallbackPath="/sub_owner_login"
-    >
-      <SubOwnerLayoutContent />
-    </LayoutGuard>
-  );
+  return <SubOwnerLayoutContent />;
 };
 
 export default SubOwnerLayout;

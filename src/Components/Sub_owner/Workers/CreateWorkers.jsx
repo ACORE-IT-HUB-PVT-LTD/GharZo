@@ -1,776 +1,815 @@
-import React, { useState, useEffect } from "react";
-import {
-  User,
-  Briefcase,
-  Phone,
-  Mail,
-  Home,
-  Calendar,
-  Clock,
-  DollarSign,
-  FileText,
-  CheckCircle,
-  AlertCircle,
-  MapPin,
-  Camera,
-  Lock,
-  Eye,
-  EyeOff,
-  X,
-} from "lucide-react";
-import baseurl from "../../../../BaseUrl";
+import React, { useEffect, useState } from "react";
+import { toast } from "react-toastify";
+import { ChevronDown, Plus, Search, Phone, Mail, Calendar, Clock, AlertCircle, Loader } from "lucide-react";
 
-const AddWorkerForm = () => {
-  const [formData, setFormData] = useState({
-    name: "",
-    role: "",
-    contactNumber: "",
-    email: "",
-    address: "",
-    availabilityDays: [],
-    availableTimeSlots: [],
-    chargePerService: "",
-    idProofType: "",
-    idProofNumber: "",
-    assignedProperties: [],
-    profileImage: null,
-    password: "",
-  });
+const WORKER_TYPES = [
+  "Plumber",
+  "Electrician",
+  "Carpenter",
+  "Cleaner",
+  "Painter",
+  "General Maintenance",
+  "AC Repair",
+  "Appliance Repair",
+  "Pest Control",
+  "Other",
+];
+
+const WEEK_DAYS = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
+
+const Workers = () => {
   const [properties, setProperties] = useState([]);
-  const [allWorkers, setAllWorkers] = useState([]);
-  const [response, setResponse] = useState(null);
-  const [error, setError] = useState(null);
+  const [workers, setWorkers] = useState([]);
+  const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [imagePreview, setImagePreview] = useState(null);
-  const [showPassword, setShowPassword] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [filters, setFilters] = useState({ status: "Active", workerType: "" });
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedWorker, setSelectedWorker] = useState(null);
+  const [assignLoading, setAssignLoading] = useState(false);
+  const [assignForm, setAssignForm] = useState({
+    complaintId: "",
+    estimatedTime: "60",
+    notes: "",
+  });
 
-  const days = [
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-    "Sunday",
-  ];
-  const timeSlots = ["Morning", "Afternoon", "Evening", "Night"];
-  const idProofOptions = ["Aadhaar", "PAN Card", "Driving License", "Passport"];
-  const roleOptions = [
-    "Electrician",
-    "Plumber",
-    "Carpenter",
-    "Painter",
-    "Cleaner",
-    "Pest Control",
-    "AC Technician",
-    "RO Technician",
-    "Lift Maintenance",
-    "Security Guard",
-    "CCTV Technician",
-    "Gardener",
-    "Generator Technician",
-    "Internet Technician",
-    "Other",
-  ];
+  const [form, setForm] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    workerType: "Plumber",
+    specialization: "",
+    experienceYears: "",
+    experienceDescription: "",
+    assignedProperties: [],
+    hasFullPropertyAccess: false,
+    availabilityStatus: "Available",
+    workingDays: [],
+    workingFrom: "09:00",
+    workingTo: "18:00",
+    emergencyName: "",
+    emergencyPhone: "",
+    emergencyRelation: "",
+  });
 
-  const fetchPropertiesAndWorkers = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setError("Authentication token not found");
-        return;
-      }
-      const propRes = await fetch(`${baseurl}api/sub-owner/properties`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const propData = await propRes.json();
-      if (!propData.success) {
-        setError("Failed to fetch properties");
-        return;
-      }
-      const workerRes = await fetch(`${baseurl}api/sub-owner/workers`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const workerData = await workerRes.json();
-      if (!workerData.success) {
-        setError("Failed to fetch workers");
-        return;
-      }
-      setProperties(propData.properties || []);
-      setAllWorkers(workerData.workers || []);
-    } catch (err) {
-      setError("Error fetching data: " + err.message);
-    }
-  };
+  const token = localStorage.getItem("usertoken");
 
   useEffect(() => {
-    fetchPropertiesAndWorkers();
+    fetchProperties();
+    fetchWorkers();
+    fetchComplaints();
   }, []);
 
-  const unassignedProperties = properties.filter((property) => {
-    return !allWorkers.some((worker) =>
-      worker.assignedProperties?.some((prop) => prop.id === property.id)
-    );
-  });
+  useEffect(() => {
+    fetchWorkers();
+  }, [filters]);
 
-  const validateForm = () => {
-    const newErrors = {};
-    if (!formData.name.trim()) newErrors.name = "Name is required";
-    if (!formData.role.trim()) newErrors.role = "Role is required";
-    if (!formData.contactNumber.trim()) {
-      newErrors.contactNumber = "Mobile number is required";
-    } else if (!/^\d{10}$/.test(formData.contactNumber)) {
-      newErrors.contactNumber = "Enter a valid 10-digit mobile number";
-    }
-    if (!formData.email.trim() || !/\S+@\S+\.\S+/.test(formData.email))
-      newErrors.email = "Valid email is required";
-    if (!formData.address.trim()) newErrors.address = "Address is required";
-    if (formData.availabilityDays.length === 0)
-      newErrors.availabilityDays = "At least one day is required";
-    if (formData.availableTimeSlots.length === 0)
-      newErrors.availableTimeSlots = "At least one time slot is required";
-    if (!formData.chargePerService || formData.chargePerService <= 0)
-      newErrors.chargePerService = "Valid charge is required";
-    if (!formData.idProofType)
-      newErrors.idProofType = "ID Proof Type is required";
-    if (!formData.idProofNumber.trim())
-      newErrors.idProofNumber = "ID Proof Number is required";
-    else {
-      if (
-        formData.idProofType === "Aadhaar" &&
-        !/^\d{4}\s\d{4}\s\d{4}$/.test(formData.idProofNumber)
-      ) {
-        newErrors.idProofNumber = "Aadhaar should be in format XXXX XXXX XXXX";
-      } else if (
-        formData.idProofType === "PAN Card" &&
-        !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.idProofNumber)
-      ) {
-        newErrors.idProofNumber = "PAN should be in format ABCDE1234F";
-      }
-    }
-    if (formData.assignedProperties.length === 0)
-      newErrors.assignedProperties = "At least one property must be selected";
-    if (!formData.password.trim()) {
-      newErrors.password = "Password is required";
-    } else if (formData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    if (name === "idProofNumber" && formData.idProofType === "Aadhaar") {
-      const cleaned = value.replace(/\D/g, "");
-      let formatted = "";
-      for (let i = 0; i < cleaned.length && i < 12; i++) {
-        if (i === 4 || i === 8) formatted += " ";
-        formatted += cleaned[i];
-      }
-      setFormData((prev) => ({ ...prev, [name]: formatted }));
-    } else if (name === "contactNumber") {
-      const cleaned = value.replace(/\D/g, "").slice(0, 10);
-      setFormData((prev) => ({ ...prev, [name]: cleaned }));
-    } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
-    }
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
-  };
-
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-      setFormData((prev) => ({ ...prev, profileImage: file }));
-    }
-  };
-
-  const handleCheckboxChange = (e, field) => {
-    const { value, checked } = e.target;
-    setFormData((prev) => {
-      const newArray = checked
-        ? [...prev[field], value]
-        : prev[field].filter((item) => item !== value);
-      return { ...prev, [field]: newArray };
-    });
-    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
-  };
-
-  const handlePropertyChange = (propertyId) => {
-    setFormData((prev) => {
-      const newAssignedProperties = prev.assignedProperties.includes(propertyId)
-        ? prev.assignedProperties.filter((id) => id !== propertyId)
-        : [...prev.assignedProperties, propertyId];
-      return { ...prev, assignedProperties: newAssignedProperties };
-    });
-    if (errors.assignedProperties)
-      setErrors((prev) => ({ ...prev, assignedProperties: "" }));
-  };
-
-  const handleIdProofChange = (e) => {
-    const value = e.target.value;
-    setFormData((prev) => ({
-      ...prev,
-      idProofType: value,
-      idProofNumber: "",
-    }));
-    if (errors.idProofType) setErrors((prev) => ({ ...prev, idProofType: "" }));
-    if (errors.idProofNumber)
-      setErrors((prev) => ({ ...prev, idProofNumber: "" }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-    setLoading(true);
-    setError(null);
-    setResponse(null);
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setError("Authentication token not found");
-      setLoading(false);
-      return;
-    }
-
-    const formDataToSend = new FormData();
-    const {
-      profileImage,
-      assignedProperties,
-      chargePerService,
-      password,
-      ...rest
-    } = formData;
-
-    Object.keys(rest).forEach((key) => {
-      if (Array.isArray(rest[key])) {
-        rest[key].forEach((val) => formDataToSend.append(key, val));
-      } else {
-        formDataToSend.append(key, rest[key]);
-      }
-    });
-
-    formDataToSend.append("password", password);
-    assignedProperties.forEach((id) =>
-      formDataToSend.append("propertyIds", id)
-    );
-    formDataToSend.append("chargePerService", parseFloat(chargePerService));
-
-    const idProofNumber =
-      formData.idProofType === "Aadhaar"
-        ? formData.idProofNumber.replace(/\s/g, "")
-        : formData.idProofNumber;
-    formDataToSend.append("idProofNumber", idProofNumber);
-
-    if (profileImage) {
-      formDataToSend.append("profileImage", profileImage);
-    }
-
+  async function fetchProperties() {
     try {
-      const res = await fetch(`${baseurl}api/sub-owner/workers`, {
-        method: "POST",
+      const res = await fetch("https://api.gharzoreality.com/api/v2/properties/my-properties", {
         headers: { Authorization: `Bearer ${token}` },
-        body: formDataToSend,
       });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.message || "Failed to add worker");
-      }
-
       const data = await res.json();
-      setResponse(data);
-
-      setFormData({
-        name: "",
-        role: "",
-        contactNumber: "",
-        email: "",
-        address: "",
-        availabilityDays: [],
-        availableTimeSlots: [],
-        chargePerService: "",
-        idProofType: "",
-        idProofNumber: "",
-        assignedProperties: [],
-        profileImage: null,
-        password: "",
-      });
-      setImagePreview(null);
-      setShowPassword(false);
-      fetchPropertiesAndWorkers();
+      if (data.success) setProperties(data.data || []);
     } catch (err) {
-      setError(err.message);
+      console.error(err);
+      toast.error("Failed to load properties");
+    }
+  }
+
+  async function fetchWorkers() {
+    setLoading(true);
+    try {
+      const q = new URLSearchParams();
+      if (filters.status) q.set("status", filters.status);
+      if (filters.workerType) q.set("workerType", filters.workerType);
+      q.set("page", "1");
+      q.set("limit", "50");
+      
+      const res = await fetch(`https://api.gharzoreality.com/api/workers/my-workers?${q.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        setWorkers(data.data || []);
+      } else {
+        setWorkers([]);
+        toast.error(data.message || "Failed to load workers");
+      }
+    } catch (err) {
+      console.error(err);
+      setWorkers([]);
+      toast.error("Network error while fetching workers");
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const getIdProofPlaceholder = () => {
-    switch (formData.idProofType) {
-      case "Aadhaar":
-        return "XXXX XXXX XXXX";
-      case "PAN Card":
-        return "ABCDE1234F";
-      case "Driving License":
-        return "Enter Driving License Number";
-      case "Passport":
-        return "Enter Passport Number";
-      default:
-        return "Select ID Proof Type first";
+  async function fetchComplaints() {
+    try {
+      // Use landlord complaints endpoint to get all pending complaints for landlord
+      const q = new URLSearchParams();
+      q.set("status", "Pending");
+      q.set("page", "1");
+      const url = `https://api.gharzoreality.com/api/complaints/landlord/all-complaints?${q.toString()}`;
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success) {
+        // landlord endpoint returns data.data as array; if nested under data.docs adapt accordingly
+        setComplaints(data.data || data.docs || []);
+      } else {
+        setComplaints([]);
+      }
+    } catch (err) {
+      console.error("Failed to fetch complaints:", err);
+      setComplaints([]);
     }
-  };
+  }
 
-  const getIdProofPattern = () => {
-    switch (formData.idProofType) {
-      case "Aadhaar":
-        return "\\d{4}\\s\\d{4}\\s\\d{4}";
-      case "PAN Card":
-        return "[A-Z]{5}[0-9]{4}[A-Z]{1}";
-      default:
-        return ".*";
+  function openAssignModal(worker) {
+    setSelectedWorker(worker);
+    setAssignForm({
+      complaintId: "",
+      estimatedTime: "60",
+      notes: "",
+    });
+    // refresh latest pending complaints before opening
+    fetchComplaints();
+    setShowAssignModal(true);
+  }
+
+  function closeAssignModal() {
+    setShowAssignModal(false);
+    setSelectedWorker(null);
+    setAssignForm({
+      complaintId: "",
+      estimatedTime: "60",
+      notes: "",
+    });
+  }
+
+  async function handleAssignComplaint(e) {
+    e.preventDefault();
+
+    if (!assignForm.complaintId || !selectedWorker) {
+      toast.error("Please select a complaint");
+      return;
     }
-  };
+
+    setAssignLoading(true);
+    try {
+      const res = await fetch(
+        `https://api.gharzoreality.com/api/complaints/${assignForm.complaintId}/assign`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            workerId: selectedWorker._id,
+            estimatedTime: Number(assignForm.estimatedTime),
+            notes: assignForm.notes,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (data.success) {
+        // show success, refresh complaints and workers to reflect assignment
+        toast.success(data.message || "Complaint assigned to worker successfully");
+        closeAssignModal();
+        // refresh list of pending complaints and workers
+        fetchComplaints();
+        fetchWorkers();
+      } else {
+        toast.error(data.message || "Failed to assign complaint");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Network error while assigning complaint");
+    } finally {
+      setAssignLoading(false);
+    }
+  }
+
+  function handleFormChange(e) {
+    const { name, value, type, checked } = e.target;
+    
+    if (name === "assignedProperties") {
+      const opts = Array.from(e.target.selectedOptions || []).map((o) => o.value);
+      setForm((s) => ({ ...s, assignedProperties: opts }));
+      return;
+    }
+    
+    if (name === "workingDays") {
+      const opts = Array.from(e.target.selectedOptions || []).map((o) => o.value);
+      setForm((s) => ({ ...s, workingDays: opts }));
+      return;
+    }
+    
+    if (type === "checkbox") {
+      setForm((s) => ({ ...s, [name]: checked }));
+    } else {
+      setForm((s) => ({ ...s, [name]: value }));
+    }
+  }
+
+  function resetForm() {
+    setForm({
+      name: "",
+      phone: "",
+      email: "",
+      workerType: "Plumber",
+      specialization: "",
+      experienceYears: "",
+      experienceDescription: "",
+      assignedProperties: [],
+      hasFullPropertyAccess: false,
+      availabilityStatus: "Available",
+      workingDays: [],
+      workingFrom: "09:00",
+      workingTo: "18:00",
+      emergencyName: "",
+      emergencyPhone: "",
+      emergencyRelation: "",
+    });
+  }
+
+  async function handleCreate(e) {
+    e.preventDefault();
+    
+    if (!form.name || !form.phone) {
+      toast.error("Name and phone are required");
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const body = {
+        name: form.name,
+        phone: form.phone,
+        email: form.email,
+        workerType: form.workerType,
+        specialization: form.specialization 
+          ? form.specialization.split(",").map(s => s.trim()).filter(s => s)
+          : [],
+        experience: {
+          years: Number(form.experienceYears) || 0,
+          description: form.experienceDescription,
+        },
+        assignedProperties: form.assignedProperties,
+        hasFullPropertyAccess: form.hasFullPropertyAccess,
+        availability: {
+          status: form.availabilityStatus,
+          workingDays: form.workingDays,
+          workingHours: { from: form.workingFrom, to: form.workingTo },
+        },
+        emergencyContact: {
+          name: form.emergencyName,
+          phone: form.emergencyPhone,
+          relation: form.emergencyRelation,
+        },
+      };
+
+      const res = await fetch("https://api.gharzoreality.com/api/workers/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json();
+      
+      if (data.success) {
+        toast.success(data.message || "Worker created successfully!");
+        resetForm();
+        setShowForm(false);
+        fetchWorkers();
+      } else {
+        toast.error(data.message || "Failed to create worker");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Network error while creating worker");
+    } finally {
+      setCreating(false);
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-indigo-100 py-12 px-4">
-      <div className="max-w-5xl mx-auto">
-        <div className="bg-white/90 backdrop-blur-lg rounded-3xl shadow-2xl border border-white/30 overflow-hidden">
-          <div
-            className="bg-gradient-to-b 
-from-[#0A2F56] via-[#1E4569] to-[#0A2F56]
- px-10 py-8 text-center"
-          >
-            <h2 className="text-4xl font-extrabold text-white flex items-center justify-center gap-4">
-              <User className="h-10 w-10" />
-              Add New Worker
-            </h2>
-            <p className="text-indigo-100 mt-2 text-lg">
-              Register a service worker for your properties
-            </p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8 px-4 sm:px-6 lg:px-8 lg:ml-20">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-slate-900 mb-2">Workers Management</h1>
+          <p className="text-slate-600">Manage and organize your service workers efficiently</p>
+        </div>
+
+        {/* Filters Section */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6 mb-8">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-start sm:items-center">
+            <div className="w-full sm:w-auto">
+              <label className="block text-sm font-medium text-slate-700 mb-2">Status</label>
+              <select
+                value={filters.status}
+                onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
+                className="w-full sm:w-48 px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+              >
+                <option value="">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+
+            <div className="w-full sm:w-auto">
+              <label className="block text-sm font-medium text-slate-700 mb-2">Worker Type</label>
+              <select
+                value={filters.workerType}
+                onChange={(e) => setFilters((f) => ({ ...f, workerType: e.target.value }))}
+                className="w-full sm:w-48 px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+              >
+                <option value="">All Types</option>
+                {WORKER_TYPES.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              onClick={() => fetchWorkers()}
+              className="mt-auto w-full sm:w-auto px-6 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-lg transition-colors duration-200"
+            >
+              Refresh
+            </button>
+
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className="mt-auto w-full sm:w-auto ml-0 sm:ml-auto px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
+            >
+              <Plus size={20} /> Add Worker
+            </button>
           </div>
+        </div>
 
-          <div className="p-10">
-            <form onSubmit={handleSubmit} className="space-y-8">
-              {/* Profile Image */}
-              <div className="flex justify-center">
-                <div className="relative">
-                  <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-indigo-300 shadow-xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
-                    {imagePreview ? (
-                      <img
-                        src={imagePreview}
-                        alt="Preview"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <User className="w-16 h-16 text-indigo-400" />
-                    )}
-                  </div>
-                  <label className="absolute bottom-0 right-0 bg-indigo-600 text-white rounded-full p-3 cursor-pointer shadow-lg hover:bg-indigo-700 transition">
-                    <Camera className="w-5 h-5" />
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="hidden"
-                    />
-                  </label>
-                  {imagePreview && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setImagePreview(null);
-                        setFormData((prev) => ({
-                          ...prev,
-                          profileImage: null,
-                        }));
-                      }}
-                      className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
+        {/* Create Form Modal/Section */}
+        {showForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 max-w-5xl w-full p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-slate-900">Create New Worker</h2>
+                <button
+                  onClick={() => setShowForm(false)}
+                  className="text-slate-500 hover:text-slate-700 text-2xl"
+                >
+                  ×
+                </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Name & Role */}
-                <div className="space-y-1">
-                  <label className="text-gray-700 font-semibold flex items-center gap-2">
-                    <User className="w-5 h-5 text-indigo-600" /> Full Name *
-                  </label>
+              <form onSubmit={handleCreate} className="space-y-6">
+              {/* Basic Info */}
+              <div>
+                <h3 className="text-lg font-semibold text-slate-800 mb-4">Basic Information</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <input
-                    type="text"
+                    required
                     name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    placeholder="Enter worker's name"
-                    className={`w-full px-5 py-4 rounded-2xl border-2 bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-4 focus:ring-indigo-300 transition-all ${
-                      errors.name ? "border-red-400" : "border-gray-200"
-                    }`}
+                    value={form.name}
+                    onChange={handleFormChange}
+                    placeholder="Full Name"
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
-                  {errors.name && (
-                    <p className="text-red-500 text-sm">{errors.name}</p>
-                  )}
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-gray-700 font-semibold flex items-center gap-2">
-                    <Briefcase className="w-5 h-5 text-purple-600" /> Role *
-                  </label>
-                  <select
-                    name="role"
-                    value={formData.role}
-                    onChange={handleInputChange}
-                    className={`w-full px-5 py-4 rounded-2xl border-2 bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-4 focus:ring-purple-300 transition-all ${
-                      errors.role ? "border-red-400" : "border-gray-200"
-                    }`}
-                  >
-                    <option value="">Choose role</option>
-                    {roleOptions.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.role && (
-                    <p className="text-red-500 text-sm">{errors.role}</p>
-                  )}
-                </div>
-
-                {/* Contact & Email */}
-                <div className="space-y-1">
-                  <label className="text-gray-700 font-semibold flex items-center gap-2">
-                    <Phone className="w-5 h-5 text-teal-600" /> Mobile Number *
-                  </label>
                   <input
-                    type="tel"
-                    name="contactNumber"
-                    value={formData.contactNumber}
-                    onChange={handleInputChange}
-                    maxLength={10}
-                    placeholder="10-digit number"
-                    className={`w-full px-5 py-4 rounded-2xl border-2 bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-4 focus:ring-teal-300 transition-all ${
-                      errors.contactNumber
-                        ? "border-red-400"
-                        : "border-gray-200"
-                    }`}
+                    required
+                    name="phone"
+                    value={form.phone}
+                    onChange={handleFormChange}
+                    placeholder="Phone Number"
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
-                  {errors.contactNumber && (
-                    <p className="text-red-500 text-sm">
-                      {errors.contactNumber}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-gray-700 font-semibold flex items-center gap-2">
-                    <Mail className="w-5 h-5 text-pink-600" /> Email *
-                  </label>
                   <input
-                    type="email"
                     name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    placeholder="worker@example.com"
-                    className={`w-full px-5 py-4 rounded-2xl border-2 bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-4 focus:ring-pink-300 transition-all ${
-                      errors.email ? "border-red-400" : "border-gray-200"
-                    }`}
+                    type="email"
+                    value={form.email}
+                    onChange={handleFormChange}
+                    placeholder="Email Address"
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
-                  {errors.email && (
-                    <p className="text-red-500 text-sm">{errors.email}</p>
-                  )}
-                </div>
-
-                {/* Address & Password */}
-                <div className="space-y-1">
-                  <label className="text-gray-700 font-semibold flex items-center gap-2">
-                    <Home className="w-5 h-5 text-amber-600" /> Address *
-                  </label>
-                  <input
-                    type="text"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleInputChange}
-                    placeholder="Full residential address"
-                    className={`w-full px-5 py-4 rounded-2xl border-2 bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-4 focus:ring-amber-300 transition-all ${
-                      errors.address ? "border-red-400" : "border-gray-200"
-                    }`}
-                  />
-                  {errors.address && (
-                    <p className="text-red-500 text-sm">{errors.address}</p>
-                  )}
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-gray-700 font-semibold flex items-center gap-2">
-                    <Lock className="w-5 h-5 text-red-600" /> Password *
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      name="password"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      placeholder="Min 6 characters"
-                      className={`w-full px-5 py-4 pr-14 rounded-2xl border-2 bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-4 focus:ring-red-300 transition-all ${
-                        errors.password ? "border-red-400" : "border-gray-200"
-                      }`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                    >
-                      {showPassword ? (
-                        <EyeOff className="w-5 h-5" />
-                      ) : (
-                        <Eye className="w-5 h-5" />
-                      )}
-                    </button>
-                  </div>
-                  {errors.password && (
-                    <p className="text-red-500 text-sm">{errors.password}</p>
-                  )}
                 </div>
               </div>
 
-              {/* Assigned Properties - Chip Style */}
+              {/* Worker Type & Specialization */}
               <div>
-                <label className="text-gray-700 font-semibold flex items-center gap-2 mb-4">
-                  <MapPin className="w-6 h-6 text-indigo-600" /> Assign
-                  Properties *
-                </label>
-                <div className="bg-gray-50/80 rounded-2xl p-6">
-                  <div className="flex flex-wrap gap-3">
-                    {unassignedProperties.map((property) => {
-                      const isSelected = formData.assignedProperties.includes(
-                        property.id
-                      );
-                      const isAssignedElsewhere = allWorkers.some((w) =>
-                        w.assignedProperties?.some((p) => p.id === property.id)
-                      );
-                      return (
-                        <button
-                          key={property.id}
-                          type="button"
-                          disabled={isAssignedElsewhere}
-                          onClick={() => handlePropertyChange(property.id)}
-                          className={`px-6 py-3 rounded-full font-medium transition-all shadow-md ${
-                            isAssignedElsewhere
-                              ? "bg-orange-100 text-orange-700 cursor-not-allowed"
-                              : isSelected
-                              ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg"
-                              : "bg-white border-2 border-gray-300 text-gray-700 hover:border-indigo-400 hover:shadow"
-                          }`}
-                        >
-                          {property.name}
-                          {isAssignedElsewhere && " (Assigned)"}
-                        </button>
-                      );
-                    })}
-                    {unassignedProperties.length === 0 && (
-                      <p className="text-gray-500">No available properties</p>
-                    )}
-                  </div>
-                  {errors.assignedProperties && (
-                    <p className="text-red-500 text-sm mt-3">
-                      {errors.assignedProperties}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Availability Days */}
-              <div>
-                <label className="text-gray-700 font-semibold flex items-center gap-2 mb-4">
-                  <Calendar className="w-6 h-6 text-teal-600" /> Available Days
-                  *
-                </label>
-                <div className="grid grid-cols-3 sm:grid-cols-7 gap-4">
-                  {days.map((day) => {
-                    const selected = formData.availabilityDays.includes(day);
-                    return (
-                      <button
-                        key={day}
-                        type="button"
-                        onClick={() => {
-                          const e = {
-                            target: { value: day, checked: !selected },
-                          };
-                          handleCheckboxChange(e, "availabilityDays");
-                        }}
-                        className={`py-4 rounded-2xl font-semibold transition-all shadow-md ${
-                          selected
-                            ? "bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg"
-                            : "bg-white border-2 border-gray-300 text-gray-700 hover:border-teal-400"
-                        }`}
-                      >
-                        {day.slice(0, 3)}
-                      </button>
-                    );
-                  })}
-                </div>
-                {errors.availabilityDays && (
-                  <p className="text-red-500 text-sm mt-3">
-                    {errors.availabilityDays}
-                  </p>
-                )}
-              </div>
-
-              {/* Time Slots */}
-              <div>
-                <label className="text-gray-700 font-semibold flex items-center gap-2 mb-4">
-                  <Clock className="w-6 h-6 text-amber-600" /> Time Slots *
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
-                  {timeSlots.map((slot) => {
-                    const selected = formData.availableTimeSlots.includes(slot);
-                    return (
-                      <button
-                        key={slot}
-                        type="button"
-                        onClick={() => {
-                          const e = {
-                            target: { value: slot, checked: !selected },
-                          };
-                          handleCheckboxChange(e, "availableTimeSlots");
-                        }}
-                        className={`py-5 rounded-2xl font-semibold transition-all shadow-md ${
-                          selected
-                            ? "bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg"
-                            : "bg-white border-2 border-gray-300 text-gray-700 hover:border-amber-400"
-                        }`}
-                      >
-                        {slot}
-                      </button>
-                    );
-                  })}
-                </div>
-                {errors.availableTimeSlots && (
-                  <p className="text-red-500 text-sm mt-3">
-                    {errors.availableTimeSlots}
-                  </p>
-                )}
-              </div>
-
-              {/* Charge & ID Proof */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-1">
-                  <label className="text-gray-700 font-semibold flex items-center gap-2">
-                    <DollarSign className="w-6 h-6 text-green-600" /> Charge Per
-                    Service (₹) *
-                  </label>
-                  <input
-                    type="number"
-                    name="chargePerService"
-                    value={formData.chargePerService}
-                    onChange={handleInputChange}
-                    min="1"
-                    placeholder="e.g. 500"
-                    className={`w-full px-5 py-4 rounded-2xl border-2 bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-4 focus:ring-green-300 transition-all ${
-                      errors.chargePerService
-                        ? "border-red-400"
-                        : "border-gray-200"
-                    }`}
-                  />
-                  {errors.chargePerService && (
-                    <p className="text-red-500 text-sm">
-                      {errors.chargePerService}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-gray-700 font-semibold flex items-center gap-2">
-                    <FileText className="w-6 h-6 text-red-600" /> ID Proof Type
-                    *
-                  </label>
+                <h3 className="text-lg font-semibold text-slate-800 mb-4">Professional Details</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <select
-                    name="idProofType"
-                    value={formData.idProofType}
-                    onChange={handleIdProofChange}
-                    className={`w-full px-5 py-4 rounded-2xl border-2 bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-4 focus:ring-red-300 transition-all ${
-                      errors.idProofType ? "border-red-400" : "border-gray-200"
-                    }`}
+                    name="workerType"
+                    value={form.workerType}
+                    onChange={handleFormChange}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                   >
-                    <option value="">Select type</option>
-                    {idProofOptions.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
+                    {WORKER_TYPES.map((t) => (
+                      <option key={t} value={t}>{t}</option>
                     ))}
                   </select>
-                  {errors.idProofType && (
-                    <p className="text-red-500 text-sm">{errors.idProofType}</p>
-                  )}
+                  <input
+                    name="specialization"
+                    value={form.specialization}
+                    onChange={handleFormChange}
+                    placeholder="Specializations (comma separated)"
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                  <input
+                    name="experienceYears"
+                    type="number"
+                    min="0"
+                    value={form.experienceYears}
+                    onChange={handleFormChange}
+                    placeholder="Years of Experience"
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <input
+                    name="experienceDescription"
+                    value={form.experienceDescription}
+                    onChange={handleFormChange}
+                    placeholder="Experience description"
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
                 </div>
               </div>
 
-              {/* ID Proof Number */}
-              <div className="md:col-span-2">
-                <label className="text-gray-700 font-semibold flex items-center gap-2 mb-2">
-                  <FileText className="w-6 h-6 text-red-600" /> ID Proof Number
-                  *
+              {/* Assignments & Access */}
+              <div>
+                <h3 className="text-lg font-semibold text-slate-800 mb-4">Property Assignment</h3>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Assigned Properties</label>
+                <select
+                  name="assignedProperties"
+                  multiple
+                  value={form.assignedProperties}
+                  onChange={handleFormChange}
+                  className="w-full h-32 px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                >
+                  {properties.map((p) => (
+                    <option key={p._id} value={p._id}>
+                      {p.title || `${p._id} - ${p.location?.address || "No address"}`}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-slate-500 mt-2">Hold Ctrl/Cmd to select multiple properties</p>
+
+                <label className="flex items-center gap-3 mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
+                  <input
+                    type="checkbox"
+                    name="hasFullPropertyAccess"
+                    checked={form.hasFullPropertyAccess}
+                    onChange={handleFormChange}
+                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                  />
+                  <span className="font-medium text-slate-700">Grant full access to all properties</span>
                 </label>
-                <input
-                  type="text"
-                  name="idProofNumber"
-                  value={formData.idProofNumber}
-                  onChange={handleInputChange}
-                  placeholder={getIdProofPlaceholder()}
-                  className={`w-full px-5 py-4 rounded-2xl border-2 bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-4 focus:ring-red-300 transition-all ${
-                    errors.idProofNumber ? "border-red-400" : "border-gray-200"
-                  }`}
-                />
-                {errors.idProofNumber && (
-                  <p className="text-red-500 text-sm mt-2">
-                    {errors.idProofNumber}
-                  </p>
-                )}
               </div>
 
-              {/* Submit */}
-              <div className="pt-6">
+              {/* Working Schedule */}
+              <div>
+                <h3 className="text-lg font-semibold text-slate-800 mb-4">Working Schedule</h3>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Available Days</label>
+                <select
+                  name="workingDays"
+                  multiple
+                  value={form.workingDays}
+                  onChange={handleFormChange}
+                  className="w-full h-28 px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white mb-4"
+                >
+                  {WEEK_DAYS.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-slate-500 mb-4">Hold Ctrl/Cmd to select multiple days</p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Working From</label>
+                    <input
+                      name="workingFrom"
+                      type="time"
+                      value={form.workingFrom}
+                      onChange={handleFormChange}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Working To</label>
+                    <input
+                      name="workingTo"
+                      type="time"
+                      value={form.workingTo}
+                      onChange={handleFormChange}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Emergency Contact */}
+              <div>
+                <h3 className="text-lg font-semibold text-slate-800 mb-4">Emergency Contact</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <input
+                    name="emergencyName"
+                    placeholder="Contact Name"
+                    value={form.emergencyName}
+                    onChange={handleFormChange}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <input
+                    name="emergencyPhone"
+                    placeholder="Contact Phone"
+                    value={form.emergencyPhone}
+                    onChange={handleFormChange}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <input
+                    name="emergencyRelation"
+                    placeholder="Relationship"
+                    value={form.emergencyRelation}
+                    onChange={handleFormChange}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-200">
                 <button
                   type="submit"
-                  disabled={loading}
-                  className="w-full bg-gradient-to-b from-[#0A2F56] via-[#1E4569] to-[#0A2F56] text-white font-bold text-xl py-5 rounded-2xl shadow-2xl hover:shadow-indigo-500/50 transform hover:-translate-y-1 transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed"
+                  disabled={creating}
+                  className="flex-1 sm:flex-none px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  {loading ? "Adding Worker..." : "Add Worker"}
+                  {creating ? (
+                    <>
+                      <Loader size={18} className="animate-spin" /> Creating...
+                    </>
+                  ) : (
+                    <>
+                      <Plus size={18} /> Create Worker
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetForm();
+                    setShowForm(false);
+                  }}
+                  className="flex-1 sm:flex-none px-6 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-lg transition-colors duration-200"
+                >
+                  Cancel
                 </button>
               </div>
             </form>
-
-            {/* Messages */}
-            {response && (
-              <div className="mt-8 p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border border-green-200 flex items-center gap-4">
-                <CheckCircle className="w-10 h-10 text-green-600 flex-shrink-0" />
-                <p className="text-green-800 font-semibold text-lg">
-                  Worker{" "}
-                  <span className="text-green-900">{response.worker.name}</span>{" "}
-                  added successfully!
-                </p>
-              </div>
-            )}
-            {error && (
-              <div className="mt-8 p-6 bg-gradient-to-r from-red-50 to-pink-50 rounded-2xl border border-red-200 flex items-center gap-4">
-                <AlertCircle className="w-10 h-10 text-red-600 flex-shrink-0" />
-                <p className="text-red-800 font-semibold">{error}</p>
-              </div>
-            )}
+            </div>
           </div>
+        )}
+
+        {/* Assign Complaint Modal */}
+        {showAssignModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-lg max-w-md w-full">
+              <div className="flex justify-between items-center p-6 border-b border-slate-200">
+                <h2 className="text-2xl font-bold text-slate-900">Assign Complaint</h2>
+                <button
+                  onClick={closeAssignModal}
+                  className="text-slate-500 hover:text-slate-700 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+
+              <form onSubmit={handleAssignComplaint} className="p-6 space-y-4">
+                <div>
+                  <p className="text-sm font-medium text-slate-700 mb-2">
+                    Assigning to: <span className="font-bold text-blue-600">{selectedWorker?.name}</span>
+                  </p>
+                  <p className="text-sm text-slate-600 mb-1">Type: {selectedWorker?.workerType}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Select Complaint</label>
+                  <select
+                    value={assignForm.complaintId}
+                    onChange={(e) =>
+                      setAssignForm((f) => ({ ...f, complaintId: e.target.value }))
+                    }
+                    required
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  >
+                    <option value="">-- Select a complaint --</option>
+                    {complaints
+                      .filter((c) => c.status === "Pending")
+                      .map((c) => (
+                        <option key={c._id} value={c._id}>
+                          {c.complaintNumber} - {c.title} ({c.category})
+                        </option>
+                      ))}
+                  </select>
+                  {complaints.filter((c) => c.status === "Pending").length === 0 && (
+                    <p className="text-sm text-amber-600 mt-2">No pending complaints available</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Estimated Time (minutes)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={assignForm.estimatedTime}
+                    onChange={(e) =>
+                      setAssignForm((f) => ({ ...f, estimatedTime: e.target.value }))
+                    }
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Notes</label>
+                  <textarea
+                    value={assignForm.notes}
+                    onChange={(e) =>
+                      setAssignForm((f) => ({ ...f, notes: e.target.value }))
+                    }
+                    placeholder="Add notes for the worker (e.g., special instructions)"
+                    rows="3"
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-4 border-t border-slate-200">
+                  <button
+                    type="submit"
+                    disabled={assignLoading}
+                    className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {assignLoading ? (
+                      <>
+                        <Loader size={16} className="animate-spin" /> Assigning...
+                      </>
+                    ) : (
+                      "Assign"
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={closeAssignModal}
+                    className="flex-1 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-lg transition-colors duration-200"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Workers List */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="p-4 sm:p-6 border-b border-slate-200">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-slate-900">Workers List</h2>
+              {loading && (
+                <div className="flex items-center gap-2 text-blue-600">
+                  <Loader size={18} className="animate-spin" />
+                  <span className="text-sm font-medium">Loading...</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {workers.length === 0 && !loading ? (
+            <div className="p-8 text-center">
+              <AlertCircle size={48} className="mx-auto text-slate-300 mb-3" />
+              <p className="text-slate-600 text-lg">No workers found for selected filters.</p>
+              <p className="text-slate-500 text-sm mt-1">Try adjusting your filters or create a new worker.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 sm:p-6">
+              {workers.map((w) => (
+                <div
+                  key={w._id}
+                  className="p-4 border border-slate-200 rounded-lg hover:shadow-md hover:border-blue-300 transition-all duration-200 bg-gradient-to-br from-slate-50 to-slate-100"
+                >
+                  {/* Status Badge */}
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1">
+                      <h3 className="font-bold text-slate-900 text-lg">{w.name}</h3>
+                      <p className="text-blue-600 font-medium text-sm">{w.workerType}</p>
+                    </div>
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ml-2 ${
+                        w.status === "Active"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {w.status}
+                    </span>
+                  </div>
+
+                  {/* Contact Info */}
+                  <div className="space-y-2 mb-4 pb-4 border-b border-slate-200">
+                    <div className="flex items-center gap-2 text-slate-700">
+                      <Phone size={16} className="text-slate-500" />
+                      <a href={`tel:${w.phone}`} className="text-sm hover:text-blue-600 transition-colors">
+                        {w.phone}
+                      </a>
+                    </div>
+                    {w.email && (
+                      <div className="flex items-center gap-2 text-slate-700">
+                        <Mail size={16} className="text-slate-500" />
+                        <a href={`mailto:${w.email}`} className="text-sm hover:text-blue-600 transition-colors truncate">
+                          {w.email}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Working Hours */}
+                  {w.availability?.workingHours && (
+                    <div className="mb-3 p-2 bg-white rounded border border-slate-200">
+                      <div className="flex items-center gap-2 text-slate-700 text-sm">
+                        <Clock size={14} className="text-slate-500" />
+                        <span>
+                          {w.availability.workingHours.from} - {w.availability.workingHours.to}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Working Days */}
+                  {w.availability?.workingDays?.length > 0 && (
+                    <div className="mb-3">
+                      <div className="text-xs font-semibold text-slate-600 mb-1">Working Days:</div>
+                      <div className="flex flex-wrap gap-1">
+                        {w.availability.workingDays.map((day) => (
+                          <span
+                            key={day}
+                            className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full"
+                          >
+                            {day.slice(0, 3)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Assigned Properties */}
+                  {w.assignedProperties?.length > 0 && (
+                    <div className="p-2 bg-amber-50 rounded border border-amber-200">
+                      <div className="text-xs font-semibold text-amber-900 mb-1">Assigned Properties:</div>
+                      <p className="text-xs text-amber-800">
+                        {w.assignedProperties.map(p => p.title || p._id).join(", ")}
+                      </p>
+                    </div>
+                  )}
+
+                  {w.hasFullPropertyAccess && (
+                    <div className="mt-2 px-2 py-1 bg-purple-100 rounded border border-purple-200">
+                      <p className="text-xs font-semibold text-purple-800">✓ Full Property Access</p>
+                    </div>
+                  )}
+
+                  {/* Assign Complaint Button */}
+                  <button
+                    onClick={() => openAssignModal(w)}
+                    className="w-full mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-lg transition-colors duration-200"
+                  >
+                    Assign Complaint
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 };
 
-export default AddWorkerForm;
+export default Workers;

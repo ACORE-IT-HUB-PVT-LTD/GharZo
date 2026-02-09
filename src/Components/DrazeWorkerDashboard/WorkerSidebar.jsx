@@ -36,7 +36,7 @@ const Sidebar = ({ setSidebarWidth }) => {
   // Fetch organization data
   useEffect(() => {
     const fetchOrg = async () => {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("usertoken") || localStorage.getItem("token");
       if (!token) return;
       try {
         const res = await fetch("https://api.gharzoreality.com/api/organi", {
@@ -65,9 +65,9 @@ const Sidebar = ({ setSidebarWidth }) => {
 
   const handleLogout = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("usertoken") || localStorage.getItem("token");
       if (!token) {
-        navigate("/dr_worker_login");
+        navigate("/login");
         return;
       }
 
@@ -82,20 +82,24 @@ const Sidebar = ({ setSidebarWidth }) => {
       if (response.ok) {
         const result = await response.json();
         if (result.success) {
+          localStorage.removeItem("usertoken");
           localStorage.removeItem("token");
-          navigate("/dr_worker_login");
+          navigate("/login");
         } else {
+          localStorage.removeItem("usertoken");
           localStorage.removeItem("token");
-          navigate("/dr_worker_login");
+          navigate("/login");
         }
       } else {
+        localStorage.removeItem("usertoken");
         localStorage.removeItem("token");
-        navigate("/dr_worker_login");
+        navigate("/login");
       }
     } catch (error) {
       console.error("Logout error:", error);
+      localStorage.removeItem("usertoken");
       localStorage.removeItem("token");
-      navigate("/dr_worker_login");
+      navigate("/login");
     }
     setIsMobileOpen(false);
   };

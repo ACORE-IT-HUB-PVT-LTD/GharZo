@@ -38,15 +38,15 @@ function WorkerProfile() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("usertoken");
         if (!token) {
-          navigate("/worker/login");
+          navigate("/login");
           return;
         }
 
         // Fetch worker profile
         const profileRes = await fetch(
-          "https://api.gharzoreality.com/api/worker/auth/profile",
+          "https://api.gharzoreality.com/api/auth/me",
           {
             method: "GET",
             headers: {
@@ -58,14 +58,14 @@ function WorkerProfile() {
         const profileResult = await profileRes.json();
 
         if (profileRes.ok && profileResult.success) {
-          setProfileData(profileResult.worker);
+          setProfileData(profileResult.data?.user || profileResult.worker);
         } else {
           throw new Error("Failed to load profile");
         }
 
         // Fetch assigned complaints
         const complaintsRes = await fetch(
-          "https://api.gharzoreality.com/api/workers/assigned-complaints",
+          "https://api.gharzoreality.com/api/complaints/worker/my-complaints?status=Assigned&page=1",
           {
             method: "GET",
             headers: {
@@ -77,7 +77,7 @@ function WorkerProfile() {
         const complaintsResult = await complaintsRes.json();
 
         if (complaintsRes.ok && complaintsResult.success) {
-          setActiveComplaints(complaintsResult.complaints || []);
+          setActiveComplaints(complaintsResult.data || []);
         } else {
           console.error("Failed to fetch complaints:", complaintsResult);
         }
@@ -123,7 +123,7 @@ function WorkerProfile() {
   const {
     name,
     role,
-    contactNumber,
+    phone,
     email,
     profileImage,
     chargePerService,
@@ -209,7 +209,7 @@ function WorkerProfile() {
               {
                 icon: Phone,
                 label: "Contact Number",
-                value: contactNumber,
+                value: phone,
                 gradient: "from-orange-400 to-red-600",
               },
               {
@@ -289,64 +289,9 @@ function WorkerProfile() {
           {/* Assigned Properties and Active Complaints */}
           <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Assigned Properties */}
-            <div className="p-4 rounded-xl backdrop-blur-sm bg-white/10 border border-white/20">
-              <div className="flex items-center gap-3 mb-2">
-                <Colorful3DIcon
-                  Icon={Building}
-                  gradient="from-blue-500 to-indigo-600"
-                />
-                <h3 className="text-lg font-bold text-orange-200">
-                  Assigned Properties
-                </h3>
-              </div>
-              {assignedProperties.length > 0 ? (
-                <ul className="list-disc pl-6 text-orange-100">
-                  {assignedProperties.map((p, i) => (
-                    <li key={i}>
-                      {p.name
-                        ? `${p.name}, ${p.city} (${p.pinCode})`
-                        : JSON.stringify(p)}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-orange-300 text-sm">No properties assigned</p>
-              )}
-            </div>
+           
 
-            {/* Active Complaints from API */}
-            {/* <div className="p-4 rounded-xl bg-gradient-to-r from-pink-50 to-rose-50">
-              <div className="flex items-center gap-3 mb-2">
-                <Colorful3DIcon
-                  Icon={AlertCircle}
-                  gradient="from-pink-400 to-rose-500"
-                />
-                <h3 className="text-lg font-bold text-gray-800">
-                  Active Complaint
-                </h3>
-              </div>
-              {activeComplaints.length > 0 ? (
-                <ul className="space-y-3 text-gray-700">
-                  {activeComplaints.map((c, i) => (
-                    <li
-                      key={i}
-                      className="p-3 bg-white/70 rounded-lg shadow-sm border border-gray-100"
-                    >
-                      <p className="font-semibold text-indigo-700">
-                        {c.subject}
-                      </p>
-                      <p className="text-sm text-gray-600">{c.description}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        <strong>Status:</strong> {c.status} |{" "}
-                        <strong>Priority:</strong> {c.priority}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-gray-600 text-sm">No active complaints</p>
-              )}
-            </div> */}
+         
           </div>
         </motion.section>
       </div>

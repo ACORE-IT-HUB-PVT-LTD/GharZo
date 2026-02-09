@@ -1,88 +1,276 @@
-import React, { useState } from "react";
-import { FaUserCircle, FaEye, FaEyeSlash } from "react-icons/fa";
-import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import React, { useState, useEffect } from "react";
+import { FaUserCircle } from "react-icons/fa";
+import { useAuth } from "../../User_Section/Context/AuthContext.jsx";
+import { useNavigate, useLocation } from "react-router-dom";
+import axios from "axios";
+import { motion, AnimatePresence } from "framer-motion";
 import Particles from "react-tsparticles";
 import { loadFull } from "tsparticles";
-import { toast, ToastContainer } from "react-toastify";
+import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import signupbg from "../../../assets/Images/signupbg.jpg";
 import logo from "../../../assets/logo/logo.png";
-import baseurl from "../../../../BaseUrl";
 
-function SubOwnerLogin() {
+const API_BASE_URL = "https://api.gharzoreality.com";
+
+function Login({ onClose }) {
   const navigate = useNavigate();
-  const [useremail, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const location = useLocation();
+  const { login } = useAuth();
+  
+  const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [name, setName] = useState("");
+  const [role, setRole] = useState("buyer");
+  const [otpSent, setOtpSent] = useState(false);
+  const [isNewUser, setIsNewUser] = useState(false);
+  const [resendAttempts, setResendAttempts] = useState(0);
+  const [countdown, setCountdown] = useState(0);
+  const [isResending, setIsResending] = useState(false);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
 
-  // Particles init
-  const particlesInit = async (main) => {
-    await loadFull(main);
-  };
+  // Redirect after login
+  const { from = "/user" } = location.state || {};
 
-  // Handle Submit
-  const handleSubmit = async (e) => {
+  // Available roles for registration (enum provided)
+  const roles = [
+    { value: "buyer", label: "Owner / Buyer" },
+    { value: "agent", label: "Broker" },
+    { value: "landlord", label: "PG Landlord" },
+  ];
+
+  useEffect(() => {
+    const token = localStorage.getItem("usertoken");
+    const userStr = localStorage.getItem("user");
+    let userRole = "";
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        userRole = user.role;
+      } catch {}
+    }
+    if (token && userRole) {
+      navigate(from, { replace: true });
+    }
+  }, [navigate, from]);
+
+  // Reset states when phone changes
+  useEffect(() => {
+    setResendAttempts(0);
+    setCountdown(0);
+    setOtpSent(false);
+    setOtp("");
+    setName("");
+    setIsNewUser(false);
+  }, [phone]);
+
+  // Clear OTP when name/role fields appear (new user registration)
+  useEffect(() => {
+    if (isNewUser && otpSent) {
+      setOtp("");
+    }
+  }, [isNewUser]);
+
+  // Countdown timer for resend
+  useEffect(() => {
+    let interval;
+    if (countdown > 0) {
+      interval = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [countdown]);
+
+  // Send OTP
+  const handleSendOtp = async (e) => {
     e.preventDefault();
+    
+    if (phone.length !== 10) {
+      toast.error("Enter a valid 10-digit phone number");
+      return;
+    }
+
+    setIsSendingOtp(true);
     try {
-      const response = await fetch(
-        `${baseurl}api/sub-owner/auth/login`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: useremail,
-            password: password,
-          }),
-        }
+      const response = await axios.post(
+        `${API_BASE_URL}/api/auth/send-otp`,
+        { phone },
+        { headers: { "Content-Type": "application/json" } }
       );
 
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        // Store token and subOwner data in localStorage
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("subOwner", JSON.stringify(data.subOwner));
-        navigate("/sub_owner/dashboard");
-      } else {
-        // Show toast for invalid credentials
-        toast.error("Email or password not authorized", {
-          position: "top-center",
-          autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-        });
+      if (response.data.success) {
+        setOtpSent(true);
+        toast.success(response.data.message || "OTP sent successfully!");
+        setResendAttempts(0);
+        setCountdown(10); // Changed from 10 to 30 seconds
       }
     } catch (error) {
-      console.error("Login error:", error);
-      toast.error("An error occurred. Please try again.", {
-        position: "top-center",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
+      const errorMsg = error.response?.data?.message || "Failed to send OTP";
+      toast.error(errorMsg);
+    } finally {
+      setIsSendingOtp(false);
     }
   };
 
-  const handleCancel = () => {
-    navigate(-1);
+  // Resend OTP with rate limiting
+  const handleResendOtp = async (e) => {
+    e.preventDefault();
+    
+    if (countdown > 0) {
+      toast.info(`Please wait ${countdown} seconds before resending OTP`);
+      return;
+    }
+    
+    if (isResending) {
+      return;
+    }
+
+    setIsResending(true);
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/api/auth/resend-otp`,
+        { phone },
+        { headers: { "Content-Type": "application/json" } }
+      );
+
+      if (response.data.success) {
+        toast.success(response.data.message || "New OTP sent successfully!");
+        setResendAttempts((prev) => prev + 1);
+        setCountdown(30); // 30 seconds cooldown
+      }
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || "Failed to resend OTP";
+      toast.error(errorMsg);
+      
+      // Handle rate limit error - backend se jo wait time aaye use karo
+      if (error.response?.data?.waitTime) {
+        setCountdown(error.response.data.waitTime);
+      }
+    } finally {
+      setIsResending(false);
+    }
+  };
+
+  // Verify OTP
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    
+    if (otp.length !== 6) {
+      toast.error("Enter a valid 6-digit OTP");
+      return;
+    }
+
+    // Check if new user needs to provide name
+    if (isNewUser && !name.trim()) {
+      toast.error("Please enter your name");
+      return;
+    }
+
+    setIsVerifying(true);
+    try {
+      const payload = {
+        phone,
+        otp
+      };
+
+      // Add name and role only if it's a new user
+      if (isNewUser) {
+        payload.name = name.trim();
+        payload.role = role;
+      }
+
+      const response = await axios.post(
+        `${API_BASE_URL}/api/auth/verify-otp`,
+        payload,
+        { headers: { "Content-Type": "application/json" } }
+      );
+
+      if (response.data.success) {
+        const { user, token, isNewUser: newUser } = response.data.data;
+
+        // Store token and user info
+        if (token) {
+          localStorage.setItem("usertoken", token);
+        }
+        
+        if (user) {
+          localStorage.setItem("user", JSON.stringify(user));
+          localStorage.setItem("role", user.role);
+        }
+
+        // Update auth context
+        login({
+          phone: user.phone,
+          role: user.role,
+          isRegistered: true,
+          fullName: user.name,
+          email: user.email,
+        });
+
+        const successMsg = newUser 
+          ? "Registration successful! Welcome to GharZo!" 
+          : "Login successful!";
+        
+        toast.success(successMsg);
+
+        setTimeout(() => {
+          onClose?.();
+          navigate(from, { replace: true });
+        }, 1500);
+      }
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || "Failed to verify OTP";
+      
+      // Check if it's a new user registration error
+      if (errorMsg.includes("Name is required") || errorMsg.includes("registration")) {
+        setIsNewUser(true);
+        toast.error("Please enter your name to complete registration");
+      } else {
+        toast.error(errorMsg);
+        
+        // Show attempts left if available
+        if (error.response?.data?.attemptsLeft !== undefined) {
+          toast.warning(`${error.response.data.attemptsLeft} attempts remaining`);
+        }
+      }
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter") handleSubmit(e);
+    if (e.key === "Enter") {
+      if (!otpSent) {
+        handleSendOtp(e);
+      } else {
+        handleVerifyOtp(e);
+      }
+    }
+  };
+
+  const particlesInit = async (main) => await loadFull(main);
+
+  // Handle Change Number button - Reset countdown timer
+  const handleChangeNumber = () => {
+    setOtpSent(false);
+    setOtp("");
+    setName("");
+    setIsNewUser(false);
+    setCountdown(0); // Important: Clear the countdown timer
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-white px-4">
       <div className="relative w-full max-w-5xl h-[650px] bg-slate-900 rounded-3xl shadow-2xl overflow-hidden flex">
-
-        {/* Modern toast styling */}
+        
         <ToastContainer
           position="top-center"
           autoClose={3000}
@@ -97,10 +285,8 @@ function SubOwnerLogin() {
 
         {/* LEFT SIDE - Dark sidebar with form */}
         <div className="w-full lg:w-[45%] bg-gradient-to-b from-[#0c2344] to-[#0b4f91] relative overflow-hidden flex items-center justify-center p-6 sm:p-8">
-          {/* Subtle gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-blue-500/5"></div>
           
-          {/* Animated particles background */}
           <Particles
             id="tsparticles"
             init={particlesInit}
@@ -174,91 +360,227 @@ function SubOwnerLogin() {
 
               <div>
                 <h2 className="text-3xl sm:text-4xl font-bold text-white mb-2">
-                  Welcome back Sub Owner
+                  {!otpSent ? "Welcome back" : isNewUser ? "Complete Registration" : "Verify OTP"}
                 </h2>
                 <p className="text-slate-400 text-sm">
-                  Enter your credentials to access your dashboard
+                  {!otpSent ? (
+                    <>
+                      New user?{" "}
+                    </>
+                  ) : isNewUser ? (
+                    <span>Please provide your details to continue</span>
+                  ) : (
+                    <span>Enter the 6-digit code sent to your phone</span>
+                  )}
                 </p>
               </div>
             </motion.div>
 
-            {/* Form content */}
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3, duration: 0.5 }}
-              >
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  EMAIL ADDRESS
-                </label>
-                <input
-                  type="email"
-                  placeholder="Enter your email"
-                  className="w-full px-4 py-3.5 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-cyan-500 transition-all duration-300"
-                  value={useremail}
-                  onChange={(e) => setEmail(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  required
-                />
-              </motion.div>
+            {/* Form content with step transitions */}
+            <AnimatePresence mode="wait">
+              {!otpSent ? (
+                // Phone input step
+                <motion.div
+                  key="phone"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="space-y-6"
+                >
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      PHONE NUMBER
+                    </label>
+                    <input
+                      type="tel"
+                      placeholder="Enter your 10-digit phone number"
+                      maxLength="10"
+                      className="w-full px-4 py-3.5 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all duration-300"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                      onKeyDown={handleKeyDown}
+                    />
+                  </div>
 
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4, duration: 0.5 }}
-              >
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  PASSWORD
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
-                    className="w-full px-4 py-3.5 pr-12 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-cyan-500 transition-all duration-300"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    required
-                  />
-                  <button
-                    type="button"
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-cyan-400 transition-colors cursor-pointer"
-                    onClick={() => setShowPassword(!showPassword)}
+                  <motion.button
+                    whileHover={{ scale: isSendingOtp ? 1 : 1.01 }}
+                    whileTap={{ scale: isSendingOtp ? 1 : 0.99 }}
+                    disabled={isSendingOtp || phone.length !== 10}
+                    className={`w-full py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-cyan-500/30 transition-all duration-300 ${
+                      (isSendingOtp || phone.length !== 10) ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
+                    onClick={handleSendOtp}
                   >
-                    {showPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
+                    {isSendingOtp ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Sending OTP...
+                      </span>
+                    ) : (
+                      'Send OTP'
+                    )}
+                  </motion.button>
+
+                  <button
+                    className="w-full py-3.5 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 text-slate-300 font-medium rounded-xl transition-all duration-300"
+                    onClick={() => navigate("/")}
+                  >
+                    Cancel
                   </button>
-                </div>
-              </motion.div>
 
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5, duration: 0.5 }}
-                className="space-y-3"
-              >
-                <motion.button
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                  type="submit"
-                  className="w-full py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-cyan-500/30 transition-all duration-300"
+                  <p className="text-xs text-slate-400 text-center mt-6">
+                    By continuing, you agree to our Terms & Conditions
+                  </p>
+                </motion.div>
+              ) : (
+                // OTP verification step
+                <motion.div
+                  key="otp"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="space-y-6"
                 >
-                  Login
-                </motion.button>
+                  {/* Phone confirmation */}
+                  <motion.div
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="flex items-center gap-3 p-4 bg-slate-800/50 border border-slate-700 rounded-xl"
+                  >
+                    <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
+                    <span className="text-sm text-slate-300">
+                      OTP sent to <span className="text-white font-semibold">+91 {phone}</span>
+                    </span>
+                  </motion.div>
 
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  className="w-full py-3.5 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 text-slate-300 font-medium rounded-xl transition-all duration-300"
-                >
-                  Cancel
-                </button>
-              </motion.div>
+                  {/* Show name and role fields for new users */}
+                  {isNewUser && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      className="space-y-4"
+                    >
+                      <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                          FULL NAME <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Enter your full name"
+                          className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all duration-300"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                        />
+                      </div>
 
-              <p className="text-xs text-white text-center mt-6">
-                By continuing, you agree to our Terms & Conditions
-              </p>
-            </form>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                          ROLE
+                        </label>
+                        {/* TABS SECTION */}
+                        <div className="flex gap-2 bg-slate-800/30 p-1.5 rounded-xl border border-slate-700">
+                          {roles.map((r) => (
+                            <button
+                              key={r.value}
+                              onClick={() => setRole(r.value)}
+                              className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                                role === r.value
+                                  ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30"
+                                  : "bg-transparent text-slate-300 hover:text-white"
+                              }`}
+                            >
+                              {r.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      VERIFICATION CODE
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="• • • • • •"
+                      maxLength="6"
+                      className="w-full px-4 py-4 bg-slate-800/50 border border-slate-700 rounded-xl text-white text-center text-2xl font-semibold tracking-[0.5em] placeholder-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all duration-300"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                      onKeyDown={handleKeyDown}
+                    />
+                  </div>
+
+                  {/* Resend OTP Button - Now positioned above Verify button */}
+                  <button
+                    disabled={countdown > 0 || isResending}
+                    className={`w-full py-3.5 font-medium rounded-xl transition-all duration-300 ${
+                      countdown > 0 || isResending
+                        ? "bg-slate-800/30 border border-slate-700 text-slate-600 cursor-not-allowed"
+                        : "bg-slate-800/50 hover:bg-slate-800 border border-slate-700 text-cyan-400 hover:text-cyan-300"
+                    }`}
+                    onClick={handleResendOtp}
+                  >
+                    {isResending ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Resending...
+                      </span>
+                    ) : countdown > 0 ? (
+                      `Resend in ${countdown}s`
+                    ) : (
+                      "Resend OTP"
+                    )}
+                  </button>
+
+                  <motion.button
+                    whileHover={{ scale: isVerifying ? 1 : 1.01 }}
+                    whileTap={{ scale: isVerifying ? 1 : 0.99 }}
+                    disabled={isVerifying}
+                    className={`w-full py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-cyan-500/30 transition-all duration-300 ${
+                      isVerifying ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
+                    onClick={handleVerifyOtp}
+                  >
+                    {isVerifying ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Verifying...
+                      </span>
+                    ) : (
+                      isNewUser ? 'Complete Registration' : 'Verify & Continue'
+                    )}
+                  </motion.button>
+
+                  <button
+                    className="w-full py-3.5 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 text-slate-300 font-medium rounded-xl transition-all duration-300"
+                    onClick={handleChangeNumber}
+                  >
+                    ← Change Number
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Footer links */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
+            >
+            </motion.div>
           </motion.div>
         </div>
 
@@ -290,14 +612,14 @@ function SubOwnerLogin() {
               className="max-w-xl"
             >
               <h2 className="text-4xl font-bold text-white mb-4 leading-tight">
-                Manage Properties Efficiently
+                Find Your Perfect Home
               </h2>
               <p className="text-lg text-white/80 leading-relaxed">
-                Access your sub-owner dashboard to oversee properties, coordinate with landlords & streamline operations. Your management hub awaits.
+                Discover rental properties, PGs & more — designed for your comfort. Join thousands of happy residents today.
               </p>
             </motion.div>
 
-            {/* Decorative stats placeholder */}
+            {/* Decorative elements */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -334,4 +656,4 @@ function SubOwnerLogin() {
   );
 }
 
-export default SubOwnerLogin;
+export default Login;

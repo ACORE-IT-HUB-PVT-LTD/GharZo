@@ -41,7 +41,7 @@ const subOwnerMainRoutes = (
 );
 
 const subOwnerLoginRoute = (
-  <Route key="sub_owner_login" path="/sub_owner_login" element={<SubOwnerLogin />} />
+  <Route key="sub_owner_login" path="/login" element={<SubOwnerLogin />} />
 );
 
 export const subOwnerRoutes = [subOwnerMainRoutes, subOwnerLoginRoute];

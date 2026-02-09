@@ -28,10 +28,19 @@ const WEEK_DAYS = [
 const Workers = () => {
   const [properties, setProperties] = useState([]);
   const [workers, setWorkers] = useState([]);
+  const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [filters, setFilters] = useState({ status: "Active", workerType: "" });
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedWorker, setSelectedWorker] = useState(null);
+  const [assignLoading, setAssignLoading] = useState(false);
+  const [assignForm, setAssignForm] = useState({
+    complaintId: "",
+    estimatedTime: "60",
+    notes: "",
+  });
 
   const [form, setForm] = useState({
     name: "",
@@ -57,6 +66,7 @@ const Workers = () => {
   useEffect(() => {
     fetchProperties();
     fetchWorkers();
+    fetchComplaints();
   }, []);
 
   useEffect(() => {
@@ -102,6 +112,97 @@ const Workers = () => {
       toast.error("Network error while fetching workers");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchComplaints() {
+    try {
+      // Use landlord complaints endpoint to get all pending complaints for landlord
+      const q = new URLSearchParams();
+      q.set("status", "Pending");
+      q.set("page", "1");
+      const url = `https://api.gharzoreality.com/api/complaints/landlord/all-complaints?${q.toString()}`;
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success) {
+        // landlord endpoint returns data.data as array; if nested under data.docs adapt accordingly
+        setComplaints(data.data || data.docs || []);
+      } else {
+        setComplaints([]);
+      }
+    } catch (err) {
+      console.error("Failed to fetch complaints:", err);
+      setComplaints([]);
+    }
+  }
+
+  function openAssignModal(worker) {
+    setSelectedWorker(worker);
+    setAssignForm({
+      complaintId: "",
+      estimatedTime: "60",
+      notes: "",
+    });
+    // refresh latest pending complaints before opening
+    fetchComplaints();
+    setShowAssignModal(true);
+  }
+
+  function closeAssignModal() {
+    setShowAssignModal(false);
+    setSelectedWorker(null);
+    setAssignForm({
+      complaintId: "",
+      estimatedTime: "60",
+      notes: "",
+    });
+  }
+
+  async function handleAssignComplaint(e) {
+    e.preventDefault();
+
+    if (!assignForm.complaintId || !selectedWorker) {
+      toast.error("Please select a complaint");
+      return;
+    }
+
+    setAssignLoading(true);
+    try {
+      const res = await fetch(
+        `https://api.gharzoreality.com/api/complaints/${assignForm.complaintId}/assign`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            workerId: selectedWorker._id,
+            estimatedTime: Number(assignForm.estimatedTime),
+            notes: assignForm.notes,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (data.success) {
+        // show success, refresh complaints and workers to reflect assignment
+        toast.success(data.message || "Complaint assigned to worker successfully");
+        closeAssignModal();
+        // refresh list of pending complaints and workers
+        fetchComplaints();
+        fetchWorkers();
+      } else {
+        toast.error(data.message || "Failed to assign complaint");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Network error while assigning complaint");
+    } finally {
+      setAssignLoading(false);
     }
   }
 
@@ -268,18 +369,19 @@ const Workers = () => {
 
         {/* Create Form Modal/Section */}
         {showForm && (
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6 mb-8">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-slate-900">Create New Worker</h2>
-              <button
-                onClick={() => setShowForm(false)}
-                className="text-slate-500 hover:text-slate-700 text-2xl"
-              >
-                ×
-              </button>
-            </div>
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 max-w-5xl w-full p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-slate-900">Create New Worker</h2>
+                <button
+                  onClick={() => setShowForm(false)}
+                  className="text-slate-500 hover:text-slate-700 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
 
-            <form onSubmit={handleCreate} className="space-y-6">
+              <form onSubmit={handleCreate} className="space-y-6">
               {/* Basic Info */}
               <div>
                 <h3 className="text-lg font-semibold text-slate-800 mb-4">Basic Information</h3>
@@ -483,6 +585,106 @@ const Workers = () => {
                 </button>
               </div>
             </form>
+            </div>
+          </div>
+        )}
+
+        {/* Assign Complaint Modal */}
+        {showAssignModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-lg max-w-md w-full">
+              <div className="flex justify-between items-center p-6 border-b border-slate-200">
+                <h2 className="text-2xl font-bold text-slate-900">Assign Complaint</h2>
+                <button
+                  onClick={closeAssignModal}
+                  className="text-slate-500 hover:text-slate-700 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+
+              <form onSubmit={handleAssignComplaint} className="p-6 space-y-4">
+                <div>
+                  <p className="text-sm font-medium text-slate-700 mb-2">
+                    Assigning to: <span className="font-bold text-blue-600">{selectedWorker?.name}</span>
+                  </p>
+                  <p className="text-sm text-slate-600 mb-1">Type: {selectedWorker?.workerType}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Select Complaint</label>
+                  <select
+                    value={assignForm.complaintId}
+                    onChange={(e) =>
+                      setAssignForm((f) => ({ ...f, complaintId: e.target.value }))
+                    }
+                    required
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  >
+                    <option value="">-- Select a complaint --</option>
+                    {complaints
+                      .filter((c) => c.status === "Pending")
+                      .map((c) => (
+                        <option key={c._id} value={c._id}>
+                          {c.complaintNumber} - {c.title} ({c.category})
+                        </option>
+                      ))}
+                  </select>
+                  {complaints.filter((c) => c.status === "Pending").length === 0 && (
+                    <p className="text-sm text-amber-600 mt-2">No pending complaints available</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Estimated Time (minutes)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={assignForm.estimatedTime}
+                    onChange={(e) =>
+                      setAssignForm((f) => ({ ...f, estimatedTime: e.target.value }))
+                    }
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Notes</label>
+                  <textarea
+                    value={assignForm.notes}
+                    onChange={(e) =>
+                      setAssignForm((f) => ({ ...f, notes: e.target.value }))
+                    }
+                    placeholder="Add notes for the worker (e.g., special instructions)"
+                    rows="3"
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-4 border-t border-slate-200">
+                  <button
+                    type="submit"
+                    disabled={assignLoading}
+                    className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {assignLoading ? (
+                      <>
+                        <Loader size={16} className="animate-spin" /> Assigning...
+                      </>
+                    ) : (
+                      "Assign"
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={closeAssignModal}
+                    className="flex-1 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-lg transition-colors duration-200"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
 
@@ -592,6 +794,14 @@ const Workers = () => {
                       <p className="text-xs font-semibold text-purple-800">✓ Full Property Access</p>
                     </div>
                   )}
+
+                  {/* Assign Complaint Button */}
+                  <button
+                    onClick={() => openAssignModal(w)}
+                    className="w-full mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-lg transition-colors duration-200"
+                  >
+                    Assign Complaint
+                  </button>
                 </div>
               ))}
             </div>

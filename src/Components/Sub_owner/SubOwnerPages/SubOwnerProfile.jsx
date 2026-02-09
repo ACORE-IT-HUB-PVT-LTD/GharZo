@@ -46,14 +46,14 @@ function SubOwnerProfile() {
 
   const fetchProfile = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("usertoken");
       if (!token) {
         toast.error("Please login to view profile");
         return;
       }
 
       setLoading(true);
-      const response = await fetch(`${baseurl}api/sub-owner/auth/profile`, {
+      const response = await fetch(`${baseurl}api/auth/me`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -62,8 +62,19 @@ function SubOwnerProfile() {
       });
 
       const data = await response.json();
-      if (response.ok && data.success) {
-        setSubOwnerData(data.subOwner);
+      if (response.ok && data.success && data.data?.user) {
+        // Transform API response to match component expectations
+        const userData = data.data.user;
+        setSubOwnerData({
+          name: userData.name,
+          email: userData.email,
+          mobile: userData.phone,
+          gender: userData.gender || "—",
+          profilePhoto: userData.profileImage,
+          role: userData.role,
+          assignedProperties: userData.assignedProperties || [],
+          permissions: userData.permissions || [],
+        });
       } else {
         toast.error(data.message || "Failed to fetch profile data");
       }
@@ -76,10 +87,9 @@ function SubOwnerProfile() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("subOwner");
+    localStorage.removeItem("usertoken");
     toast.success("Logout successful!");
-    window.location.href = "/sub_owner_login";
+    window.location.href = "/login";
   };
 
   const handleChange = (e) => {

@@ -22,13 +22,13 @@ const Property = () => {
   useEffect(() => {
     const fetchProperties = async () => {
       try {
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("usertoken");
         if (!token) {
           toast.error("Please login to view properties", {
             position: "top-right",
             autoClose: 3000,
           });
-          navigate("/sub_owner_login");
+          navigate("/login");
           return;
         }
 

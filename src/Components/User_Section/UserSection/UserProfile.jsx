@@ -195,6 +195,8 @@ const ProfilePage = () => {
       navigate('/tenant');
     } else if (profile?.role === 'subowner') {
       navigate('/sub_owner');
+    } else if (profile?.role === 'worker' || profile?.role === 'dr_worker') {
+      navigate('/dr-worker-dashboard');
     }
   };
 
@@ -273,8 +275,8 @@ const ProfilePage = () => {
           </div>
           
           <div className="flex gap-3">
-            {/* View Dashboard Button - For Landlord, Tenant, and Subowner */}
-            {(profile?.role === 'landlord' || profile?.role === 'tenant' || profile?.role === 'subowner') && (
+            {/* View Dashboard Button - For Landlord, Tenant, Subowner, and Worker */}
+            {(profile?.role === 'landlord' || profile?.role === 'tenant' || profile?.role === 'subowner' || profile?.role === 'worker' || profile?.role === 'dr_worker') && (
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -556,8 +558,8 @@ const ProfilePage = () => {
           </div>
         </motion.div>
 
-        {/* ProfileTabs Component - hide tabs for tenant and subowner role */}
-        {profile?.role !== 'tenant' && profile?.role !== 'subowner' && (
+        {/* ProfileTabs Component - hide tabs for tenant, subowner, and worker roles */}
+        {profile?.role !== 'tenant' && profile?.role !== 'subowner' && profile?.role !== 'worker' && profile?.role !== 'dr_worker' && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
