@@ -15,6 +15,7 @@ import {
   FaBuilding,
   FaCalendarAlt,
   FaCouch,
+  FaArrowLeft,
 } from "react-icons/fa";
 import { MdDescription } from "react-icons/md";
 import "swiper/css";
@@ -51,15 +52,16 @@ const PGDetails = () => {
   const fetchPGDetails = async () => {
     try {
       const timestamp = new Date().getTime();
+      // Use gharzoreality API which works without authentication
       const res = await axios.get(
-        `https://api.drazeapp.com/api/public/property/${id}?_=${timestamp}`,
+        `https://api.gharzoreality.com/api/public/properties/${id}?_=${timestamp}`,
         {
           headers: {
             "Content-Type": "application/json",
           },
         }
       );
-      const found = res.data?.property;
+      const found = res.data?.data?.property || res.data?.data;
 
       if (!found) {
         console.error("No PG found in response");
@@ -182,6 +184,15 @@ const PGDetails = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 mb-12 font-sans">
+      {/* Back Button */}
+      <button
+        onClick={() => navigate(-1)}
+        className="flex items-center gap-2 px-5 py-2.5 mb-6 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm w-fit"
+      >
+        <FaArrowLeft className="w-4 h-4" />
+        <span>Back</span>
+      </button>
+
       <style>
         {`
           .modal-swiper .swiper-button-next,

@@ -178,7 +178,7 @@ const PG = () => {
       const loginPaths = {
         tenant: "/tensor_login",
         landlord: "/landlord_login",
-        subowner: "/login",
+        subowner: "/sub_owner_login",
         worker: "/dr_worker_login",
       };
       
@@ -219,8 +219,8 @@ const showRoleError = () => {
   };
 
   const handlePgClick = (pg) => {
-    // Allow viewing PG details without role check
-    navigate(`/pg/${pg.id}`, { state: pg });
+    // Allow viewing property details without role check
+    navigate(`/property/${pg.id}`, { state: pg });
   };
 
   // Handle successful login

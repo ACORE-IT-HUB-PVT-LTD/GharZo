@@ -2041,6 +2041,6 @@ function RatingAndComments({ propertyId }) {
       </div>
     </div>
   );
-}
+} 
 
 export default PropertyDetails;

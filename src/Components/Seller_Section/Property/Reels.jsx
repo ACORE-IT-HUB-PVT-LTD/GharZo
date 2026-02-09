@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import baseurl from "../../../../BaseUrl"; // Adjust path if needed
-import { FaTrash,FaUpload ,FaVideo , FaComment, FaHeart, FaRegHeart, FaVolumeUp, FaVolumeMute } from "react-icons/fa";
+import { FaTrash,FaUpload ,FaVideo , FaComment, FaHeart, FaRegHeart, FaVolumeUp, FaVolumeMute, FaArrowLeft } from "react-icons/fa";
 
 const SellerReels = () => {
+  const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
@@ -615,6 +617,14 @@ const SellerReels = () => {
 
 return (
   <div className="min-h-screen bg-gray-900 relative">
+    {/* Back Button */}
+    <button
+      onClick={() => navigate(-1)}
+      className="fixed top-4 left-4 z-50 p-2 rounded-full bg-black/50 hover:bg-black/70 transition-all duration-300 flex items-center justify-center"
+      aria-label="Go back"
+    >
+      <FaArrowLeft className="text-white text-lg" />
+    </button>
 
     {/* ERROR */}
     {error && (

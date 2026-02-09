@@ -1,75 +1,84 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../User_Section/Context/AuthContext.jsx";
+import axios from "axios";
 
 function ExploreCities() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
 
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [cities, setCities] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const cities = [
-    {
-      id: 1,
-      name: "Vijay Nagar",
-      description: "Premium residential & commercial hub with malls and offices",
-      image: "https://images.crowdspring.com/blog/wp-content/uploads/2017/08/23163415/pexels-binyamin-mellish-106399.jpg",
+  const MAPBOX_ACCESS_TOKEN = "pk.eyJ1IjoiZ2hhcnpvcmVhbGl0eSIsImEiOiJjbWxidHB3MnAwcWlkM2ZxdTAwbzA3dTNwIn0.c9lvlGEs7OJccySib0p44g";
+
+  // ✅ Top 10 Areas of Indore with their coordinates
+  const indoreAreas = [
+    { 
+      name: "Vijay Nagar", 
+      lat: 22.7196, 
+      lng: 75.8577
     },
-    {
-      id: 2,
-      name: "Super Corridor",
-      description: "Fast developing IT & business corridor of Indore",
-      image: "https://assets-news.housing.com/news/wp-content/uploads/2022/03/31010142/Luxury-house-design-Top-10-tips-to-add-luxury-to-your-house-FEATURE-compressed-686x400.jpg",
+    { 
+      name: "Super Corridor", 
+      lat: 22.6920, 
+      lng: 75.8859
     },
-    {
-      id: 3,
-      name: "Rajwada",
-      description: "Historic heart of Indore with palace & vibrant street markets",
-      image: "https://content.jdmagicbox.com/comp/kolar/a8/9999p8152.8152.170605163316.t1a8/catalogue/qvc-hills-kolar-builders-and-developers-dcc35tq4w8.jpg",
+    { 
+      name: "Rajwada", 
+      lat: 22.7149, 
+      lng: 75.8550
     },
-    {
-      id: 4,
-      name: "AB Road",
-      description: "Main commercial artery with hotels, showrooms & restaurants",
-      image: "https://images.unsplash.com/photo-1603366615786-558f7687464a?w=1200&auto=format",
+    { 
+      name: "AB Road", 
+      lat: 22.7058, 
+      lng: 75.8697
     },
-    {
-      id: 5,
-      name: "Bhawarkua",
-      description: "Popular student & middle-class residential area",
-      image: "https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=1200&auto=format",
+    { 
+      name: "Bhawarkua", 
+      lat: 22.6970, 
+      lng: 75.8650
     },
-    {
-      id: 6,
-      name: "Palasia",
-      description: "Upscale area known for high-end shopping & dining",
-      image: "https://images.unsplash.com/photo-1583608205776-b77a0a53f81e?w=1200&auto=format",
+    { 
+      name: "Palasia", 
+      lat: 22.7120, 
+      lng: 75.8480
     },
-    {
-      id: 7,
-      name: "MR-10",
-      description: "Emerging residential & plotted area with good connectivity",
-      image: "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=1200&auto=format",
+    { 
+      name: "MR-10", 
+      lat: 22.7350, 
+      lng: 75.8450
     },
-    {
-      id: 8,
-      name: "Annapurna",
-      description: "Calm residential locality with good schools & markets",
-      image: "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=1200&auto=format",
+    { 
+      name: "Annapurna", 
+      lat: 22.7080, 
+      lng: 75.8580
     },
-    {
-      id: 9,
-      name: "Pipliyahana",
-      description: "Developing area with affordable housing & new projects",
-      image: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=1200&auto=format",
+    { 
+      name: "Pipliyahana", 
+      lat: 22.6850, 
+      lng: 75.8750
     },
-    {
-      id: 10,
-      name: "LIG Colony",
-      description: "Well-planned, peaceful & value-for-money residential area",
-      image: "https://images.unsplash.com/photo-1598928508446-7d1a19e5e8a3?w=1200&auto=format",
+    { 
+      name: "LIG Colony", 
+      lat: 22.6980, 
+      lng: 75.8720
     },
   ];
+
+  const areaDescriptions = {
+    "Vijay Nagar": "Premium residential & commercial hub with malls and offices",
+    "Super Corridor": "Fast developing IT & business corridor of Indore",
+    "Rajwada": "Historic heart of Indore with palace & vibrant street markets",
+    "AB Road": "Main commercial artery with hotels, showrooms & restaurants",
+    "Bhawarkua": "Popular student & middle-class residential area",
+    "Palasia": "Upscale area known for high-end shopping & dining",
+    "MR-10": "Emerging residential & plotted area with good connectivity",
+    "Annapurna": "Calm residential locality with good schools & markets",
+    "Pipliyahana": "Developing area with affordable housing & new projects",
+    "LIG Colony": "Well-planned, peaceful & value-for-money residential area",
+  };
 
   const itemsPerView = {
     sm: 1,
@@ -85,6 +94,66 @@ function ExploreCities() {
 
   const [visibleCount, setVisibleCount] = useState(getItemsPerView());
 
+  // ✅ Fetch street view images using Mapbox Static Images API
+  const fetchAreaImage = async (areaName, lat, lng) => {
+    try {
+      // Using Mapbox Static Images API with street view style
+      // The URL generates a beautiful street-view like image of the area
+      const mapboxImageUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${lng},${lat},15,0,0/600x400@2x?access_token=${MAPBOX_ACCESS_TOKEN}`;
+      
+      return {
+        id: areaName,
+        name: areaName,
+        description: areaDescriptions[areaName] || "Explore this amazing area",
+        image: mapboxImageUrl,
+        latitude: lat,
+        longitude: lng,
+      };
+    } catch (error) {
+      console.error(`Error fetching image for ${areaName}:`, error);
+      return {
+        id: areaName,
+        name: areaName,
+        description: areaDescriptions[areaName] || "Explore this amazing area",
+        image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&auto=format",
+        latitude: lat,
+        longitude: lng,
+      };
+    }
+  };
+
+  // ✅ Initialize and fetch cities data
+  useEffect(() => {
+    const initializeCities = async () => {
+      try {
+        setLoading(true);
+        const citiesData = await Promise.all(
+          indoreAreas.map((area) =>
+            fetchAreaImage(area.name, area.lat, area.lng)
+          )
+        );
+        setCities(citiesData);
+      } catch (error) {
+        console.error("Error initializing cities:", error);
+        setCities(
+          indoreAreas.map((area) => ({
+            id: area.name,
+            name: area.name,
+            description: areaDescriptions[area.name],
+            image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&auto=format",
+            latitude: area.lat,
+            longitude: area.lng,
+          }))
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeCities();
+  }, []);
+
+  // ✅ Handle window resize
   useEffect(() => {
     const handleResize = () => {
       const newCount = getItemsPerView();
@@ -94,18 +163,21 @@ function ExploreCities() {
 
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  }, [cities.length]);
 
-  const maxIndex = cities.length - visibleCount;
-
-  // Auto slide every 4.5 seconds
+  // ✅ Auto slide effect
   useEffect(() => {
+    if (cities.length === 0) return;
+
+    const maxIndex = cities.length - visibleCount;
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev >= maxIndex ? 0 : prev + 1));
     }, 4500);
 
     return () => clearInterval(interval);
-  }, [maxIndex]);
+  }, [visibleCount, cities.length]);
+
+  const maxIndex = cities.length > 0 ? cities.length - visibleCount : 0;
 
   const nextSlide = () => {
     setCurrentIndex((prev) => (prev >= maxIndex ? 0 : prev + 1));
@@ -116,13 +188,26 @@ function ExploreCities() {
   };
 
   const handleCityClick = (cityName) => {
-    const destination = `/toparea?city=${encodeURIComponent(cityName)}`;
-    if (isAuthenticated) {
-      navigate(destination);
-    } else {
-      navigate("/login", { state: { from: destination } });
-    }
+    // Navigate to toparea and pass both city (Indore) and area params
+    // so PropertyListMain can fetch all properties and filter by area.
+    const destination = `/toparea?city=${encodeURIComponent("Indore")}&area=${encodeURIComponent(
+      cityName
+    )}`;
+    navigate(destination);
   };
+
+  if (loading) {
+    return (
+      <section className="py-16 md:py-20 bg-gradient-to-b from-gray-50 via-white to-gray-100">
+        <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="mt-4 text-gray-600">Loading Indore's best areas...</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="py-16 md:py-20 bg-gradient-to-b from-gray-50 via-white to-gray-100">
@@ -152,11 +237,11 @@ function ExploreCities() {
               {cities.map((city) => (
                 <div
                   key={city.id}
-                  className="flex-shrink-0 px-3 sm:px-4 w-full sm:w-1/2 lg:w-1/4 "
+                  className="flex-shrink-0 px-3 sm:px-4 w-full sm:w-1/2 lg:w-1/4"
                 >
                   <div
                     onClick={() => handleCityClick(city.name)}
-                    className="group bg-white border-2 border-orange-400 rounded-2xl shadow-xl hover:shadow-2xl cursor-pointer overflow-hidden transition-all duration-500 hover:-translate-y-4 "
+                    className="group bg-white border-2 border-orange-400 rounded-2xl shadow-xl hover:shadow-2xl cursor-pointer overflow-hidden transition-all duration-500 hover:-translate-y-4"
                   >
                     <div className="relative overflow-hidden h-48 sm:h-56 md:h-64">
                       <img
@@ -164,7 +249,8 @@ function ExploreCities() {
                         alt={city.name}
                         className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
                         onError={(e) => {
-                          e.target.src = "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&auto=format";
+                          e.target.src =
+                            "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&auto=format";
                         }}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/25 to-transparent" />

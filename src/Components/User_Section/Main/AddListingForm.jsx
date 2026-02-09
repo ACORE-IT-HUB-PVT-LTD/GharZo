@@ -88,6 +88,9 @@ const AddListingForm = () => {
     commonWashroom: false,
     attachedWashroom: false,
     commonAreas: [],
+    foodTimings: {},
+    facilities: {},
+    securityFeatures: {},
     
     // Property Features
     powerBackup: '',
@@ -154,7 +157,7 @@ const AddListingForm = () => {
     'Charging Point', 'Wardrobe', 'Study Desk', 'Chair'
   ];
 
-  const postedByOptions = ['Owner', 'Agent', 'Builder', 'admin', 'landlord'];
+  const postedByOptions = ['Owner', 'Agent', 'Builder', 'Admin', 'Landlord', 'Worker', 'Tenant', 'Sub Owner'];
 
   const propertyAgeOptions = [
     'Under Construction',
@@ -171,11 +174,63 @@ const AddListingForm = () => {
     'Evening (5PM-9PM)'
   ];
 
-  // Fetch master data
+  // Fetch master data and user profile
   useEffect(() => {
     fetchCities();
     fetchAmenities();
+    fetchUserProfile();
   }, []);
+
+  // Fetch user profile and set postedBy automatically
+  const fetchUserProfile = async () => {
+    try {
+      const token = localStorage.getItem('usertoken') || localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await axios.get(
+        'https://api.gharzoreality.com/api/auth/me',
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.data.success && response.data.data?.user) {
+        const user = response.data.data.user;
+        
+        // Format the role for postedBy field - map API roles to dropdown options
+        const roleMapping = {
+          'landlord': 'Landlord',
+          'Landlord': 'Landlord',
+          'worker': 'Worker',
+          'Worker': 'Worker',
+          'tenant': 'Tenant',
+          'Tenant': 'Tenant',
+          'subowner': 'Sub Owner',
+          'sub_owner': 'Sub Owner',
+          'SubOwner': 'Sub Owner',
+          'sub_owner': 'Sub Owner',
+          'admin': 'Admin',
+          'Admin': 'Admin',
+          'agent': 'Agent',
+          'Agent': 'Agent',
+          'builder': 'Builder',
+          'Builder': 'Builder'
+        };
+        
+        const roleFormatted = roleMapping[user.role] || 'Owner';
+        setFormData(prev => ({
+          ...prev,
+          postedBy: roleFormatted
+        }));
+      }
+    } catch (err) {
+      console.error('Error fetching user profile:', err);
+      // Fallback: keep default value
+    }
+  };
 
   // Fetch localities when city changes
   useEffect(() => {
@@ -542,12 +597,15 @@ const AddListingForm = () => {
           roomType: formData.roomType,
           foodIncluded: formData.foodIncluded,
           foodType: formData.foodType,
+          foodTimings: formData.foodTimings || {},
           genderPreference: formData.genderPreference,
           totalBeds: parseInt(formData.totalBeds) || 0,
           availableBeds: parseInt(formData.availableBeds) || 0,
           commonWashroom: formData.commonWashroom,
           attachedWashroom: formData.attachedWashroom,
-          commonAreas: formData.commonAreas
+          commonAreas: formData.commonAreas,
+          facilities: formData.facilities || {},
+          securityFeatures: formData.securityFeatures || {}
         };
       }
 
@@ -1116,16 +1174,12 @@ const AddListingForm = () => {
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Posted By *
               </label>
-              <select
-                name="postedBy"
-                value={formData.postedBy}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-              >
-                {postedByOptions.map(p => (
-                  <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
-                ))}
-              </select>
+              <div className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-gray-50 flex items-center">
+                <span className="text-gray-700 font-medium">
+                  {formData.postedBy || 'Loading...'}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Based on your account type</p>
             </div>
 
             <div className="flex items-center gap-2">

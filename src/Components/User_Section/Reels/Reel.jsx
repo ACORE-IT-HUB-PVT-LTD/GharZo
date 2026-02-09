@@ -270,6 +270,18 @@ function ReelsPage() {
       {/* ── top header bar: category tabs + search icon ── */}
       <header className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-3 pt-safe-top"
               style={{ paddingTop: "env(safe-area-inset-top, 8px)" }}>
+        {/* Back Button */}
+        <button
+          onClick={() => navigate(-1)}
+          className="p-2 rounded-full bg-black/50 backdrop-blur border border-white/15 hover:bg-black/70 transition"
+          aria-label="Go back"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+        </button>
+
         {/* Category pills */}
         <div className="flex gap-2 py-2">
           {CATEGORIES.map((cat) => (
@@ -841,6 +853,7 @@ function SearchOverlay({ onClose, onResults }) {
   const [results, setResults]       = useState(null);   // null = not searched yet
   const [loading, setLoading]       = useState(false);
   const [searchedOnce, setSearchedOnce] = useState(false);
+  const [isNearbySearch, setIsNearbySearch] = useState(false);
   const inputRef                    = useRef(null);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
@@ -848,6 +861,7 @@ function SearchOverlay({ onClose, onResults }) {
   const doSearch = async () => {
     setLoading(true);
     setSearchedOnce(true);
+    setIsNearbySearch(false);
     try {
       const token = getToken();
       if (!token) { alert("Please log in."); setLoading(false); return; }
@@ -897,6 +911,7 @@ function SearchOverlay({ onClose, onResults }) {
   const doNearbySearch = async () => {
     setLoading(true);
     setSearchedOnce(true);
+    setIsNearbySearch(true);
     try {
       const token = getToken();
       if (!token) { alert("Please log in."); setLoading(false); return; }
@@ -1036,7 +1051,19 @@ function SearchOverlay({ onClose, onResults }) {
 
             <div className="space-y-3">
               {results.map((reel) => (
-                <SearchResultCard key={reel.id} reel={reel} />
+                <SearchResultCard 
+                  key={reel.id} 
+                  reel={reel} 
+                  onSelectResult={() => {
+                    if (isNearbySearch) {
+                      // For nearby search: click loads just that reel into feed
+                      onResults([reel]);
+                    } else {
+                      // For regular search: click also loads into feed
+                      onResults([reel]);
+                    }
+                  }}
+                />
               ))}
             </div>
           </>
@@ -1056,9 +1083,12 @@ function SearchOverlay({ onClose, onResults }) {
 }
 
 /* ── single search result card ── */
-function SearchResultCard({ reel }) {
+function SearchResultCard({ reel, onSelectResult }) {
   return (
-    <div className="flex gap-3 bg-white/5 border border-white/8 rounded-xl p-3">
+    <div 
+      className="flex gap-3 bg-white/5 border border-white/8 rounded-xl p-3 cursor-pointer hover:bg-white/8 hover:border-white/15 transition"
+      onClick={onSelectResult}
+    >
       {/* thumbnail / poster */}
       <div className="w-24 h-16 rounded-lg overflow-hidden bg-neutral-800 flex-shrink-0">
         {reel.poster ? (

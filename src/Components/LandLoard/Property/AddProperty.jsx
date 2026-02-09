@@ -88,6 +88,9 @@ const AddListingForm = () => {
     commonWashroom: false,
     attachedWashroom: false,
     commonAreas: [],
+    foodTimings: {},
+    facilities: {},
+    securityFeatures: {},
     
     // Property Features
     powerBackup: '',
@@ -155,7 +158,7 @@ const AddListingForm = () => {
     'Charging Point', 'Wardrobe', 'Study Desk', 'Chair'
   ];
 
-  const postedByOptions = ['Owner', 'Agent', 'Builder', 'admin', 'landlord'];
+  const postedByOptions = ['Owner', 'Agent', 'Builder', 'Admin', 'Landlord', 'Worker', 'Tenant', 'Sub Owner'];
 
   const propertyAgeOptions = [
     'Under Construction',
@@ -256,8 +259,27 @@ const AddListingForm = () => {
         const user = response.data.data.user;
         setUserProfile(user);
         
-        // Format the role for postedBy field
-        const roleFormatted = user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'Owner';
+        // Format the role for postedBy field - map API roles to dropdown options
+        const roleMapping = {
+          'landlord': 'Landlord',
+          'Landlord': 'Landlord',
+          'worker': 'Worker',
+          'Worker': 'Worker',
+          'tenant': 'Tenant',
+          'Tenant': 'Tenant',
+          'subowner': 'Sub Owner',
+          'sub_owner': 'Sub Owner',
+          'SubOwner': 'Sub Owner',
+          'sub_owner': 'Sub Owner',
+          'admin': 'Admin',
+          'Admin': 'Admin',
+          'agent': 'Agent',
+          'Agent': 'Agent',
+          'builder': 'Builder',
+          'Builder': 'Builder'
+        };
+        
+        const roleFormatted = roleMapping[user.role] || 'Owner';
         setFormData(prev => ({
           ...prev,
           postedBy: roleFormatted
@@ -580,12 +602,15 @@ const AddListingForm = () => {
           roomType: formData.roomType,
           foodIncluded: formData.foodIncluded,
           foodType: formData.foodType,
+          foodTimings: formData.foodTimings || {},
           genderPreference: formData.genderPreference,
           totalBeds: parseInt(formData.totalBeds) || 0,
           availableBeds: parseInt(formData.availableBeds) || 0,
           commonWashroom: formData.commonWashroom,
           attachedWashroom: formData.attachedWashroom,
-          commonAreas: formData.commonAreas
+          commonAreas: formData.commonAreas,
+          facilities: formData.facilities || {},
+          securityFeatures: formData.securityFeatures || {}
         };
       }
 

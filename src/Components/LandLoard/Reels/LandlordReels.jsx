@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { FaArrowLeft } from "react-icons/fa";
 
 function ReelsPage() {
   const navigate = useNavigate();
@@ -329,6 +330,15 @@ function ReelsPage() {
       )}
 
       <div className="min-h-screen w-full bg-black text-white overflow-hidden relative">
+        {/* Back Button */}
+        <button
+          onClick={() => navigate(-1)}
+          className="fixed top-3 left-4 z-50 p-2 rounded-full bg-black/50 hover:bg-black/70 transition-all duration-300 flex items-center justify-center"
+          aria-label="Go back"
+        >
+          <FaArrowLeft className="text-white text-lg" />
+        </button>
+
         <header className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 sm:px-6 py-3">
           <div className="flex items-center gap-3">
             <ReelsCube3D />

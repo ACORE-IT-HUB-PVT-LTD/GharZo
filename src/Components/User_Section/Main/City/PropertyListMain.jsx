@@ -26,6 +26,7 @@ const PropertyList = () => {
   // Extract city from URL query parameters
   const queryParams = new URLSearchParams(location.search);
   const selectedCity = queryParams.get("city") || "";
+  const selectedArea = queryParams.get("area") || "";
 
   // Fetch properties from API
   useEffect(() => {
@@ -39,11 +40,15 @@ const PropertyList = () => {
         const list = data?.data || [];
         const normalized = list.map((p) => ({
           ...p,
+          id: p._id,
           name: p.title || p.name,
           location: p.location || { address: "", city: "" },
           type: p.propertyType || p.type || "",
           lowestPrice: p.price?.amount || 0,
           isActive: p.isActive === undefined ? true : p.isActive,
+          images: p.images || [],
+          totalRooms: p.roomStats?.totalRooms || 0,
+          totalBeds: p.pgDetails?.totalBeds || p.roomStats?.availableRooms || 0,
         }));
         setProperties(normalized || []);
       } catch (error) {
@@ -80,12 +85,19 @@ const PropertyList = () => {
         ? property.location?.city?.toLowerCase() === selectedCity.toLowerCase()
         : true;
 
+      const matchesArea = selectedArea
+        ? (property.location?.locality?.toLowerCase() === selectedArea.toLowerCase() ||
+           property.location?.area?.toLowerCase() === selectedArea.toLowerCase() ||
+           property.location?.address?.toLowerCase().includes(selectedArea.toLowerCase()))
+        : true;
+
       return (
         matchesSearch &&
         matchesType &&
         matchesMinPrice &&
         matchesMaxPrice &&
-        matchesCity
+        matchesCity &&
+        matchesArea
       );
     });
 
@@ -179,7 +191,7 @@ const PropertyList = () => {
               className="relative bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition cursor-pointer"
               onClick={() => {
                 if (property.id) {
-                  navigate(`/details/${property.id}`);
+                  navigate(`/property/${property.id}`);
                 }
               }}
             >
@@ -214,7 +226,7 @@ const PropertyList = () => {
                   property.images.map((img, index) => (
                     <SwiperSlide key={index}>
                       <img
-                        src={img}
+                        src={img?.url || img}
                         alt={property.name}
                         className="w-full h-56 object-cover"
                       />

@@ -168,8 +168,9 @@ const PGHostelSection = () => {
   };
 
   const handlePropertyClick = (id) => {
-    if (isAuthenticated) navigate(`/property/${id}`);
-    else navigate("/login", { state: { from: `/property/${id}` } });
+    // Direct navigation to property details - NO login required
+    // Details page is public, login only needed for booking tour
+    navigate(`/property/${id}`);
   };
 
   // Navigation handlers
