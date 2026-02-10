@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { FaBoxOpen, FaMoneyBill, FaTeamspeak } from "react-icons/fa";
 import { motion } from "framer-motion";
+import { FileText } from "lucide-react";
 
 const Colorful3DIcon = ({ icon: Icon, gradient, size = 22 }) => (
   <motion.div
@@ -44,6 +45,7 @@ const Sidebar = ({ setSidebarWidth }) => {
     { text: "Workers", to: "/sub_owner/sub_owner_add_workers", icon: FaTeamspeak, gradient: "from-[#C6CCD1] to-[#4C6F8F]" },
     { text: "Dues", to: "/sub_owner/dues", icon: FaBoxOpen, gradient: "from-[#FF6900] to-[#ff8e3c]" },
     { text: "Expenses", to: "/sub_owner/sub_owner_expenses", icon: FaMoneyBill, gradient: "from-[#0A2F56] to-[#1b4c7d]" },
+    { text: "Announcements", to: "/sub_owner/announcements", icon: FileText, gradient: "from-[#FF6900] to-[#b74b00]" },
     // { text: "Police Verification", to: "/sub_owner/police-verification", icon: BadgeCheck, gradient: "from-[#FF6900] to-[#cc5600]" },
     { text: "Profile", to: "/sub_owner/sub_owner_profile", icon: User, gradient: "from-[#4C6F8F] to-[#0A2F56]" },
   ];

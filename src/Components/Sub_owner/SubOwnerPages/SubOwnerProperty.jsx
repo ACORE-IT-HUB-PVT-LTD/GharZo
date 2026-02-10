@@ -11,7 +11,9 @@ import {
   FaCalendarAlt, 
   FaHome,
   FaArrowRight,
-  FaLayerGroup
+  FaLayerGroup,
+  FaDoorOpen,
+  FaCheckCircle
 } from "react-icons/fa";
 
 const Property = () => {
@@ -33,7 +35,7 @@ const Property = () => {
         }
 
         const response = await fetch(
-          `${baseurl}api/sub-owner/properties`,
+          `${baseurl}api/subowners/me/dashboard`,
           {
             method: "GET",
             headers: {
@@ -45,7 +47,9 @@ const Property = () => {
 
         const data = await response.json();
         if (response.ok && data.success) {
-          setProperties(data.properties);
+          // Extract assigned properties from the new API structure
+          const assignedProperties = data.data.subOwner.assignedProperties || [];
+          setProperties(assignedProperties);
         } else {
           toast.error("Failed to fetch properties", {
             position: "top-right",
@@ -150,8 +154,8 @@ const Property = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 lg:gap-6">
             {properties.map((property, index) => (
               <div
-                key={property.id}
-                onClick={() => handleCardClick(property.id)}
+                key={property._id}
+                onClick={() => handleCardClick(property._id)}
                 className="group bg-white rounded-2xl lg:rounded-3xl shadow-lg hover:shadow-2xl overflow-hidden cursor-pointer transform transition-all duration-300 hover:-translate-y-2"
                 style={{
                   animationDelay: `${index * 0.1}s`,
@@ -161,59 +165,65 @@ const Property = () => {
               >
                 {/* Image Carousel with Overlay */}
                 <div className="relative h-48 sm:h-56 lg:h-64 overflow-hidden">
-                  <Carousel
-                    autoPlay
-                    infiniteLoop
-                    showThumbs={false}
-                    showStatus={false}
-                    interval={3000}
-                    showArrows={false}
-                    showIndicators={true}
-                    className="h-full"
-                    renderIndicator={(onClickHandler, isSelected, index, label) => {
-                      const defStyle = {
-                        marginLeft: 4,
-                        marginRight: 4,
-                        width: 8,
-                        height: 8,
-                        borderRadius: '50%',
-                        display: 'inline-block',
-                        cursor: 'pointer',
-                        backgroundColor: isSelected ? '#FF6B35' : 'rgba(255, 255, 255, 0.5)',
-                        transition: 'all 0.3s ease'
-                      };
-                      return (
-                        <span
-                          style={defStyle}
-                          onClick={onClickHandler}
-                          onKeyDown={onClickHandler}
-                          key={index}
-                          role="button"
-                          tabIndex={0}
-                          aria-label={`${label} ${index + 1}`}
-                        />
-                      );
-                    }}
-                  >
-                    {property.images.map((image, imgIndex) => (
-                      <div key={imgIndex} className="h-48 sm:h-56 lg:h-64">
-                        <img
-                          src={image}
-                          alt={`${property.name} ${imgIndex + 1}`}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                        />
-                      </div>
-                    ))}
-                  </Carousel>
+                  {property.images && property.images.length > 0 ? (
+                    <Carousel
+                      autoPlay
+                      infiniteLoop
+                      showThumbs={false}
+                      showStatus={false}
+                      interval={3000}
+                      showArrows={false}
+                      showIndicators={property.images.length > 1}
+                      className="h-full"
+                      renderIndicator={(onClickHandler, isSelected, index, label) => {
+                        const defStyle = {
+                          marginLeft: 4,
+                          marginRight: 4,
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          display: 'inline-block',
+                          cursor: 'pointer',
+                          backgroundColor: isSelected ? '#FF6B35' : 'rgba(255, 255, 255, 0.5)',
+                          transition: 'all 0.3s ease'
+                        };
+                        return (
+                          <span
+                            style={defStyle}
+                            onClick={onClickHandler}
+                            onKeyDown={onClickHandler}
+                            key={index}
+                            role="button"
+                            tabIndex={0}
+                            aria-label={`${label} ${index + 1}`}
+                          />
+                        );
+                      }}
+                    >
+                      {property.images.map((image, imgIndex) => (
+                        <div key={imgIndex} className="h-48 sm:h-56 lg:h-64">
+                          <img
+                            src={image.url}
+                            alt={`${property.title} ${imgIndex + 1}`}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                          />
+                        </div>
+                      ))}
+                    </Carousel>
+                  ) : (
+                    <div className="h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+                      <FaBuilding className="text-6xl text-gray-400" />
+                    </div>
+                  )}
                   
                   {/* Gradient Overlay */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent pointer-events-none"></div>
                   
-                  {/* Property Type Badge */}
+                  {/* Property Status Badge */}
                   <div className="absolute top-3 right-3 z-10">
                     <span className="bg-gradient-to-r from-[#FF6B35] to-[#ff8659] text-white text-xs sm:text-sm font-semibold px-3 py-1.5 rounded-full shadow-lg backdrop-blur-sm flex items-center gap-1">
                       <FaHome className="text-xs" />
-                      {property.type}
+                      Property
                     </span>
                   </div>
 
@@ -229,26 +239,52 @@ const Property = () => {
                 <div className="p-4 sm:p-5">
                   {/* Property Name */}
                   <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-[#003366] mb-2 group-hover:text-[#FF6B35] transition-colors duration-300 line-clamp-1">
-                    {property.name}
+                    {property.title || 'Property Title'}
                   </h2>
 
                   {/* Location */}
-                  <div className="flex items-center gap-2 text-gray-600 mb-4">
+                  <div className="flex items-center gap-2 text-gray-600 mb-3">
                     <FaMapMarkerAlt className="text-[#FF6B35] flex-shrink-0" />
-                    <p className="text-sm sm:text-base line-clamp-1">{property.city}</p>
+                    <p className="text-sm sm:text-base line-clamp-1">
+                      {property.location?.city || 'City'}, {property.location?.state || 'State'}
+                    </p>
                   </div>
 
-                  {/* Assigned Date */}
+                  {/* Address */}
+                  {property.location?.address && (
+                    <div className="mb-3 text-xs sm:text-sm text-gray-500 line-clamp-2">
+                      {property.location.address}
+                    </div>
+                  )}
+
+                  {/* Room Statistics */}
+                  {property.roomStats && (
+                    <div className="grid grid-cols-3 gap-2 mb-3">
+                      <div className="bg-blue-50 rounded-lg p-2 text-center">
+                        <FaDoorOpen className="text-blue-600 mx-auto mb-1 text-sm" />
+                        <p className="text-xs text-gray-600">Total</p>
+                        <p className="text-sm font-bold text-blue-600">{property.roomStats.totalRooms}</p>
+                      </div>
+                      <div className="bg-green-50 rounded-lg p-2 text-center">
+                        <FaCheckCircle className="text-green-600 mx-auto mb-1 text-sm" />
+                        <p className="text-xs text-gray-600">Available</p>
+                        <p className="text-sm font-bold text-green-600">{property.roomStats.availableRooms}</p>
+                      </div>
+                      <div className="bg-orange-50 rounded-lg p-2 text-center">
+                        <FaHome className="text-orange-600 mx-auto mb-1 text-sm" />
+                        <p className="text-xs text-gray-600">Occupied</p>
+                        <p className="text-sm font-bold text-orange-600">{property.roomStats.occupiedRooms}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Locality Info */}
                   <div className="flex items-center gap-2 bg-gradient-to-r from-[#003366] to-[#004d99] text-white px-3 py-2 rounded-lg shadow-md">
-                    <FaCalendarAlt className="flex-shrink-0 text-sm" />
+                    <FaMapMarkerAlt className="flex-shrink-0 text-sm" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs opacity-90">Assigned Date</p>
+                      <p className="text-xs opacity-90">Locality</p>
                       <p className="text-sm font-semibold truncate">
-                        {new Date(property.assignment.assignedDate).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        })}
+                        {property.location?.locality || property.location?.subLocality || 'N/A'}
                       </p>
                     </div>
                   </div>

@@ -6,6 +6,8 @@ import {
   FaFacebookMessenger,
   FaExclamationTriangle,
   FaUser,
+  FaUsers,
+  FaClock,
 } from "react-icons/fa";
 import { motion } from "framer-motion";
 import { useParams } from "react-router-dom";
@@ -14,11 +16,16 @@ import "react-toastify/dist/ReactToastify.css";
 import baseurl from "../../../../BaseUrl";
 
 const ScheduleTourBox = () => {
-  const [visitDate, setVisitDate] = useState("");
-  const [notes, setNotes] = useState("");
-  const [contactNumber, setContactNumber] = useState("");
+  const [preferredDate, setPreferredDate] = useState("");
+  const [preferredTimeSlot, setPreferredTimeSlot] = useState("Morning (9AM-12PM)");
+  const [visitType, setVisitType] = useState("Physical");
+  const [numberOfVisitors, setNumberOfVisitors] = useState(1);
+  const [purpose, setPurpose] = useState("Rent");
+  const [message, setMessage] = useState("");
+  const [visitorDetails, setVisitorDetails] = useState([
+    { name: "", relation: "Self", phone: "" },
+  ]);
   const [error, setError] = useState(null);
-  const [dateTimeError, setDateTimeError] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [landlordNumber, setLandlordNumber] = useState("");
@@ -44,7 +51,6 @@ const ScheduleTourBox = () => {
         );
         const data = await response.json();
         console.log(data);
-        
 
         if (data.success && data.property) {
           const number = data.property?.landlord?.contactNumber;
@@ -70,46 +76,73 @@ const ScheduleTourBox = () => {
     fetchPropertyDetails();
   }, [id]);
 
-  const validateDateTime = (dateTimeValue) => {
-    if (!dateTimeValue) {
-      return "Please select a date and time";
+  // Add visitor detail
+  const addVisitor = () => {
+    if (visitorDetails.length < 5) {
+      setVisitorDetails([...visitorDetails, { name: "", relation: "Self", phone: "" }]);
+      setNumberOfVisitors(visitorDetails.length + 1);
     }
-    const selectedDateTime = new Date(dateTimeValue);
-    const now = new Date();
-    const bufferTime = new Date(now.getTime() + 30 * 60 * 1000);
-
-    if (selectedDateTime <= bufferTime) {
-      return "Please select a future time (at least 30 minutes from now)";
-    }
-    return null;
   };
 
-  const handleDateTimeChange = (e) => {
-    const value = e.target.value;
-    setVisitDate(value);
-    setError(null);
-    setSuccess(false);
-
-    setDateTimeError("");
-
-    const validationError = validateDateTime(value);
-    if (validationError) {
-      setDateTimeError(validationError);
+  // Remove visitor detail
+  const removeVisitor = (index) => {
+    if (visitorDetails.length > 1) {
+      const updated = visitorDetails.filter((_, i) => i !== index);
+      setVisitorDetails(updated);
+      setNumberOfVisitors(updated.length);
     }
+  };
+
+  // Update visitor detail
+  const updateVisitor = (index, field, value) => {
+    const updated = [...visitorDetails];
+    updated[index][field] = value;
+    setVisitorDetails(updated);
+  };
+
+  const validateForm = () => {
+    if (!preferredDate) {
+      setError("Please select a preferred date");
+      return false;
+    }
+    if (!preferredTimeSlot) {
+      setError("Please select a time slot");
+      return false;
+    }
+    if (!visitType) {
+      setError("Please select a visit type");
+      return false;
+    }
+    if (!purpose) {
+      setError("Please select a purpose");
+      return false;
+    }
+    for (let i = 0; i < visitorDetails.length; i++) {
+      const visitor = visitorDetails[i];
+      if (!visitor.name.trim()) {
+        setError(`Please enter name for visitor ${i + 1}`);
+        return false;
+      }
+      if (!visitor.phone.trim() || visitor.phone.length !== 10) {
+        setError(`Please enter valid 10-digit phone for visitor ${i + 1}`);
+        return false;
+      }
+    }
+    setError(null);
+    return true;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const dateValidationError = validateDateTime(visitDate);
-    if (dateValidationError) {
-      setDateTimeError(dateValidationError);
-      setError("Please select a valid future date and time");
-      toast.error("Please select a valid future date and time", {
+    
+    if (!validateForm()) {
+      toast.error(error, {
         position: "top-right",
         autoClose: 5000,
       });
       return;
     }
+    
     const token = getToken();
     if (!token) {
       setError("Please log in to book a visit");
@@ -119,13 +152,13 @@ const ScheduleTourBox = () => {
       });
       return;
     }
+    
     setLoading(true);
     setError(null);
-    setDateTimeError("");
     setSuccess(false);
+    
     try {
-      // Submit to visits API (existing)
-      const visitResponse = await fetch(`${baseurl}api/visits`, {
+      const response = await fetch(`${baseurl}api/visits/create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -133,39 +166,20 @@ const ScheduleTourBox = () => {
         },
         body: JSON.stringify({
           propertyId: id,
-          visitDate: new Date(visitDate).toISOString(),
-          notes,
-          contactNumber,
+          preferredDate: preferredDate,
+          preferredTimeSlot: preferredTimeSlot,
+          visitType: visitType,
+          numberOfVisitors: numberOfVisitors,
+          purpose: purpose,
+          message: message,
+          visitorDetails: visitorDetails,
         }),
       });
-      
-      // Also submit to enquiry API (new)
-      await fetch(`${baseurl}api/public/enquiries/property`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          propertyId: id,
-          contactInfo: {
-            name: "Property Visitor",
-            phone: contactNumber,
-            email: "",
-          },
-          message: `Visit scheduled for ${new Date(visitDate).toLocaleString()}. ${notes}`,
-          typeSpecificData: {
-            propertyDetails: {
-              visitDate: visitDate,
-              notes: notes,
-            },
-          },
-        }),
-      }).catch(err => console.log("Enquiry log error:", err));
 
-      const data = await visitResponse.json();
+      const data = await response.json();
       console.log(data);
-      
-      if (visitResponse.ok) {
+
+      if (response.ok && data.success) {
         const successMessage = data.message || "Visit successfully scheduled!";
         toast.success(successMessage, {
           position: "top-right",
@@ -173,10 +187,16 @@ const ScheduleTourBox = () => {
           pauseOnHover: true,
         });
         setSuccess(true);
+        // Dispatch custom event to notify navbar to refetch visit count
+        window.dispatchEvent(new Event('visitBooked'));
         setTimeout(() => {
-          setVisitDate("");
-          setNotes("");
-          setContactNumber("");
+          setPreferredDate("");
+          setPreferredTimeSlot("Morning (9AM-12PM)");
+          setVisitType("Physical");
+          setNumberOfVisitors(1);
+          setPurpose("Rent");
+          setMessage("");
+          setVisitorDetails([{ name: "", relation: "Self", phone: "" }]);
         }, 1000);
       } else {
         setError(data.message || "Failed to book visit.");
@@ -184,7 +204,7 @@ const ScheduleTourBox = () => {
           position: "top-right",
           autoClose: 5000,
         });
-        if (visitResponse.status === 401) {
+        if (response.status === 401) {
           setError("Session expired. Please log in again.");
           toast.error("Session expired. Please log in again.", {
             position: "top-right",
@@ -294,68 +314,148 @@ const ScheduleTourBox = () => {
         )}
 
         <motion.form onSubmit={handleSubmit} className="space-y-5">
-          {/* Date & Time Field */}
+          {/* Preferred Date */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Select Date & Time
+              Preferred Date
             </label>
             <div className="relative">
               <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#FF6B00]">
                 <FaCalendarAlt size={18} />
               </div>
               <input
-                type="datetime-local"
-                value={visitDate}
-                onChange={handleDateTimeChange}
-                min={new Date(new Date().getTime() + 30 * 60 * 1000)
-                  .toISOString()
-                  .slice(0, 16)}
-                className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl text-sm focus:outline-none transition-all ${
-                  dateTimeError
-                    ? "border-red-500 focus:ring-2 focus:ring-red-200 bg-red-50"
-                    : "border-gray-200 focus:border-[#FF6B00] focus:ring-2 focus:ring-orange-100"
-                }`}
+                type="date"
+                value={preferredDate}
+                onChange={(e) => setPreferredDate(e.target.value)}
+                min={new Date().toISOString().split("T")[0]}
+                className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#FF6B00] focus:ring-2 focus:ring-orange-100 transition-all"
                 required
               />
             </div>
-            {dateTimeError && (
-              <motion.p
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-red-500 text-xs mt-2 flex items-center gap-1"
-              >
-                <FaExclamationTriangle size={12} />
-                {dateTimeError}
-              </motion.p>
-            )}
           </div>
 
-          {/* Contact Number Field */}
+          {/* Time Slot */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Contact Number
+              Preferred Time Slot
             </label>
             <div className="relative">
               <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#FF6B00]">
-                <FaPhone size={18} />
+                <FaClock size={18} />
               </div>
-              <input
-                type="number"
-                value={contactNumber}
-                onChange={(e) => setContactNumber(e.target.value)}
-                placeholder="Enter 10-digit mobile number"
-                className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#FF6B00] focus:ring-2 focus:ring-orange-100 transition-all"
-                required
-                pattern="[0-9]{10}"
-                title="Please enter a valid 10-digit phone number"
-              />
+              <select
+                value={preferredTimeSlot}
+                onChange={(e) => setPreferredTimeSlot(e.target.value)}
+                className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#FF6B00] focus:ring-2 focus:ring-orange-100 transition-all appearance-none"
+              >
+                <option value="Morning (9AM-12PM)">Morning (9AM-12PM)</option>
+                <option value="Afternoon (12PM-4PM)">Afternoon (12PM-4PM)</option>
+                <option value="Evening (4PM-7PM)">Evening (4PM-7PM)</option>
+              </select>
             </div>
           </div>
 
-          {/* Notes Field */}
+          {/* Visit Type & Purpose - Grid */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Visit Type
+              </label>
+              <select
+                value={visitType}
+                onChange={(e) => setVisitType(e.target.value)}
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#FF6B00] focus:ring-2 focus:ring-orange-100 transition-all appearance-none"
+              >
+                <option value="Physical">Physical</option>
+                <option value="Virtual">Virtual</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Purpose
+              </label>
+              <select
+                value={purpose}
+                onChange={(e) => setPurpose(e.target.value)}
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#FF6B00] focus:ring-2 focus:ring-orange-100 transition-all appearance-none"
+              >
+                <option value="Rent">Rent</option>
+                <option value="Buy">Buy</option>
+                <option value="Investment">Investment</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Visitor Details */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+              <FaUsers size={16} />
+              Visitor Details
+            </label>
+            {visitorDetails.map((visitor, index) => (
+              <div key={index} className="mb-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                <div className="text-xs font-semibold text-gray-500 mb-3">
+                  Visitor {index + 1}
+                </div>
+                <div className="grid grid-cols-1 gap-3">
+                  <input
+                    type="text"
+                    value={visitor.name}
+                    onChange={(e) => updateVisitor(index, "name", e.target.value)}
+                    placeholder="Full Name"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#FF6B00] focus:ring-2 focus:ring-orange-100 transition-all"
+                    required
+                  />
+                  <div className="grid grid-cols-2 gap-3">
+                    <select
+                      value={visitor.relation}
+                      onChange={(e) => updateVisitor(index, "relation", e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#FF6B00] focus:ring-2 focus:ring-orange-100 transition-all appearance-none"
+                    >
+                      <option value="Self">Self</option>
+                      <option value="Family">Family</option>
+                      <option value="Friend">Friend</option>
+                      <option value="Colleague">Colleague</option>
+                      <option value="Agent">Agent</option>
+                    </select>
+                    <input
+                      type="number"
+                      value={visitor.phone}
+                      onChange={(e) => updateVisitor(index, "phone", e.target.value)}
+                      placeholder="10-digit Phone"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#FF6B00] focus:ring-2 focus:ring-orange-100 transition-all"
+                      required
+                      pattern="[0-9]{10}"
+                    />
+                  </div>
+                </div>
+                {visitorDetails.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeVisitor(index)}
+                    className="mt-3 text-red-500 text-sm hover:text-red-700 font-medium"
+                  >
+                    Remove Visitor
+                  </button>
+                )}
+              </div>
+            ))}
+            {visitorDetails.length < 5 && (
+              <button
+                type="button"
+                onClick={addVisitor}
+                className="w-full py-2 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-[#FF6B00] hover:text-[#FF6B00] transition-all text-sm font-medium"
+              >
+                + Add Another Visitor
+              </button>
+            )}
+          </div>
+
+          {/* Message */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Additional Notes (Optional)
+              Additional Message (Optional)
             </label>
             <div className="relative">
               <div className="absolute left-4 top-4 text-[#FF6B00]">
@@ -363,8 +463,8 @@ const ScheduleTourBox = () => {
               </div>
               <textarea
                 rows="3"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
                 placeholder="Any specific requirements or questions..."
                 className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#FF6B00] focus:ring-2 focus:ring-orange-100 transition-all resize-none"
               />
@@ -414,11 +514,11 @@ const ScheduleTourBox = () => {
           {/* Submit Button */}
           <motion.button
             type="submit"
-            whileHover={{ scale: loading || dateTimeError ? 1 : 1.02 }}
-            whileTap={{ scale: loading || dateTimeError ? 1 : 0.98 }}
-            disabled={loading || !!dateTimeError}
+            whileHover={{ scale: loading ? 1 : 1.02 }}
+            whileTap={{ scale: loading ? 1 : 0.98 }}
+            disabled={loading}
             className={`w-full py-4 rounded-xl font-bold text-base transition-all shadow-lg ${
-              loading || dateTimeError
+              loading
                 ? "bg-gray-300 cursor-not-allowed text-gray-500"
                 : "bg-gradient-to-r from-[#FF6B00] via-[#FF8C3A] to-[#FFB347] text-white hover:shadow-xl hover:shadow-orange-500/50"
             }`}
@@ -428,8 +528,6 @@ const ScheduleTourBox = () => {
                 <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
                 Booking Your Visit...
               </span>
-            ) : dateTimeError ? (
-              "Please Select Valid Date"
             ) : (
               <span className="flex items-center justify-center gap-2">
                 <FaCalendarAlt />

@@ -16,10 +16,11 @@ import {
   FaChartLine,
   FaClock,
   FaCheckCircle,
+  FaMapMarkerAlt,
+  FaDoorOpen,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import baseurl from "../../../../BaseUrl";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -33,6 +34,7 @@ const Dashboard = () => {
     pendingDues: 0,
     totalComplaints: 0,
   });
+  const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -83,94 +85,62 @@ const Dashboard = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("usertoken");
         if (!token) {
           setError("No authentication token found. Please login again.");
           setLoading(false);
           return;
         }
 
-        // Fetch properties data
-        const propertiesResponse = await axios.get(
-          `${baseurl}api/sub-owner/properties`,
+        // Fetch dashboard data from new API
+        const dashboardResponse = await axios.get(
+          `https://api.gharzoreality.com/api/subowners/me/dashboard`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
 
-        // Fetch workers data
-        const workersResponse = await axios.get(
-          `${baseurl}api/sub-owner/workers`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-
-        // Fetch dues summary data
-        const duesResponse = await axios.get(
-          `${baseurl}api/subowner/dues/summary`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-
-        // Fetch complaints summary data
-        const complaintsResponse = await axios.get(
-          `${baseurl}api/sub-owner/properties/complaints/summary`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-
-        if (
-          propertiesResponse.data.success &&
-          workersResponse.data.success &&
-          duesResponse.data.tenants &&
-          complaintsResponse.data.success
-        ) {
-          const properties = propertiesResponse.data.properties || [];
-          const workers = workersResponse.data.workers || [];
-          const tenantsWithDues = duesResponse.data.tenants || [];
-          const complaintProperties = complaintsResponse.data.properties || [];
-
-          // Calculate total stats
-          const totalProperties = properties.length;
-          const totalRooms = properties.reduce(
-            (sum, prop) => sum + (prop.stats?.totalRooms || 0),
+        if (dashboardResponse.data.success) {
+          const { subOwner, accessiblePropertiesCount } = dashboardResponse.data.data;
+          
+          // Calculate stats from assigned properties
+          const assignedProperties = subOwner.assignedProperties || [];
+          
+          const totalProperties = assignedProperties.length;
+          const totalRooms = assignedProperties.reduce(
+            (sum, prop) => sum + (prop.roomStats?.totalRooms || 0),
             0
           );
-          const totalBeds = properties.reduce(
-            (sum, prop) => sum + (prop.stats?.totalBeds || 0),
+          const occupiedRooms = assignedProperties.reduce(
+            (sum, prop) => sum + (prop.roomStats?.occupiedRooms || 0),
             0
           );
-          const totalTenants = properties.reduce(
-            (sum, prop) => sum + (prop.stats?.occupancy?.occupied || 0),
-            0
-          );
-          const totalWorkers = workers.length;
-          const monthlyCollection = properties.reduce(
-            (sum, prop) => sum + (prop.stats?.monthlyCollection || 0),
-            0
-          );
-          const pendingDues = tenantsWithDues.reduce(
-            (sum, tenantInfo) => sum + (tenantInfo.totalAmount || 0),
-            0
-          );
-          const totalComplaints = complaintProperties.reduce(
-            (sum, prop) => sum + (prop.totalComplaints || 0),
+          const availableRooms = assignedProperties.reduce(
+            (sum, prop) => sum + (prop.roomStats?.availableRooms || 0),
             0
           );
 
           setDashboardStats({
             totalProperties,
             totalRooms,
-            totalBeds,
-            totalTenants,
-            totalWorkers,
-            monthlyCollection,
-            pendingDues,
-            totalComplaints,
+            totalBeds: totalRooms, // Using rooms as beds for now
+            totalTenants: occupiedRooms,
+            totalWorkers: 0, // Will need separate API call if needed
+            monthlyCollection: 0, // Will need separate API call if needed
+            pendingDues: 0, // Will need separate API call if needed
+            totalComplaints: 0, // Will need separate API call if needed
           });
+
+          // Set properties from assigned properties
+          setProperties(
+            assignedProperties.map((prop) => ({
+              id: prop._id,
+              title: prop.title,
+              location: prop.location,
+              images: prop.images,
+              roomStats: prop.roomStats,
+            }))
+          );
         } else {
           setError("Failed to fetch dashboard data.");
         }
@@ -617,7 +587,7 @@ const Dashboard = () => {
               whileHover={{ y: -6, scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               role="button"
-              onClick={() => navigate("/sub_owner/my_owner")}
+              onClick={() => navigate("/sub_owner/my_owner")} 
               className="group bg-white rounded-xl lg:rounded-2xl shadow-md hover:shadow-xl p-5 sm:p-6 cursor-pointer border border-gray-100 hover:border-purple-400 transition-all duration-300"
             >
               <div className="flex flex-col items-center text-center">
@@ -631,6 +601,88 @@ const Dashboard = () => {
           </div>
         </motion.div>
       </div>
+
+      {/* My Properties Section */}
+      {properties.length > 0 && (
+        <>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[#003366] mb-6 flex items-center gap-3">
+              <FaBuilding className="text-[#FF6B35]" />
+              My Properties ({properties.length})
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {properties.map((prop, index) => (
+                <motion.div
+                  key={prop.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  whileHover={{ y: -5, scale: 1.01 }}
+                  className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 cursor-pointer"
+                  onClick={() => navigate(`/sub_owner/property/${prop.id}`)}
+                >
+                  {/* Property Image */}
+                  {prop.images?.[0]?.url && (
+                    <div className="relative h-48 overflow-hidden">
+                      <img
+                        src={prop.images[0].url}
+                        alt={prop.title}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                    </div>
+                  )}
+
+                  <div className="p-5">
+                    <h3 className="text-lg font-bold text-[#003366] mb-3 truncate">
+                      {prop.title}
+                    </h3>
+
+                    <div className="flex items-start gap-2 text-gray-600 mb-4">
+                      <FaMapMarkerAlt className="text-[#FF6B35] mt-1 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm truncate">{prop.location?.address}</p>
+                        <p className="text-xs text-gray-500">
+                          {prop.location?.locality}, {prop.location?.city}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Room Statistics */}
+                    {prop.roomStats && (
+                      <div className="grid grid-cols-3 gap-2 pt-3 border-t border-gray-100">
+                        <div className="text-center bg-blue-50 p-2 rounded-lg">
+                          <p className="text-xl font-bold text-[#003366]">
+                            {prop.roomStats.totalRooms}
+                          </p>
+                          <p className="text-xs text-gray-500">Total</p>
+                        </div>
+                        <div className="text-center bg-green-50 p-2 rounded-lg">
+                          <p className="text-xl font-bold text-green-600">
+                            {prop.roomStats.availableRooms}
+                          </p>
+                          <p className="text-xs text-gray-500">Available</p>
+                        </div>
+                        <div className="text-center bg-orange-50 p-2 rounded-lg">
+                          <p className="text-xl font-bold text-[#FF6B35]">
+                            {prop.roomStats.occupiedRooms}
+                          </p>
+                          <p className="text-xs text-gray-500">Occupied</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        </>
+      )}
     </div>
   );
 };

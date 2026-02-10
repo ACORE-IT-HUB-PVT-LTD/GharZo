@@ -17,12 +17,14 @@ import {
   Landmark,
   Briefcase,
   Users,
+  House,
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import gsap from "gsap";
 import logo from "../../../assets/logo/logo.png";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../User_Section/Context/AuthContext.jsx"; 
+import useVisitCount from "../../../hooks/useVisitCount.js"; 
 
 // Download App Button Component
 const DownloadAppButton = () => (
@@ -58,6 +60,7 @@ function Navbar() {
   const currentPath = location.pathname;
 
   const [hasToken, setHasToken] = useState(false);
+  const { visitCount, refetch: refetchVisitCount } = useVisitCount();
 
   const logoRef = useRef(null);
   const iconRefs = useRef([]);
@@ -73,10 +76,11 @@ function Navbar() {
   ];
 
   const moreMenuItems = [
-    { text: "My Visits", to: "/my-visits", icon: <Calendar size={18} />, protected: true },
+    { text: "My Visits", to: "/my-visits", icon: <Calendar size={18} />, protected: true, showWhen: () => visitCount > 0 },
     { text: "Add Channel Partner", to: "/add-channel-partner", icon: <UserPlus size={18} />, protected: false },
     { text: "Home Loan", to: "/home-loan", icon: <Landmark size={18} />, protected: false },
     { text: "Franchise Request", to: "/franchise-request", icon: <Briefcase size={18} />, protected: false },
+    { text: "Property  Registration and Mortgage", to: "/property-registration-mortgage", icon: <House size={18} />, protected: false },
     // { text: "Login", to: "/login", icon: <User size={18} />, protected: false, hideIfAuth: true },
     // { text: "Sub Owner", to: "/sub-owner", icon: <Users size={18} />, protected: true },
   ];
@@ -158,7 +162,11 @@ function Navbar() {
     : { whileHover: { scale: 1.05, y: -2 }, whileTap: { scale: 0.98 } };
 
   const filteredMoreMenuItems = moreMenuItems.filter(
-    (item) => !(item.hideIfAuth && hasToken)
+    (item) => {
+      if (item.hideIfAuth && hasToken) return false;
+      if (item.showWhen && typeof item.showWhen === 'function' && !item.showWhen()) return false;
+      return true;
+    }
   );
 
   if (currentPath === "/reels") return null;

@@ -43,6 +43,7 @@ import MyVisits from "../Components/User_Section/ScheduleTour/MyVisits.jsx";
 import FranchiseEnquiry from "../Components/User_Section/Enquiries/FranchiseEnquiry.jsx";
 import HomeLoanEnquiry from "../Components/User_Section/Enquiries/HomeLoanEnquiry.jsx";
 import ChannelPartnerEnquiry from "../Components/User_Section/Enquiries/ChannelPartnerEnquiry.jsx";
+import PropertyRegistrationMortgage from "../Components/User_Section/Main/PropertyRegistrationMortgage.jsx";
 
 const PublicLayout = () => {
   const location = useLocation();
@@ -67,6 +68,7 @@ const PublicLayout = () => {
           <Route path="/add-channel-partner" element={<AddChannelPartner />} />
           <Route path="/home-loan" element={<HomeLoan />} />
           <Route path="/franchise-request" element={<FranchiseRequest />} />
+          <Route path="/property-registration-mortgage" element={<PropertyRegistrationMortgage />} />
           <Route path="/enquiry/franchise" element={<FranchiseEnquiry />} />
           <Route path="/enquiry/home-loan" element={<HomeLoanEnquiry />} />
           <Route path="/enquiry/channel-partner" element={<ChannelPartnerEnquiry />} />

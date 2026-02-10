@@ -861,7 +861,7 @@ function TenantLogin({ onClose }) {
                   </button>
 
                   <p className="text-xs text-white text-center mt-6">
-                    By continuing, you agree to our Terms & Conditions
+                    By continuing, you agree to our Terms & Conditions...
                   </p>
                 </motion.div>
               ) : (

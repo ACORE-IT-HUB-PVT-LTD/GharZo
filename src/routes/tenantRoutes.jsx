@@ -49,7 +49,7 @@ export const tenantRoutes = (
     <Route path="maintenance-dashboard" element={<MaintenancePage />} />
     <Route path="propertyreviews" element={<PropertyReviews />} />
     <Route path="contacts" element={<ContactsPage />} />
-    <Route path="announcements-dashboard" element={<AnnouncementsPage />} />
+    <Route path="announcements" element={<AnnouncementsPage />} />
     <Route path="lease-dashboard" element={<LeasePage />} />
     {/* <Route path="complaints/:tenantId" element={<Complaints />} /> */}
         <Route path="complaints" element={<Complaints />} />

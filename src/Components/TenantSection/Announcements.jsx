@@ -12,7 +12,7 @@ const TenantAnnouncements = () => {
   const { tenantId } = useParams();
 
   useEffect(() => {
-    const fetchAnnouncements = async () => {
+    const fetchAnnouncements = async () => { 
       try {
         setLoading(true);
         const token = localStorage.getItem("tenanttoken");
