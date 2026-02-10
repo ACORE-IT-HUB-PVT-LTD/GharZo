@@ -31,6 +31,8 @@ import CommercialListingPage from "../Components/User_Section/Main/CommercialLis
 import PGHostelSection from "../Components/User_Section/Main/PGHostelSection.jsx";
 import HostelsListingPage from "../Components/User_Section/Main/HostelsListingPage.jsx";
 import ServicesListingPage from "../Components/User_Section/Main/ServicesListingPage.jsx";
+import ServiceDetailPage from "../Components/User_Section/Main/ServiceDetailPage.jsx";
+import MyServiceEnquiries from "../Components/User_Section/Main/MyServiceEnquiries.jsx";
 import AddListingForm from "../Components/User_Section/Main/AddListingForm.jsx";
 import RentalPropety from "../Components/User_Section/Main/RentalPropety.jsx";
 import Login from "../Components/User_Section/Login&Signup/Login.jsx";
@@ -91,6 +93,8 @@ const PublicLayout = () => {
           <Route path="/pg-hostel" element={<PGHostelSection />} />
           <Route path="/hostels" element={<HostelsListingPage />} />
           <Route path="/services" element={<ServicesListingPage />} />
+          <Route path="/service/:id" element={<ServiceDetailPage />} />
+          <Route path="/my-service-enquiries" element={<MyServiceEnquiries />} />
           <Route path="/add-listing" element={<AddListingForm />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signupuser" element={<UserSignup />} />

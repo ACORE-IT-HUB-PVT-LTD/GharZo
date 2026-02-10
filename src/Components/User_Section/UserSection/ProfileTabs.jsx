@@ -845,31 +845,71 @@ const ProfileTabs = ({ role }) => {
 
       {/* Upload Reel Modal */}
       {uploadModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 overflow-y-auto"
+          onClick={() => setUploadModal(false)}
+        >
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.2 }}
-            className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl my-4"
+            className="bg-white rounded-2xl w-full max-w-md shadow-2xl my-4 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-2xl font-bold text-gray-800">Upload Reel</h3>
-              <button onClick={() => setUploadModal(false)} className="text-gray-500 hover:text-gray-700 transition-colors">
-                <FaTimes size={24} />
-              </button>
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-6 pb-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-2xl font-bold text-white">Upload Reel</h3>
+                  <p className="text-purple-100 text-sm mt-1">Share your property video</p>
+                </div>
+                <button 
+                  onClick={() => setUploadModal(false)} 
+                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-colors"
+                >
+                  <FaTimes size={24} />
+                </button>
+              </div>
             </div>
             
-            <form onSubmit={handleReelUpload} className="space-y-4">
+            {/* Video Preview */}
+            {reelForm.file && (
+              <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
+                <div className="relative aspect-video bg-black rounded-lg overflow-hidden">
+                  <video 
+                    src={URL.createObjectURL(reelForm.file)} 
+                    className="w-full h-full object-contain"
+                    controls
+                  />
+                  <button
+                    onClick={() => setReelForm({...reelForm, file: null})}
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                  >
+                    <FaTimes size={16} />
+                  </button>
+                </div>
+                <p className="text-sm text-gray-600 mt-2 truncate">
+                  <span className="font-medium">Selected:</span> {reelForm.file.name}
+                </p>
+              </div>
+            )}
+            
+            <form onSubmit={handleReelUpload} className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Property ID</label>
-                <input
-                  type="text"
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Property</label>
+                <select
                   value={reelForm.propertyId}
                   onChange={(e) => setReelForm({...reelForm, propertyId: e.target.value})}
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition-colors"
-                  placeholder="Enter property ID"
+                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition-colors bg-white"
                   required
-                />
+                >
+                  <option value="">Select a property</option>
+                  {myProperties.map((property) => (
+                    <option key={property._id} value={property._id}>
+                      {property.propertyTitle || property.title || property.name || 'Untitled Property'}
+                    </option>
+                  ))}
+                </select>
               </div>
               
               <div>
@@ -878,7 +918,7 @@ const ProfileTabs = ({ role }) => {
                   value={reelForm.caption}
                   onChange={(e) => setReelForm({...reelForm, caption: e.target.value})}
                   rows="3"
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition-colors resize-none"
+                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition-colors resize-none bg-white"
                   placeholder="Describe your reel"
                   required
                 />
@@ -890,7 +930,7 @@ const ProfileTabs = ({ role }) => {
                   type="text"
                   value={reelForm.tags}
                   onChange={(e) => setReelForm({...reelForm, tags: e.target.value})}
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition-colors"
+                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition-colors bg-white"
                   placeholder="e.g. indore, 2bhk, palasia, luxury"
                 />
               </div>
@@ -901,7 +941,7 @@ const ProfileTabs = ({ role }) => {
                   type="number"
                   value={reelForm.duration}
                   onChange={(e) => setReelForm({...reelForm, duration: e.target.value})}
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition-colors"
+                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition-colors bg-white"
                   placeholder="e.g. 40"
                 />
               </div>
@@ -913,7 +953,7 @@ const ProfileTabs = ({ role }) => {
                     type="text"
                     value={reelForm.city}
                     onChange={(e) => setReelForm({...reelForm, city: e.target.value})}
-                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition-colors"
+                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition-colors bg-white"
                     placeholder="e.g. Indore"
                   />
                 </div>
@@ -923,27 +963,36 @@ const ProfileTabs = ({ role }) => {
                     type="text"
                     value={reelForm.locality}
                     onChange={(e) => setReelForm({...reelForm, locality: e.target.value})}
-                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition-colors"
+                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition-colors bg-white"
                     placeholder="e.g. Sukhliya"
                   />
                 </div>
               </div>
               
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Video File</label>
-                <input
-                  type="file"
-                  accept="video/*"
-                  onChange={(e) => setReelForm({...reelForm, file: e.target.files[0]})}
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition-colors file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
-                  required
-                />
-              </div>
+              {!reelForm.file && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Video File</label>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-purple-500 transition-colors cursor-pointer relative">
+                    <input
+                      type="file"
+                      accept="video/*"
+                      onChange={(e) => setReelForm({...reelForm, file: e.target.files[0]})}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      required
+                    />
+                    <div className="text-purple-600 mb-2">
+                      <FaUpload size={32} className="mx-auto" />
+                    </div>
+                    <p className="text-gray-600 font-medium">Click to upload video</p>
+                    <p className="text-gray-400 text-sm mt-1">MP4, MOV, AVI (Max 50MB)</p>
+                  </div>
+                </div>
+              )}
               
               <button
                 type="submit"
                 disabled={uploadingReel}
-                className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-6"
               >
                 {uploadingReel ? (
                   <>
@@ -951,7 +1000,10 @@ const ProfileTabs = ({ role }) => {
                     Uploading...
                   </>
                 ) : (
-                  'Upload Reel'
+                  <>
+                    <FaUpload />
+                    Upload Reel
+                  </>
                 )}
               </button>
             </form>
@@ -1093,11 +1145,12 @@ const ProfileTabs = ({ role }) => {
               </button>
             </div>
             
-            {selectedReel.videoUrl ? (
+            {selectedReel.videoUrl || selectedReel.video?.url ? (
               <video 
-                src={selectedReel.videoUrl} 
+                src={selectedReel.videoUrl || selectedReel.video?.url} 
                 controls 
                 className="w-full h-96 object-cover rounded-xl mb-4 shadow-md bg-black"
+                autoPlay
               />
             ) : selectedReel.thumbnail?.url ? (
               <img 
