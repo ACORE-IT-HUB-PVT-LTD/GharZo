@@ -279,7 +279,7 @@ const ProfileTabs = ({ role }) => {
           "https://api.gharzoreality.com/api/reels/my-reels?page=1&limit=20",
           {
             headers: {
-              "Authorization": `Bearer ${token}`,
+              "Authorization": `Bearer ${token}`, 
               "Content-Type": "application/json"
             },
           }

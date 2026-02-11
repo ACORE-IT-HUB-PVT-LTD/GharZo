@@ -92,8 +92,8 @@ const Footer = () => {
               </a>
             </li>
             <li>
-              <a href="/hostels" className="hover:text-white transition">
-                Hotels / Banquets
+              <a href="/franchise-request" className="hover:text-white transition">
+              Franchise 
               </a>
             </li>
             <li>

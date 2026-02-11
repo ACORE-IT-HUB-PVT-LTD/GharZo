@@ -24,6 +24,7 @@ export default function PropertyInquiryForm() {
     mobile: '',
     email: '',
     message: '',
+    additionalPropertyRequest: '', // New field for general enquiry
     agree: false,
   });
 
@@ -101,11 +102,6 @@ export default function PropertyInquiryForm() {
       return;
     }
 
-    if (!selectedProperty) {
-      alert('Please select a property');
-      return;
-    }
-
     const requiredFields = ['enquiryType', 'name', 'mobile', 'email'];
     const missingFields = requiredFields.filter((field) => !formData[field]);
     if (missingFields.length > 0) {
@@ -123,23 +119,47 @@ export default function PropertyInquiryForm() {
       return;
     }
 
-    // ── Build payload exactly as API expects ──
-    const inquiryPayload = {
-      propertyId: selectedProperty._id,          // ← property ID from selected property
-      enquiryType: formData.enquiryType,         // "property_buy" | "property_rent"
-      contactInfo: {
-        name: formData.name,
-        phone: formData.mobile,
-        email: formData.email,
-      },
-      message: formData.message || '',
-    };
+    // ── Build payload based on enquiry type ──
+    let inquiryPayload;
+    let endpoint;
+
+    if (formData.enquiryType === 'general') {
+      // General enquiry - property selection is optional
+      endpoint = `${API_BASE_URL}/enquiries/property`;
+      inquiryPayload = {
+        enquiryType: 'general',
+        contactInfo: {
+          name: formData.name,
+          phone: formData.mobile,
+          email: formData.email,
+        },
+        message: formData.message || '',
+        additionalPropertyRequest: formData.additionalPropertyRequest || '',
+      };
+    } else {
+      // Property-specific enquiry (buy/rent/sale)
+      if (!selectedProperty) {
+        alert('Please select a property for this enquiry type');
+        return;
+      }
+      endpoint = `${API_BASE_URL}/enquiries/property`;
+      inquiryPayload = {
+        propertyId: selectedProperty._id,
+        enquiryType: formData.enquiryType,
+        contactInfo: {
+          name: formData.name,
+          phone: formData.mobile,
+          email: formData.email,
+        },
+        message: formData.message || '',
+      };
+    }
 
     try {
       setSubmitting(true);
       setError('');
 
-      const response = await fetch(`${API_BASE_URL}/enquiries/property`, {
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -161,6 +181,7 @@ export default function PropertyInquiryForm() {
             mobile: '',
             email: '',
             message: '',
+            additionalPropertyRequest: '',
             agree: false,
           });
           setSelectedProperty(null);
@@ -244,7 +265,11 @@ export default function PropertyInquiryForm() {
                   <CheckCircle className="w-6 h-6 text-green-400 flex-shrink-0" />
                   <div>
                     <p className="text-green-200 font-semibold text-sm">Inquiry Submitted Successfully!</p>
-                    <p className="text-green-300/80 text-xs mt-0.5">The property owner will contact you soon.</p>
+                    <p className="text-green-300/80 text-xs mt-0.5">
+                      {formData.enquiryType === 'general' 
+                        ? 'Our team will contact you soon with suitable options.'
+                        : 'The property owner will contact you soon.'}
+                    </p>
                   </div>
                 </div>
               )}
@@ -271,146 +296,154 @@ export default function PropertyInquiryForm() {
               {/* ── Form Fields ── */}
               <div className="p-6 md:p-8 space-y-5">
 
-                {/* ── Property Dropdown (custom) ── */}
+                {/* ── Inquiry Type (moved to top) ── */}
                 <div>
                   <label className="block text-sm font-medium text-white mb-1.5">
-                    Select Property <span className="text-red-400">*</span>
+                    Inquiry Type <span className="text-red-400">*</span>
                   </label>
+                  <select
+                    name="enquiryType"
+                    value={formData.enquiryType}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 bg-white/10 border border-white/30 text-white rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-400 placeholder:text-gray-300 appearance-none cursor-pointer"
+                  >
+                    <option value="" disabled>Select Type</option>
+                    <option value="general" className="text-black">General Inquiry</option>
+                    <option value="property_buy" className="text-black">Buy Property</option>
+                    <option value="property_rent" className="text-black">Rent Property</option>
+                    <option value="property_sale" className="text-black">Sell Property</option>
+                  </select>
+                </div>
 
-                  <div className="relative" onClick={() => !loadingProperties && setDropdownOpen(!dropdownOpen)}>
-                    {/* Trigger */}
-                    <div
-                      className={`w-full px-4 py-2.5 bg-white/10 border text-white rounded-lg cursor-pointer flex items-center justify-between
-                        ${dropdownOpen ? 'border-orange-400 ring-2 ring-orange-500' : 'border-white/30'}`}
-                    >
-                      {loadingProperties ? (
-                        <span className="flex items-center gap-2 text-gray-300">
-                          <Loader className="w-4 h-4 animate-spin" /> Loading properties...
-                        </span>
-                      ) : selectedProperty ? (
-                        <span className="truncate">
-                          <span className="text-orange-300 font-medium">{selectedProperty.title}</span>
-                          <span className="text-gray-400 text-xs ml-2">
-                            – {selectedProperty.location?.city || ''}{' '}
-                            {selectedProperty.price ? `(₹${formatPrice(selectedProperty.price)}/${selectedProperty.price.per})` : ''}
+                {/* ── Property Dropdown (conditionally shown) ── */}
+                {formData.enquiryType && formData.enquiryType !== 'general' && (
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-1.5">
+                      Select Property <span className="text-red-400">*</span>
+                    </label>
+
+                    <div className="relative" onClick={() => !loadingProperties && setDropdownOpen(!dropdownOpen)}>
+                      {/* Trigger */}
+                      <div
+                        className={`w-full px-4 py-2.5 bg-white/10 border text-white rounded-lg cursor-pointer flex items-center justify-between
+                          ${dropdownOpen ? 'border-orange-400 ring-2 ring-orange-500' : 'border-white/30'}`}
+                      >
+                        {loadingProperties ? (
+                          <span className="flex items-center gap-2 text-gray-300">
+                            <Loader className="w-4 h-4 animate-spin" /> Loading properties...
                           </span>
-                        </span>
-                      ) : (
-                        <span className="text-gray-300">Choose a property...</span>
-                      )}
-                      <ChevronDown
-                        className={`w-5 h-5 text-gray-300 flex-shrink-0 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`}
-                      />
-                    </div>
+                        ) : selectedProperty ? (
+                          <span className="truncate">
+                            <span className="text-orange-300 font-medium">{selectedProperty.title}</span>
+                            <span className="text-gray-400 text-xs ml-2">
+                              – {selectedProperty.location?.city || ''}{' '}
+                              {selectedProperty.price ? `(₹${formatPrice(selectedProperty.price)}/${selectedProperty.price.per})` : ''}
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="text-gray-300">Choose a property...</span>
+                        )}
+                        <ChevronDown
+                          className={`w-5 h-5 text-gray-300 flex-shrink-0 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`}
+                        />
+                      </div>
 
-                    {/* Dropdown list */}
-                    {dropdownOpen && !loadingProperties && (
-                      <div className="absolute z-50 mt-1 w-full max-h-72 rounded-lg border border-white/20 bg-[#0c2344]/95 backdrop-blur-lg shadow-xl">
-                        {/* Search input */}
-                        <div className="p-2 border-b border-white/20 sticky top-0 bg-[#0c2344]/95">
-                          <input
-                            type="text"
-                            value={propertySearch}
-                            onChange={(e) => setPropertySearch(e.target.value)}
-                            placeholder="Search properties..."
-                            className="w-full px-3 py-2 bg-white/10 border border-white/30 text-white rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-400 placeholder:text-gray-400"
-                            onClick={(e) => e.stopPropagation()}
-                            autoFocus
-                          />
-                        </div>
-                        <div className="overflow-y-auto max-h-52">
-                          {filteredProperties.length === 0 ? (
-                            <div className="px-4 py-3 text-gray-400 text-sm text-center">No properties found</div>
-                          ) : (
-                            filteredProperties.map((property) => {
-                              const isSelected = selectedProperty?._id === property._id;
-                              return (
-                                <div
-                                  key={property._id}
-                                  onClick={() => handlePropertySelect(property)}
-                                  className={`px-4 py-3 cursor-pointer border-b border-white/10 last:border-0 transition-colors duration-150
-                                    ${isSelected ? 'bg-orange-500/15' : 'hover:bg-white/8'}`}
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2 min-w-0">
-                                      {isSelected && <CheckCircle className="w-4 h-4 text-orange-400 flex-shrink-0" />}
-                                      <span className={`font-medium truncate ${isSelected ? 'text-orange-300' : 'text-white'}`}>
-                                        {property.title}
+                      {/* Dropdown list */}
+                      {dropdownOpen && !loadingProperties && (
+                        <div className="absolute z-50 mt-1 w-full max-h-72 rounded-lg border border-white/20 bg-[#0c2344]/95 backdrop-blur-lg shadow-xl">
+                          {/* Search input */}
+                          <div className="p-2 border-b border-white/20 sticky top-0 bg-[#0c2344]/95">
+                            <input
+                              type="text"
+                              value={propertySearch}
+                              onChange={(e) => setPropertySearch(e.target.value)}
+                              placeholder="Search properties..."
+                              className="w-full px-3 py-2 bg-white/10 border border-white/30 text-white rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-400 placeholder:text-gray-400"
+                              onClick={(e) => e.stopPropagation()}
+                              autoFocus
+                            />
+                          </div>
+                          <div className="overflow-y-auto max-h-52">
+                            {filteredProperties.length === 0 ? (
+                              <div className="px-4 py-3 text-gray-400 text-sm text-center">No properties found</div>
+                            ) : (
+                              filteredProperties.map((property) => {
+                                const isSelected = selectedProperty?._id === property._id;
+                                return (
+                                  <div
+                                    key={property._id}
+                                    onClick={() => handlePropertySelect(property)}
+                                    className={`px-4 py-3 cursor-pointer border-b border-white/10 last:border-0 transition-colors duration-150
+                                      ${isSelected ? 'bg-orange-500/15' : 'hover:bg-white/8'}`}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        {isSelected && <CheckCircle className="w-4 h-4 text-orange-400 flex-shrink-0" />}
+                                        <span className={`font-medium truncate ${isSelected ? 'text-orange-300' : 'text-white'}`}>
+                                          {property.title}
+                                        </span>
+                                        {/* Type badge */}
+                                        <span
+                                          className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0
+                                            ${property.listingType === 'Sale' ? 'bg-green-500/20 text-green-300' :
+                                              property.listingType === 'Rent' ? 'bg-blue-500/20 text-blue-300' :
+                                                'bg-purple-500/20 text-purple-300'}`}
+                                        >
+                                          {property.listingType}
+                                        </span>
+                                      </div>
+                                      {/* Price */}
+                                      {property.price && (
+                                        <span className="text-orange-300 text-sm font-semibold flex-shrink-0 ml-2">
+                                          ₹{formatPrice(property.price)}
+                                          <span className="text-gray-500 font-normal text-xs">/{property.price.per}</span>
+                                        </span>
+                                      )}
+                                    </div>
+                                    {/* Location line */}
+                                    <div className="flex items-center gap-1 mt-0.5 ml-6">
+                                      <MapPin className="w-3 h-3 text-gray-500" />
+                                      <span className="text-gray-400 text-xs truncate">
+                                        {[property.location?.locality, property.location?.city].filter(Boolean).join(', ')}
                                       </span>
-                                      {/* Type badge */}
-                                      <span
-                                        className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0
-                                          ${property.listingType === 'Sale' ? 'bg-green-500/20 text-green-300' :
-                                            property.listingType === 'Rent' ? 'bg-blue-500/20 text-blue-300' :
-                                              'bg-purple-500/20 text-purple-300'}`}
-                                      >
-                                        {property.listingType}
+                                      {/* Category */}
+                                      <span className="text-gray-600 text-xs ml-auto flex-shrink-0">
+                                        {property.category}
                                       </span>
                                     </div>
-                                    {/* Price */}
-                                    {property.price && (
-                                      <span className="text-orange-300 text-sm font-semibold flex-shrink-0 ml-2">
-                                        ₹{formatPrice(property.price)}
-                                        <span className="text-gray-500 font-normal text-xs">/{property.price.per}</span>
-                                      </span>
-                                    )}
                                   </div>
-                                  {/* Location line */}
-                                  <div className="flex items-center gap-1 mt-0.5 ml-6">
-                                    <MapPin className="w-3 h-3 text-gray-500" />
-                                    <span className="text-gray-400 text-xs truncate">
-                                      {[property.location?.locality, property.location?.city].filter(Boolean).join(', ')}
-                                    </span>
-                                    {/* Category */}
-                                    <span className="text-gray-600 text-xs ml-auto flex-shrink-0">
-                                      {property.category}
-                                    </span>
-                                  </div>
-                                </div>
-                              );
-                            })
-                          )}
+                                );
+                              })
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
 
-                {/* ── Two Column: Enquiry Type + Email ── */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                {/* ── Additional Property Request (shown only for general enquiry) ── */}
+                {formData.enquiryType === 'general' && (
                   <div>
                     <label className="block text-sm font-medium text-white mb-1.5">
-                      Inquiry Type <span className="text-red-400">*</span>
+                      Property Requirements
+                      <span className="text-gray-400 text-xs ml-2 font-normal">(Optional)</span>
                     </label>
-                    <select
-                      name="enquiryType"
-                      value={formData.enquiryType}
+                    <textarea
+                      name="additionalPropertyRequest"
+                      value={formData.additionalPropertyRequest}
                       onChange={handleChange}
-                      className="w-full px-4 py-2.5 bg-white/10 border border-white/30 text-white rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-400 placeholder:text-gray-300 appearance-none cursor-pointer"
-                    >
-                      <option value="" disabled>Select Type</option>
-                      <option value="property_buy" className="text-black">Buy</option>
-                      <option value="property_rent" className="text-black">Rent</option>
-                      <option value="property_sale" className="text-black">Sale</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-white mb-1.5">
-                      Email <span className="text-red-400">*</span>
-                    </label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2.5 bg-white/10 border border-white/30 text-white rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-400 placeholder:text-gray-300"
-                      placeholder="your@email.com"
+                      rows="3"
+                      className="w-full px-4 py-2.5 bg-white/10 border border-white/30 text-white rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-400 resize-none placeholder:text-gray-300"
+                      placeholder="E.g., Need 2BHK in Vijay Nagar, budget 50L, near schools..."
                     />
+                    <p className="text-xs text-gray-400 mt-1.5">
+                      Tell us your specific requirements: location preference, budget, BHK, amenities, etc.
+                    </p>
                   </div>
-                </div>
+                )}
 
-                {/* ── Two Column: Name + Mobile ── */}
+                {/* ── Two Column: Name + Email ── */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div>
                     <label className="block text-sm font-medium text-white mb-1.5">
@@ -428,34 +461,52 @@ export default function PropertyInquiryForm() {
 
                   <div>
                     <label className="block text-sm font-medium text-white mb-1.5">
-                      Mobile <span className="text-red-400">*</span>
+                      Email <span className="text-red-400">*</span>
                     </label>
                     <input
-                      type="tel"
-                      name="mobile"
-                      value={formData.mobile}
+                      type="email"
+                      name="email"
+                      value={formData.email}
                       onChange={handleChange}
-                      onInput={(e) => {
-                        // Only allow digits, max 10
-                        e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
-                      }}
                       className="w-full px-4 py-2.5 bg-white/10 border border-white/30 text-white rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-400 placeholder:text-gray-300"
-                      placeholder="10-digit number"
-                      maxLength={10}
+                      placeholder="your@email.com"
                     />
                   </div>
                 </div>
 
+                {/* ── Mobile Number ── */}
+                <div>
+                  <label className="block text-sm font-medium text-white mb-1.5">
+                    Mobile <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    name="mobile"
+                    value={formData.mobile}
+                    onChange={handleChange}
+                    onInput={(e) => {
+                      // Only allow digits, max 10
+                      e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    }}
+                    className="w-full px-4 py-2.5 bg-white/10 border border-white/30 text-white rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-400 placeholder:text-gray-300"
+                    placeholder="10-digit number"
+                    maxLength={10}
+                  />
+                </div>
+
                 {/* ── Message ── */}
                 <div>
-                  <label className="block text-sm font-medium text-white mb-1.5">Message *</label>
+                  <label className="block text-sm font-medium text-white mb-1.5">
+                    Message 
+                    <span className="text-gray-400 text-xs ml-2 font-normal">(Optional)</span>
+                  </label>
                   <textarea
                     name="message"
                     value={formData.message}
                     onChange={handleChange}
                     rows="3"
                     className="w-full px-4 py-2.5 bg-white/10 border border-white/30 text-white rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-400 resize-none placeholder:text-gray-300"
-                    placeholder="Any specific requirements..."
+                    placeholder="Any specific requirements or questions..."
                   />
                 </div>
 

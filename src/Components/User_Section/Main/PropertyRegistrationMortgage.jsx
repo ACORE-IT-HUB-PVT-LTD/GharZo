@@ -3,19 +3,21 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import axios from "axios";
+import baseurl from "../../../../BaseUrl";
 
 const PropertyInquiryPage = () => {
   // ==================== STATE MANAGEMENT ====================
   const [formData, setFormData] = useState({
-    name: "",
+    fullName: "",
     phone: "",
     email: "",
-    propertyRegistration: false,
-    mortgage: false,
+    inquiryType: "",
+    message: "",
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+
 
   // ==================== HANDLERS ====================
 
@@ -29,13 +31,13 @@ const PropertyInquiryPage = () => {
   };
 
   const validateForm = () => {
-    // Validate name
-    if (!formData.name.trim()) {
-      toast.error("Please enter your name");
+    // Validate fullName
+    if (!formData.fullName.trim()) {
+      toast.error("Please enter your full name");
       return false;
     }
 
-    if (formData.name.trim().length < 2) {
+    if (formData.fullName.trim().length < 2) {
       toast.error("Name must be at least 2 characters");
       return false;
     }
@@ -57,9 +59,9 @@ const PropertyInquiryPage = () => {
       return false;
     }
 
-    // Validate at least one inquiry type is selected
-    if (!formData.propertyRegistration && !formData.mortgage) {
-      toast.error("Please select at least one inquiry type");
+    // Validate inquiryType
+    if (!formData.inquiryType) {
+      toast.error("Please select an inquiry type");
       return false;
     }
 
@@ -78,22 +80,16 @@ const PropertyInquiryPage = () => {
     try {
       // Prepare the payload
       const payload = {
-        name: formData.name.trim(),
+        fullName: formData.fullName.trim(),
         phone: formData.phone.replace(/\D/g, ""),
         email: formData.email.trim() || null,
-        inquiryTypes: [],
+        inquiryType: formData.inquiryType,
+        message: formData.message.trim() || null,
       };
 
-      if (formData.propertyRegistration) {
-        payload.inquiryTypes.push("property_registration");
-      }
-      if (formData.mortgage) {
-        payload.inquiryTypes.push("mortgage");
-      }
-
-      // Send to API
+      // Send to Mortgage API
       const response = await axios.post(
-        "https://api.gharzoreality.com/api/inquiries/submit",
+        `${baseurl}api/mortgage`,
         payload,
         {
           headers: { "Content-Type": "application/json" },
@@ -102,18 +98,18 @@ const PropertyInquiryPage = () => {
 
       if (response.data.success) {
         toast.success(
-          response.data.message || "Inquiry submitted successfully!"
+          response.data.message || "Enquiry submitted successfully. Our team will contact you soon."
         );
         setIsSubmitted(true);
 
         // Reset form after 2 seconds
         setTimeout(() => {
           setFormData({
-            name: "",
+            fullName: "",
             phone: "",
             email: "",
-            propertyRegistration: false,
-            mortgage: false,
+            inquiryType: "",
+            message: "",
           });
           setIsSubmitted(false);
         }, 2000);
@@ -121,7 +117,7 @@ const PropertyInquiryPage = () => {
     } catch (error) {
       const errorMsg =
         error.response?.data?.message ||
-        "Failed to submit inquiry. Please try again.";
+        "Failed to submit enquiry. Please try again.";
       toast.error(errorMsg);
     } finally {
       setIsSubmitting(false);
@@ -481,8 +477,8 @@ const PropertyInquiryPage = () => {
                     <div className="relative">
                       <input
                         type="text"
-                        name="name"
-                        value={formData.name}
+                        name="fullName"
+                        value={formData.fullName}
                         onChange={handleInputChange}
                         placeholder="Enter your full name"
                         className="w-full px-6 py-3.5 bg-slate-700/50 border-2 border-slate-600/50 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all duration-300 backdrop-blur-sm"
@@ -517,10 +513,10 @@ const PropertyInquiryPage = () => {
                         onChange={(e) => {
                           const phoneNum = e.target.value.replace(/\D/g, "");
                           if (phoneNum.length <= 10) {
-                            handleInputChange({
-                              ...e,
-                              target: { ...e.target, value: phoneNum },
-                            });
+                            setFormData((prev) => ({
+                              ...prev,
+                              phone: phoneNum,
+                            }));
                           }
                         }}
                         placeholder="Enter 10-digit phone number"
@@ -584,52 +580,65 @@ const PropertyInquiryPage = () => {
                     <label className="block text-sm font-semibold text-slate-200">
                       Inquiry Type <span className="text-orange-500">*</span>
                     </label>
-                    <div className="space-y-3">
-                      {/* Property Registration */}
-                      <motion.label
-                        whileHover={{ scale: 1.02 }}
-                        className="flex items-center p-4 bg-slate-700/30 border-2 border-slate-600/30 rounded-lg cursor-pointer transition-all duration-300 hover:border-orange-500/50 hover:bg-slate-700/50"
+                    <div className="relative">
+                      <select
+                        name="inquiryType"
+                        value={formData.inquiryType}
+                        onChange={handleInputChange}
+                        className="w-full px-6 py-3.5 bg-slate-700/50 border-2 border-slate-600/50 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all duration-300 backdrop-blur-sm appearance-none cursor-pointer"
                       >
-                        <input
-                          type="checkbox"
-                          name="propertyRegistration"
-                          checked={formData.propertyRegistration}
-                          onChange={handleInputChange}
-                          className="w-5 h-5 rounded border-orange-500 text-orange-500 focus:ring-2 focus:ring-orange-500/50 cursor-pointer"
-                        />
-                        <div className="ml-4 flex-1">
-                          <p className="text-white font-medium">
-                            Property Registration
-                          </p>
-                          <p className="text-sm text-slate-400">
-                            Help with property registration and documentation
-                          </p>
-                        </div>
-                        <span className="text-2xl">📋</span>
-                      </motion.label>
+                        <option value="">Select inquiry type</option>
+                        <option value="Property Registration">Property Registration</option>
+                        <option value="Mortgage Consultation">Mortgage Consultation</option>
+                        <option value="General Inquiry">General Inquiry</option>
+                        <option value="Other">Other</option>
+                      </select>
+                      <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-orange-500 pointer-events-none">
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+                  </motion.div>
 
-                      {/* Mortgage */}
-                      <motion.label
-                        whileHover={{ scale: 1.02 }}
-                        className="flex items-center p-4 bg-slate-700/30 border-2 border-slate-600/30 rounded-lg cursor-pointer transition-all duration-300 hover:border-orange-500/50 hover:bg-slate-700/50"
-                      >
-                        <input
-                          type="checkbox"
-                          name="mortgage"
-                          checked={formData.mortgage}
-                          onChange={handleInputChange}
-                          className="w-5 h-5 rounded border-orange-500 text-orange-500 focus:ring-2 focus:ring-orange-500/50 cursor-pointer"
-                        />
-                        <div className="ml-4 flex-1">
-                          <p className="text-white font-medium">
-                            Mortgage Consultation
-                          </p>
-                          <p className="text-sm text-slate-400">
-                            Expert guidance on mortgage options and rates
-                          </p>
-                        </div>
-                        <span className="text-2xl">💰</span>
-                      </motion.label>
+                  {/* Message field */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5, duration: 0.6 }}
+                    viewport={{ once: true }}
+                  >
+                    <label className="block text-sm font-semibold text-slate-200 mb-3">
+                      Message <span className="text-slate-500">(Optional)</span>
+                    </label>
+                    <div className="relative">
+                      <textarea
+                        name="message"
+                        value={formData.message}
+                        onChange={handleInputChange}
+                        placeholder="Enter your message"
+                        rows="4"
+                        className="w-full px-6 py-3.5 bg-slate-700/50 border-2 border-slate-600/50 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all duration-300 backdrop-blur-sm resize-none"
+                      />
+                      <div className="absolute right-4 top-4 text-orange-500">
+                        <svg
+                          className="w-5 h-5"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
+                        </svg>
+                      </div>
                     </div>
                   </motion.div>
 
@@ -641,7 +650,7 @@ const PropertyInquiryPage = () => {
                     whileTap={{ scale: 0.98 }}
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5, duration: 0.6 }}
+                    transition={{ delay: 0.6, duration: 0.6 }}
                     viewport={{ once: true }}
                     className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold py-4 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-orange-500/50 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
@@ -671,7 +680,7 @@ const PropertyInquiryPage = () => {
                       </>
                     ) : (
                       <>
-                        <span>Submit Inquiry</span>
+                        <span>Submit Enquiry</span>
                         <svg
                           className="w-5 h-5"
                           fill="none"
