@@ -9,6 +9,7 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import signupbg from "../../../assets/Images/signupbg.jpg";
 import logo from "../../../assets/logo/logo.png";
+import { sendFCMTokenToServer, requestPermissionAndGetToken } from "../../../notifications.js";
 
 const API_BASE_URL = "https://api.gharzoreality.com";
 
@@ -17,29 +18,23 @@ function Login({ onClose }) {
   const location = useLocation();
   const { login } = useAuth();
 
-  // ==================== STATE MANAGEMENT ====================
-  // Core form state
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [name, setName] = useState("");
   const [role, setRole] = useState("buyer");
 
-  // Screen flow state - SINGLE SOURCE OF TRUTH
   const [otpSent, setOtpSent] = useState(false);
-  const [purpose, setPurpose] = useState(null); // "login" | "registration" | null
+  const [purpose, setPurpose] = useState(null);
 
-  // API loading states
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
 
-  // Timer state
   const [countdown, setCountdown] = useState(0);
   const [resendAttempts, setResendAttempts] = useState(0);
 
   const { from = "/user" } = location.state || {};
 
-  // ==================== CONSTANTS ====================
   const ROLES = [
     { value: "buyer", label: "Owner / Buyer" },
     { value: "agent", label: "Broker" },
@@ -49,9 +44,6 @@ function Login({ onClose }) {
   const MAX_RESEND_ATTEMPTS = 3;
   const RESEND_COUNTDOWN = 30;
 
-  // ==================== EFFECTS ====================
-
-  // Redirect if already logged in
   useEffect(() => {
     const token = localStorage.getItem("usertoken");
     const userStr = localStorage.getItem("user");
@@ -59,44 +51,25 @@ function Login({ onClose }) {
     if (token && userStr) {
       try {
         const user = JSON.parse(userStr);
-        if (user.role) {
-          navigate(from, { replace: true });
-        }
+        if (user.role) navigate(from, { replace: true });
       } catch (error) {
-        console.error("Failed to parse user from localStorage:", error);
+        console.error("Failed to parse user:", error);
       }
     }
   }, [navigate, from]);
 
-  // Reset form when phone is cleared
   useEffect(() => {
-    if (phone.length === 0) {
-      resetForm();
-    }
+    if (phone.length === 0) resetForm();
   }, [phone]);
 
-  // Countdown timer for OTP resend
   useEffect(() => {
     if (countdown <= 0) return;
-
     const interval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return prev - 1;
-      });
+      setCountdown((prev) => (prev <= 1 ? 0 : prev - 1));
     }, 1000);
-
     return () => clearInterval(interval);
   }, [countdown]);
 
-  // ==================== HELPER FUNCTIONS ====================
-
-  /**
-   * Reset form to initial state
-   */
   const resetForm = () => {
     setOtpSent(false);
     setOtp("");
@@ -107,195 +80,92 @@ function Login({ onClose }) {
     setResendAttempts(0);
   };
 
-  /**
-   * Validate phone number format
-   */
-  const isPhoneValid = (phoneNum) => phoneNum.length === 10;
+  const isPhoneValid = (p) => p.length === 10;
+  const isNameValid = (n) => n.trim().length > 0;
+  const isRoleValid = (r) => !!r;
+  const isOtpValid = (o) => o.length === 6;
 
-  /**
-   * Validate name input
-   */
-  const isNameValid = (nameInput) => nameInput.trim().length > 0;
-
-  /**
-   * Validate role is selected
-   */
-  const isRoleValid = (roleValue) => !!roleValue;
-
-  /**
-   * Validate OTP format
-   */
-  const isOtpValid = (otpInput) => otpInput.length === 6;
-
-  /**
-   * Determine if verify button should be enabled
-   */
   const canVerify = () => {
     if (isVerifying || !isOtpValid(otp)) return false;
-
-    // Registration requires name and role
-    if (purpose === "registration") {
-      return isNameValid(name) && isRoleValid(role);
-    }
-
-    // Login only needs OTP
+    if (purpose === "registration") return isNameValid(name) && isRoleValid(role);
     return true;
   };
 
-  // ==================== API HANDLERS ====================
+  const isSendOtpDisabled = isSendingOtp || !isPhoneValid(phone);
+  const isResendDisabled = countdown > 0 || isResending || resendAttempts >= MAX_RESEND_ATTEMPTS;
 
-  /**
-   * Step 1: Send OTP - Determine if user is registering or logging in
-   */
   const handleSendOtp = async (e) => {
     e.preventDefault();
-
-    if (!isPhoneValid(phone)) {
-      toast.error("Enter a valid 10-digit phone number");
-      return;
-    }
+    if (!isPhoneValid(phone)) return toast.error("Enter valid phone");
 
     setIsSendingOtp(true);
-
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/api/auth/send-otp`,
-        { phone },
-        { headers: { "Content-Type": "application/json" } }
-      );
+      const res = await axios.post(`${API_BASE_URL}/api/auth/send-otp`, { phone });
+      if (!res.data.success) return toast.error(res.data.message);
 
-      if (!response.data.success) {
-        toast.error(response.data.message || "Failed to send OTP");
-        return;
-      }
+      const apiPurpose = res.data.data?.purpose || res.data.purpose;
+      if (!["login", "registration"].includes(apiPurpose))
+        return toast.error("Invalid server response");
 
-      // Extract purpose from API response - SINGLE assignment
-      const apiPurpose = response.data.data?.purpose || response.data.purpose;
-
-      // Validate purpose from backend
-      if (!apiPurpose || !["login", "registration"].includes(apiPurpose)) {
-        toast.error("Invalid response from server. Please try again.");
-        return;
-      }
-
-      // Set state ONCE - No duplicate updates
       setPurpose(apiPurpose);
       setOtpSent(true);
       setCountdown(RESEND_COUNTDOWN);
       setResendAttempts(0);
 
-      toast.success(response.data.message || "OTP sent successfully!");
-    } catch (error) {
-      const errorMsg =
-        error.response?.data?.message || "Failed to send OTP. Please try again.";
-      toast.error(errorMsg);
+      toast.success(res.data.message || "OTP sent");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Send OTP failed");
     } finally {
       setIsSendingOtp(false);
     }
   };
 
-  /**
-   * Step 2: Resend OTP with rate limiting
-   */
   const handleResendOtp = async (e) => {
     e.preventDefault();
-
-    // Guard against race conditions
-    if (countdown > 0 || isResending || resendAttempts >= MAX_RESEND_ATTEMPTS) {
-      return;
-    }
+    if (countdown > 0 || isResending || resendAttempts >= MAX_RESEND_ATTEMPTS) return;
 
     setIsResending(true);
-
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/api/auth/resend-otp`,
-        { phone },
-        { headers: { "Content-Type": "application/json" } }
-      );
+      const res = await axios.post(`${API_BASE_URL}/api/auth/resend-otp`, { phone });
+      if (!res.data.success) return toast.error(res.data.message);
 
-      if (!response.data.success) {
-        toast.error(response.data.message || "Failed to resend OTP");
-        return;
-      }
-
-      // Success: Reset OTP input and restart timer
       setOtp("");
       setResendAttempts((prev) => prev + 1);
       setCountdown(RESEND_COUNTDOWN);
 
-      toast.success(response.data.message || "OTP resent successfully!");
-    } catch (error) {
-      const errorMsg =
-        error.response?.data?.message || "Failed to resend OTP. Please try again.";
-      toast.error(errorMsg);
-
-      // Handle server-side rate limiting
-      if (error.response?.data?.waitTime) {
-        setCountdown(error.response.data.waitTime);
-      }
+      toast.success(res.data.message || "OTP resent");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Resend failed");
     } finally {
       setIsResending(false);
     }
   };
 
-  /**
-   * Step 3: Verify OTP and complete authentication
-   */
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
-
-    // Final validation before submission
-    if (!isOtpValid(otp)) {
-      toast.error("Enter a valid 6-digit OTP");
-      return;
-    }
+    if (!isOtpValid(otp)) return toast.error("Enter valid OTP");
 
     if (purpose === "registration") {
-      if (!isNameValid(name)) {
-        toast.error("Please enter your full name");
-        return;
-      }
-      if (!isRoleValid(role)) {
-        toast.error("Please select a role");
-        return;
-      }
+      if (!isNameValid(name)) return toast.error("Enter name");
+      if (!isRoleValid(role)) return toast.error("Select role");
     }
 
     setIsVerifying(true);
 
     try {
-      // Build payload based on flow
-      const payload = {
-        phone,
-        otp,
-      };
-
-      // Add registration fields only for registration flow
+      const payload = { phone, otp };
       if (purpose === "registration") {
         payload.name = name.trim();
         payload.role = role;
       }
 
-      const response = await axios.post(
-        `${API_BASE_URL}/api/auth/verify-otp`,
-        payload,
-        { headers: { "Content-Type": "application/json" } }
-      );
+      const res = await axios.post(`${API_BASE_URL}/api/auth/verify-otp`, payload);
+      if (!res.data.success) return toast.error(res.data.message);
 
-      if (!response.data.success) {
-        toast.error(response.data.message || "Failed to verify OTP");
-        return;
-      }
+      const { user, token } = res.data.data;
 
-      // Extract user and token from response
-      const { user, token } = response.data.data;
-
-      // Store authentication data
-      if (token) {
-        localStorage.setItem("usertoken", token);
-      }
-
+      // Save auth token and user data
+      if (token) localStorage.setItem("usertoken", token);
       if (user) {
         localStorage.setItem("user", JSON.stringify(user));
         localStorage.setItem("role", user.role);
@@ -310,82 +180,57 @@ function Login({ onClose }) {
         email: user.email || "",
       });
 
-      // Show appropriate success message
-      const successMsg =
+      // 🔥 Send FCM token to backend after successful login
+      console.log("🟡 Attempting to send FCM token to backend...");
+      try {
+        // First, request permission and get FCM token
+        const fcmToken = await requestPermissionAndGetToken();
+        
+        if (fcmToken) {
+          // Send to backend with the auth token
+          const fcmSaved = await sendFCMTokenToServer(token, fcmToken);
+          if (fcmSaved) {
+            console.log("🟢 FCM token successfully saved to backend");
+          } else {
+            console.log("🟡 FCM token not saved, will retry later");
+          }
+        } else {
+          console.log("🟡 No FCM token obtained (permission may be denied)");
+        }
+      } catch (fcmError) {
+        console.error("❌ Error handling FCM token:", fcmError);
+        // Don't block login if FCM fails
+      }
+
+      toast.success(
         purpose === "registration"
-          ? "Registration successful! Welcome to GharZo! 🎉"
-          : "Login successful! Welcome back! 👋";
+          ? "Registration successful 🎉"
+          : "Login successful 👋"
+      );
 
-      toast.success(successMsg);
-
-      // Navigate after brief delay for toast visibility
       setTimeout(() => {
         onClose?.();
         navigate(from, { replace: true });
       }, 1500);
-    } catch (error) {
-      const errorMsg =
-        error.response?.data?.message || "Failed to verify OTP. Please try again.";
-      toast.error(errorMsg);
-
-      // Show remaining attempts if available
-      if (error.response?.data?.attemptsLeft !== undefined) {
-        const remaining = error.response.data.attemptsLeft;
-        if (remaining > 0) {
-          toast.warning(`${remaining} attempts remaining`);
-        } else {
-          toast.error("No attempts remaining. Please request a new OTP.");
-          // Reset to phone input
-          handleChangeNumber();
-        }
-      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "OTP verify failed");
     } finally {
       setIsVerifying(false);
     }
   };
 
-  /**
-   * Go back to phone input screen
-   */
   const handleChangeNumber = () => {
-    setPhone("");
     resetForm();
+    setPhone("");
   };
 
-  /**
-   * Handle Enter key for quick submission
-   */
   const handleKeyDown = (e) => {
     if (e.key === "Enter") {
-      if (!otpSent) {
-        handleSendOtp(e);
-      } else {
-        handleVerifyOtp(e);
-      }
+      !otpSent ? handleSendOtp(e) : handleVerifyOtp(e);
     }
   };
 
-  /**
-   * Initialize particles
-   */
-  const particlesInit = async (main) => {
-    await loadFull(main);
-  };
-
-  // ==================== RENDER HELPERS ====================
-
-  /**
-   * Check if send OTP button should be disabled
-   */
-  const isSendOtpDisabled = isSendingOtp || !isPhoneValid(phone);
-
-  /**
-   * Check if resend button should be disabled
-   */
-  const isResendDisabled =
-    countdown > 0 || isResending || resendAttempts >= MAX_RESEND_ATTEMPTS;
-
-  // ==================== MAIN RENDER ====================
+  const particlesInit = async (main) => await loadFull(main);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-white px-4">
