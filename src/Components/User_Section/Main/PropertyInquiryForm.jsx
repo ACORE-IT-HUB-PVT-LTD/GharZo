@@ -1,30 +1,51 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Phone, MapPin, IndianRupee, Loader, ChevronDown, CheckCircle, X, Search } from 'lucide-react';
+import { Building2, Phone, MapPin, IndianRupee, Loader, ChevronDown, CheckCircle, X, User, Mail, DollarSign, Home } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 
 const API_BASE_URL = 'https://api.gharzoreality.com/api/v2';
 const PUBLIC_API_BASE = 'https://api.gharzoreality.com/api/public';
 
+// Property requirement options
+const PROPERTY_REQUIREMENTS = [
+  "Room",
+  "Apartment",
+  "Row house",
+  "Plots",
+  "Showroom",
+  "Offices",
+  "Other",
+  "Flat (1 & 2 BHK)",
+  "Commercial",
+  "Farmhouses",
+  "Villa",
+  "Flat (3 BHK & Above)",
+  "Farmhouses & Villa"
+];
+
 export default function PropertyInquiryForm() {
   const { propertyId: paramPropertyId } = useParams();
 
   // ─── States ────────────────────────────────────────────
-  const [propertiesList, setPropertiesList] = useState([]);   // all properties from public API
-  const [selectedProperty, setSelectedProperty] = useState(null); // currently picked property object
+  const [propertiesList, setPropertiesList] = useState([]);
+  const [selectedProperty, setSelectedProperty] = useState(null);
   const [loadingProperties, setLoadingProperties] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [submitSuccess, setSubmitSuccess] = useState(false);   // success banner flag
-  const [dropdownOpen, setDropdownOpen] = useState(false);     // custom dropdown toggle
-  const [propertySearch, setPropertySearch] = useState('');   // search term for property dropdown
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [propertySearch, setPropertySearch] = useState('');
 
   const [formData, setFormData] = useState({
     enquiryType: '',
-    name: '',
-    mobile: '',
+    firstName: '',
+    lastName: '',
     email: '',
+    phone: '',
+    city: '',
+    budget: '',
+    propertyType: '',
+    requirements: [],
     message: '',
-    additionalPropertyRequest: '', // New field for general enquiry
     agree: false,
   });
 
@@ -67,6 +88,19 @@ export default function PropertyInquiryForm() {
     }));
   };
 
+  // ─── Handle requirements checkbox ──────────────────────
+  const handleRequirementToggle = (requirement) => {
+    setFormData((prev) => {
+      const isSelected = prev.requirements.includes(requirement);
+      return {
+        ...prev,
+        requirements: isSelected
+          ? prev.requirements.filter((r) => r !== requirement)
+          : [...prev.requirements, requirement],
+      };
+    });
+  };
+
   // ─── Property dropdown select ──────────────────────────
   const handlePropertySelect = (property) => {
     setSelectedProperty(property);
@@ -102,14 +136,14 @@ export default function PropertyInquiryForm() {
       return;
     }
 
-    const requiredFields = ['enquiryType', 'name', 'mobile', 'email'];
+    const requiredFields = ['enquiryType', 'firstName', 'lastName', 'phone', 'email', 'city', 'budget', 'propertyType'];
     const missingFields = requiredFields.filter((field) => !formData[field]);
     if (missingFields.length > 0) {
       alert('Please fill all required fields: ' + missingFields.join(', '));
       return;
     }
 
-    if (!/^\d{10}$/.test(formData.mobile)) {
+    if (!/^\d{10}$/.test(formData.phone)) {
       alert('Please enter a valid 10-digit mobile number');
       return;
     }
@@ -119,47 +153,52 @@ export default function PropertyInquiryForm() {
       return;
     }
 
-    // ── Build payload based on enquiry type ──
-    let inquiryPayload;
-    let endpoint;
+    if (formData.requirements.length === 0) {
+      alert('Please select at least one property requirement');
+      return;
+    }
 
-    if (formData.enquiryType === 'general') {
-      // General enquiry - property selection is optional
-      endpoint = `${API_BASE_URL}/enquiries/property`;
-      inquiryPayload = {
-        enquiryType: 'general',
-        contactInfo: {
-          name: formData.name,
-          phone: formData.mobile,
-          email: formData.email,
-        },
-        message: formData.message || '',
-        additionalPropertyRequest: formData.additionalPropertyRequest || '',
-      };
-    } else {
-      // Property-specific enquiry (buy/rent/sale)
-      if (!selectedProperty) {
-        alert('Please select a property for this enquiry type');
-        return;
-      }
-      endpoint = `${API_BASE_URL}/enquiries/property`;
-      inquiryPayload = {
-        propertyId: selectedProperty._id,
-        enquiryType: formData.enquiryType,
-        contactInfo: {
-          name: formData.name,
-          phone: formData.mobile,
-          email: formData.email,
-        },
-        message: formData.message || '',
-      };
+    // For property-specific enquiries, property must be selected
+    if (formData.enquiryType !== 'general' && !selectedProperty) {
+      alert('Please select a property for this enquiry type');
+      return;
+    }
+
+    // ── Build payload based on API structure ──
+    const inquiryPayload = {
+      enquiryType: formData.enquiryType,
+      contactInfo: {
+        name: `${formData.firstName} ${formData.lastName}`,
+        phone: formData.phone,
+        email: formData.email,
+      },
+      simplePropertyForm: {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phone: formData.phone,
+        city: formData.city,
+        budget: formData.budget,
+        propertyType: formData.propertyType,
+        requirements: formData.requirements,
+      },
+    };
+
+    // Add message if provided
+    if (formData.message) {
+      inquiryPayload.message = formData.message;
+    }
+
+    // Add propertyId for property-specific enquiries
+    if (formData.enquiryType !== 'general' && selectedProperty) {
+      inquiryPayload.propertyId = selectedProperty._id;
     }
 
     try {
       setSubmitting(true);
       setError('');
 
-      const response = await fetch(endpoint, {
+      const response = await fetch(`${API_BASE_URL}/enquiries/property`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -177,11 +216,15 @@ export default function PropertyInquiryForm() {
           setSubmitSuccess(false);
           setFormData({
             enquiryType: '',
-            name: '',
-            mobile: '',
+            firstName: '',
+            lastName: '',
             email: '',
+            phone: '',
+            city: '',
+            budget: '',
+            propertyType: '',
+            requirements: [],
             message: '',
-            additionalPropertyRequest: '',
             agree: false,
           });
           setSelectedProperty(null);
@@ -203,10 +246,10 @@ export default function PropertyInquiryForm() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0c2344] via-[#0b4f91] to-[#1a3c6e] py-8 px-4 md:px-6 lg:px-8">
       <div className="relative z-10 max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
 
           {/* ───── LEFT SIDE ────────────────────────────── */}
-          <div className="text-white space-y-6 lg:space-y-8 px-4 lg:px-0">
+          <div className="text-white space-y-6 lg:space-y-8 px-4 lg:px-0 lg:sticky lg:top-8">
             <div className="flex items-center gap-4">
               <Building2 className="w-12 h-12 md:w-16 md:h-16 text-orange-400" />
               <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold">
@@ -266,9 +309,7 @@ export default function PropertyInquiryForm() {
                   <div>
                     <p className="text-green-200 font-semibold text-sm">Inquiry Submitted Successfully!</p>
                     <p className="text-green-300/80 text-xs mt-0.5">
-                      {formData.enquiryType === 'general' 
-                        ? 'Our team will contact you soon with suitable options.'
-                        : 'The property owner will contact you soon.'}
+                      Our team will contact you soon!
                     </p>
                   </div>
                 </div>
@@ -296,26 +337,10 @@ export default function PropertyInquiryForm() {
               {/* ── Form Fields ── */}
               <div className="p-6 md:p-8 space-y-5">
 
-                {/* ── Inquiry Type (moved to top) ── */}
-                <div>
-                  <label className="block text-sm font-medium text-white mb-1.5">
-                    Inquiry Type <span className="text-red-400">*</span>
-                  </label>
-                  <select
-                    name="enquiryType"
-                    value={formData.enquiryType}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2.5 bg-white/10 border border-white/30 text-white rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-400 placeholder:text-gray-300 appearance-none cursor-pointer"
-                  >
-                    <option value="" disabled>Select Type</option>
-                    <option value="general" className="text-black">General Inquiry</option>
-                    <option value="property_buy" className="text-black">Buy Property</option>
-                    <option value="property_rent" className="text-black">Rent Property</option>
-                    <option value="property_sale" className="text-black">Sell Property</option>
-                  </select>
-                </div>
+                {/* ── Inquiry Type ── */}
+               
 
-                {/* ── Property Dropdown (conditionally shown) ── */}
+                {/* ── Property Dropdown (shown for non-general enquiries) ── */}
                 {formData.enquiryType && formData.enquiryType !== 'general' && (
                   <div>
                     <label className="block text-sm font-medium text-white mb-1.5">
@@ -422,43 +447,39 @@ export default function PropertyInquiryForm() {
                   </div>
                 )}
 
-                {/* ── Additional Property Request (shown only for general enquiry) ── */}
-                {formData.enquiryType === 'general' && (
-                  <div>
-                    <label className="block text-sm font-medium text-white mb-1.5">
-                      Property Requirements
-                      <span className="text-gray-400 text-xs ml-2 font-normal">(Optional)</span>
-                    </label>
-                    <textarea
-                      name="additionalPropertyRequest"
-                      value={formData.additionalPropertyRequest}
-                      onChange={handleChange}
-                      rows="3"
-                      className="w-full px-4 py-2.5 bg-white/10 border border-white/30 text-white rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-400 resize-none placeholder:text-gray-300"
-                      placeholder="E.g., Need 2BHK in Vijay Nagar, budget 50L, near schools..."
-                    />
-                    <p className="text-xs text-gray-400 mt-1.5">
-                      Tell us your specific requirements: location preference, budget, BHK, amenities, etc.
-                    </p>
-                  </div>
-                )}
-
-                {/* ── Two Column: Name + Email ── */}
+                {/* ── Two Column: First Name + Last Name ── */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div>
                     <label className="block text-sm font-medium text-white mb-1.5">
-                      Name <span className="text-red-400">*</span>
+                      First Name <span className="text-red-400">*</span>
                     </label>
                     <input
                       type="text"
-                      name="name"
-                      value={formData.name}
+                      name="firstName"
+                      value={formData.firstName}
                       onChange={handleChange}
                       className="w-full px-4 py-2.5 bg-white/10 border border-white/30 text-white rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-400 placeholder:text-gray-300"
-                      placeholder="Full Name"
+                      placeholder="First Name"
                     />
                   </div>
 
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-1.5">
+                      Last Name <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="lastName"
+                      value={formData.lastName}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2.5 bg-white/10 border border-white/30 text-white rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-400 placeholder:text-gray-300"
+                      placeholder="Last Name"
+                    />
+                  </div>
+                </div>
+
+                {/* ── Two Column: Email + Phone ── */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div>
                     <label className="block text-sm font-medium text-white mb-1.5">
                       Email <span className="text-red-400">*</span>
@@ -472,29 +493,103 @@ export default function PropertyInquiryForm() {
                       placeholder="your@email.com"
                     />
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-1.5">
+                      Phone <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      onInput={(e) => {
+                        e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      }}
+                      className="w-full px-4 py-2.5 bg-white/10 border border-white/30 text-white rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-400 placeholder:text-gray-300"
+                      placeholder="10-digit number"
+                      maxLength={10}
+                    />
+                  </div>
                 </div>
 
-                {/* ── Mobile Number ── */}
+                {/* ── Two Column: City + Budget ── */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-1.5">
+                      City <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="city"
+                      value={formData.city}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2.5 bg-white/10 border border-white/30 text-white rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-400 placeholder:text-gray-300"
+                      placeholder="e.g., Indore"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-1.5">
+                      Budget <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="budget"
+                      value={formData.budget}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2.5 bg-white/10 border border-white/30 text-white rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-400 placeholder:text-gray-300"
+                      placeholder="e.g., 50 Lakhs"
+                    />
+                  </div>
+                </div>
+
+                {/* ── Property Type ── */}
                 <div>
                   <label className="block text-sm font-medium text-white mb-1.5">
-                    Mobile <span className="text-red-400">*</span>
+                    Property Type <span className="text-red-400">*</span>
                   </label>
-                  <input
-                    type="tel"
-                    name="mobile"
-                    value={formData.mobile}
+                  <select
+                    name="propertyType"
+                    value={formData.propertyType}
                     onChange={handleChange}
-                    onInput={(e) => {
-                      // Only allow digits, max 10
-                      e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
-                    }}
-                    className="w-full px-4 py-2.5 bg-white/10 border border-white/30 text-white rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-400 placeholder:text-gray-300"
-                    placeholder="10-digit number"
-                    maxLength={10}
-                  />
+                    className="w-full px-4 py-2.5 bg-white/10 border border-white/30 text-white rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-400 placeholder:text-gray-300 appearance-none cursor-pointer"
+                  >
+                    <option value="" disabled>Select Property Type</option>
+                    <option value="Buy" className="text-black">Buy</option>
+                    <option value="Rent" className="text-black">Rent</option>
+                    <option value="Sell" className="text-black">Sell</option>
+                  </select>
                 </div>
 
-                {/* ── Message ── */}
+                {/* ── Property Requirements (Multi-select) ── */}
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Property Requirements <span className="text-red-400">*</span>
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-64 overflow-y-auto p-3 bg-white/5 rounded-lg border border-white/20">
+                    {PROPERTY_REQUIREMENTS.map((requirement) => {
+                      const isSelected = formData.requirements.includes(requirement);
+                      return (
+                        <div
+                          key={requirement}
+                          onClick={() => handleRequirementToggle(requirement)}
+                          className={`px-3 py-2 rounded-lg cursor-pointer text-sm transition-all duration-200 border text-center
+                            ${isSelected 
+                              ? 'bg-orange-500/30 border-orange-400 text-orange-200 font-medium' 
+                              : 'bg-white/5 border-white/20 text-gray-300 hover:bg-white/10 hover:border-white/30'}`}
+                        >
+                          {requirement}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">
+                    Selected: {formData.requirements.length > 0 ? formData.requirements.join(', ') : 'None'}
+                  </p>
+                </div>
+
+                {/* ── Message (Optional) ── */}
                 <div>
                   <label className="block text-sm font-medium text-white mb-1.5">
                     Message 

@@ -5,7 +5,7 @@ import UserProfile from "./UserProfile";
 export default function UserLayout() {
   return (
     <>
-      <HeaderSection />
+      <HeaderSection /> 
       <div className="container mx-auto py-6">
         <Outlet /> {/* This renders ProfilePage or BookingsPage */}
         <UserProfile />

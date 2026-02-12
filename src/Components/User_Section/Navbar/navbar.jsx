@@ -20,21 +20,18 @@ import {
   House,
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import gsap from "gsap";
 import logo from "../../../assets/logo/logo.png";
-import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
-import { useAuth } from "../../User_Section/Context/AuthContext.jsx"; 
-import useVisitCount from "../../../hooks/useVisitCount.js"; 
-import NotificationBell from "../../Common/Notifications/NotificationBell.jsx"; 
+import { AnimatePresence } from "framer-motion";
+import { useAuth } from "../../User_Section/Context/AuthContext.jsx";
+import useVisitCount from "../../../hooks/useVisitCount.js";
+import NotificationBell from "../../Common/Notifications/NotificationBell.jsx";
 
 // Download App Button Component
 const DownloadAppButton = () => (
-  <motion.a
+  <a
     href="#"
     target="_blank"
     rel="noopener noreferrer"
-    whileHover={{ scale: 1.06, y: -2 }}
-    whileTap={{ scale: 0.95 }}
     className={`
       flex items-center gap-2 px-3 py-3 
       bg-gradient-to-r from-blue-600 via-blue-800 to-blue-600  
@@ -47,7 +44,7 @@ const DownloadAppButton = () => (
     <Smartphone size={18} />
     <span className="hidden sm:inline">Download App</span>
     <span className="sm:hidden">Download App</span>
-  </motion.a>
+  </a>
 );
 
 function Navbar() {
@@ -61,11 +58,8 @@ function Navbar() {
   const currentPath = location.pathname;
 
   const [hasToken, setHasToken] = useState(false);
-  const { visitCount, refetch: refetchVisitCount } = useVisitCount();
+  const { visitCount } = useVisitCount();
 
-  const logoRef = useRef(null);
-  const iconRefs = useRef([]);
-  const buttonRef = useRef(null);
   const moreMenuRef = useRef(null);
 
   const navItems = [
@@ -81,9 +75,7 @@ function Navbar() {
     { text: "Add Channel Partner", to: "/add-channel-partner", icon: <UserPlus size={18} />, protected: false },
     { text: "Home Loan", to: "/home-loan", icon: <Landmark size={18} />, protected: false },
     { text: "Franchise Request", to: "/franchise-request", icon: <Briefcase size={18} />, protected: false },
-    { text: "Property  Registration and Mortgage", to: "/property-registration-mortgage", icon: <House size={18} />, protected: false },
-    // { text: "Login", to: "/login", icon: <User size={18} />, protected: false, hideIfAuth: true },
-    // { text: "Sub Owner", to: "/sub-owner", icon: <Users size={18} />, protected: true },
+    { text: "Property Registration and Mortgage", to: "/property-registration-mortgage", icon: <House size={18} />, protected: false },
   ];
 
   // Close menus when clicking outside
@@ -115,37 +107,10 @@ function Navbar() {
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  // GSAP animations
-  useEffect(() => {
-    if (currentPath !== "/reels") {
-      gsap.fromTo(
-        logoRef.current,
-        { scale: 0, rotateY: -90, opacity: 0 },
-        { scale: 1, rotateY: 0, opacity: 1, duration: 1, ease: "back.out(1.7)" }
-      );
-
-      iconRefs.current.forEach((icon, i) => {
-        if (icon) {
-          gsap.fromTo(
-            icon,
-            { scale: 0, rotateY: 90, opacity: 0 },
-            { scale: 1, rotateY: 0, opacity: 1, delay: i * 0.1, duration: 0.6, ease: "back.out(1.7)" }
-          );
-        }
-      });
-
-      gsap.fromTo(
-        buttonRef.current,
-        { y: -20, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.6, delay: 0.3, ease: "power3.out" }
-      );
-    }
-  }, [currentPath]);
-
   const handleLogout = () => {
     setShowUserMenu(false);
     setIsOpen(false);
-    localStorage.removeItem('usertoken');
+    localStorage.removeItem("usertoken");
     setHasToken(false);
     logout();
     navigate("/");
@@ -157,18 +122,11 @@ function Navbar() {
     navigate("/user/");
   };
 
-  const shouldReduceMotion = useReducedMotion();
-  const buttonVariants = shouldReduceMotion
-    ? {}
-    : { whileHover: { scale: 1.05, y: -2 }, whileTap: { scale: 0.98 } };
-
-  const filteredMoreMenuItems = moreMenuItems.filter(
-    (item) => {
-      if (item.hideIfAuth && hasToken) return false;
-      if (item.showWhen && typeof item.showWhen === 'function' && !item.showWhen()) return false;
-      return true;
-    }
-  );
+  const filteredMoreMenuItems = moreMenuItems.filter((item) => {
+    if (item.hideIfAuth && hasToken) return false;
+    if (item.showWhen && typeof item.showWhen === "function" && !item.showWhen()) return false;
+    return true;
+  });
 
   if (currentPath === "/reels") return null;
 
@@ -178,12 +136,7 @@ function Navbar() {
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 sm:h-20">
             {/* Logo */}
-            <motion.div
-              ref={logoRef}
-              whileHover={{ scale: 1.08, rotate: [0, -5, 5, 0] }}
-              transition={{ duration: 0.3 }}
-              className="flex-shrink-0"
-            >
+            <div className="flex-shrink-0">
               <NavLink to="/" className="block">
                 <img
                   src={logo}
@@ -191,11 +144,11 @@ function Navbar() {
                   className="h-11 sm:h-14 w-auto object-contain drop-shadow-lg"
                 />
               </NavLink>
-            </motion.div>
+            </div>
 
             {/* Desktop Navigation */}
             <div className="hidden lg:flex items-center gap-2">
-              {navItems.map((item, i) => {
+              {navItems.map((item) => {
                 const isActive = currentPath === item.to;
                 const linkTo = item.protected && !hasToken ? "/login" : item.to;
                 const linkState = item.protected && !hasToken ? { from: item.to } : null;
@@ -203,7 +156,6 @@ function Navbar() {
                 return (
                   <NavLink
                     key={item.text}
-                    ref={(el) => (iconRefs.current[i] = el)}
                     to={linkTo}
                     state={linkState}
                     onClick={() => item.onClick?.()}
@@ -213,12 +165,16 @@ function Navbar() {
                         : "text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:scale-105"
                     }`}
                   >
-                    <span className={`${isActive ? 'text-white' : 'text-purple-600 group-hover:text-purple-700'} transition-colors transform group-hover:scale-110 duration-200`}>
+                    <span
+                      className={`${
+                        isActive ? "text-white" : "text-purple-600 group-hover:text-purple-700"
+                      } transition-colors transform group-hover:scale-110 duration-200`}
+                    >
                       {item.icon}
                     </span>
                     <span className="tracking-wide">{item.text}</span>
                     {!isActive && (
-                      <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-0 h-1 bg-gradient-to-r from-orange-600 via-orange-600 to-oragne-600 group-hover:w-3/4 transition-all duration-300 rounded-full"></span>
+                      <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-0 h-1 bg-gradient-to-r from-orange-600 via-orange-600 to-orange-600 group-hover:w-3/4 transition-all duration-300 rounded-full"></span>
                     )}
                   </NavLink>
                 );
@@ -226,9 +182,7 @@ function Navbar() {
 
               {/* More Dropdown */}
               <div className="relative" ref={moreMenuRef}>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.98 }}
+                <button
                   onClick={() => setShowMoreMenu(!showMoreMenu)}
                   className={`flex items-center gap-2 px-5 py-3 rounded-2xl transition-all duration-300 text-sm font-semibold ${
                     showMoreMenu
@@ -236,25 +190,19 @@ function Navbar() {
                       : "text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50"
                   }`}
                 >
-                  <Menu size={18} className={showMoreMenu ? 'text-white' : 'text-purple-600'} />
+                  <Menu size={18} className={showMoreMenu ? "text-white" : "text-purple-600"} />
                   <span>More</span>
                   <ChevronDown
                     size={16}
-                    className={`transition-transform duration-300 ${showMoreMenu ? 'rotate-180' : ''}`}
+                    className={`transition-transform duration-300 ${showMoreMenu ? "rotate-180" : ""}`}
                   />
-                </motion.button>
+                </button>
 
                 <AnimatePresence>
                   {showMoreMenu && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                      transition={{ duration: 0.2 }}
-                      className="absolute top-full right-0 mt-3 bg-white rounded-3xl shadow-2xl py-3 w-64 border-2 border-purple-100 overflow-hidden"
-                    >
+                    <div className="absolute top-full right-0 mt-3 bg-white rounded-3xl shadow-2xl py-3 w-64 border-2 border-purple-100 overflow-hidden">
                       <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600"></div>
-                      {filteredMoreMenuItems.map((item, index) => {
+                      {filteredMoreMenuItems.map((item) => {
                         const linkTo = item.protected && !hasToken ? "/login" : item.to;
                         const linkState = item.protected && !hasToken ? { from: item.to } : null;
                         const isActive = currentPath === item.to;
@@ -271,12 +219,14 @@ function Navbar() {
                                 : "text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50"
                             }`}
                           >
-                            <span className={isActive ? "text-purple-600" : "text-blue-500"}>{item.icon}</span>
+                            <span className={isActive ? "text-purple-600" : "text-blue-500"}>
+                              {item.icon}
+                            </span>
                             <span className="font-medium">{item.text}</span>
                           </NavLink>
                         );
                       })}
-                    </motion.div>
+                    </div>
                   )}
                 </AnimatePresence>
               </div>
@@ -285,9 +235,8 @@ function Navbar() {
             {/* Right section - Auth + Download App + Mobile menu */}
             <div className="flex items-center gap-2 sm:gap-4">
               {/* Auth Button */}
-              <div ref={buttonRef} className="relative">
-                <motion.button
-                  {...buttonVariants}
+              <div className="relative">
+                <button
                   onClick={() => {
                     if (hasToken) setShowUserMenu(!showUserMenu);
                     else navigate("/login");
@@ -297,18 +246,12 @@ function Navbar() {
                 >
                   <User size={18} className="drop-shadow-lg" />
                   <span className="hidden sm:inline tracking-wide">{hasToken ? "Account" : "Login"}</span>
-                </motion.button>
+                </button>
 
                 {/* User Menu Dropdown */}
                 <AnimatePresence>
                   {hasToken && showUserMenu && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                      className="absolute top-full right-0 mt-3 bg-white rounded-3xl shadow-2xl py-3 w-60 z-50 border-2 border-purple-100 overflow-hidden"
-                    >
-                      <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-b from-white/10 to-transparent opacity-0 group-hover:opacity-100"></div>
+                    <div className="absolute top-full right-0 mt-3 bg-white rounded-3xl shadow-2xl py-3 w-60 z-50 border-2 border-purple-100 overflow-hidden">
                       <button
                         onClick={handleProfileClick}
                         className="w-full text-left px-6 py-4 text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all flex items-center gap-3 group"
@@ -324,7 +267,7 @@ function Navbar() {
                         <LogOut size={20} className="group-hover:scale-110 transition-transform" />
                         <span className="font-semibold">Logout</span>
                       </button>
-                    </motion.div>
+                    </div>
                   )}
                 </AnimatePresence>
               </div>
@@ -339,14 +282,13 @@ function Navbar() {
 
               {/* Mobile Menu Button */}
               <div className="lg:hidden">
-                <motion.button
-                  whileTap={{ scale: 0.9 }}
+                <button
                   onClick={() => setIsOpen(!isOpen)}
                   className="p-2.5 rounded-full bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white shadow-lg hover:shadow-xl transition-all"
                   aria-label={isOpen ? "Close menu" : "Open menu"}
                 >
                   {isOpen ? <X size={22} /> : <Menu size={22} />}
-                </motion.button>
+                </button>
               </div>
             </div>
           </div>
@@ -355,7 +297,7 @@ function Navbar() {
         {/* Mobile Menu */}
         <AnimatePresence>
           {isOpen && (
-            <motion.div
+            <div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
@@ -402,14 +344,14 @@ function Navbar() {
                     <ChevronDown
                       size={18}
                       className={`transition-transform duration-300 text-purple-600 ${
-                        showMobileMoreMenu ? 'rotate-180' : ''
+                        showMobileMoreMenu ? "rotate-180" : ""
                       }`}
                     />
                   </button>
 
                   <AnimatePresence>
                     {showMobileMoreMenu && (
-                      <motion.div
+                      <div
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: "auto" }}
                         exit={{ opacity: 0, height: 0 }}
@@ -435,12 +377,14 @@ function Navbar() {
                                   : "text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50"
                               }`}
                             >
-                              <span className={isActive ? "text-white" : "text-blue-500"}>{item.icon}</span>
+                              <span className={isActive ? "text-white" : "text-blue-500"}>
+                                {item.icon}
+                              </span>
                               <span className="font-medium text-sm">{item.text}</span>
                             </NavLink>
                           );
                         })}
-                      </motion.div>
+                      </div>
                     )}
                   </AnimatePresence>
                 </div>
@@ -484,7 +428,7 @@ function Navbar() {
                   )}
                 </div>
               </div>
-            </motion.div>
+            </div>
           )}
         </AnimatePresence>
       </nav>
