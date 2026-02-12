@@ -11,11 +11,14 @@ import { useAuth } from "../Context/AuthContext";
 const HeroSection = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  
   // States
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Rent");
+  const [selectedType, setSelectedType] = useState("");
+  const [selectedBudget, setSelectedBudget] = useState("");
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -35,8 +38,9 @@ const HeroSection = () => {
     { id: "Commercial", label: "Commercial", icon: FaBuilding },
   ];
 
-  // Dynamic Options for Dropdowns - Updated with new property types
+  // Dynamic Options for Dropdowns
   const propertyTypes = [
+    "Property Type",
     "Buy",
     "Rent", 
     "PG",
@@ -45,6 +49,14 @@ const HeroSection = () => {
     "Hostel",
     "Hotel",
     "Banquet"
+  ];
+
+  const budgetOptions = [
+    "Budget",
+    "Under 5000",
+    "5000-8000",
+    "8000-12000",
+    "Above 12000"
   ];
 
   // Background Slider Logic
@@ -56,9 +68,37 @@ const HeroSection = () => {
     return () => clearInterval(interval);
   }, [isPaused, heroImages.length]);
 
+  // Handle search with filters
+  const handleSearch = () => {
+    const params = new URLSearchParams();
+    
+    if (searchQuery.trim()) {
+      params.set("q", searchQuery.trim());
+    }
+    
+    if (selectedType && selectedType !== "Property Type") {
+      params.set("type", selectedType);
+    }
+    
+    if (selectedBudget && selectedBudget !== "Budget") {
+      params.set("budget", selectedBudget);
+    }
+
+    // Navigate to home page with filter params - PGHostelSection will read these
+    navigate(`/?${params.toString()}`);
+    
+    // Scroll to properties section
+    const propertiesSection = document.getElementById("properties-section");
+    if (propertiesSection) {
+      propertiesSection.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
   return (
-    <section className="relative min-h-[75vh] sm:min-h-[80vh] md:min-h-[65vh] flex items-center justify-center text-white overflow-hidden hero-section pt-16 sm:pt-10 pb-8">
-      
+    <section 
+      className="relative min-h-[75vh] sm:min-h-[80vh] md:min-h-[65vh] flex items-center justify-center text-white overflow-hidden hero-section pt-16 sm:pt-10 pb-8"
+      onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}
+    >
       {/* Clean Background Slider - No Effects */}
       <div className="absolute inset-0 z-0">
         <AnimatePresence initial={false}>
@@ -87,7 +127,10 @@ const HeroSection = () => {
           transition={{ duration: 0.8 }}
           className="text-center mb-6 sm:mb-8"
         >
-          <motion.h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 sm:mb-4 bg-gradient-to-r from-white via-cyan-100 to-orange-200 bg-clip-text text-transparent drop-shadow-lg">
+          <motion.h1 
+            onClick={() => navigate("/")}
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 sm:mb-4 bg-gradient-to-r from-white via-cyan-100 to-orange-200 bg-clip-text text-transparent drop-shadow-lg cursor-pointer hover:scale-105 transition-transform"
+          >
             Welcome to GharZo
           </motion.h1>
           <p className="text-sm sm:text-base md:text-lg text-gray-200 px-4">
@@ -106,9 +149,9 @@ const HeroSection = () => {
           {/* Top Nav with "Post Property" - Mobile Responsive */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-3 sm:gap-4 border-b border-white/20 pb-4">
             <div className="flex gap-3 sm:gap-4 overflow-x-auto scrollbar-hide w-full sm:w-auto pb-2 sm:pb-0">
-<h1 className="text-lg sm:text-xl md:text-2xl font-bold text-white tracking-tight">
-  Find Your Perfect <span className="text-orange-400">Property</span>
-</h1>
+              <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-white tracking-tight">
+                Find Your Perfect <span className="text-orange-400">Property</span>
+              </h1>
             </div>
 
             {/* Highlighted Post Property Button - Mobile Optimized */}
@@ -139,21 +182,29 @@ const HeroSection = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2.5 sm:gap-3">
             
             {/* Location Input - Mobile Friendly */}
-            <div className="sm:col-span-2 lg:col-span-5 relative">
+            <div className="sm:col-span-2 lg:col-span-4 relative">
               <FaMapMarkerAlt className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-orange-400 text-sm sm:text-base z-10" />
               <input 
                 type="text" 
                 placeholder="Enter City, Locality..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                 className="w-full bg-white/20 border border-white/30 rounded-xl py-3 sm:py-3.5 pl-10 sm:pl-12 pr-3 sm:pr-4 outline-none focus:ring-2 ring-orange-500/50 focus:bg-white/25 transition-all text-white placeholder:text-white/60 text-sm sm:text-base backdrop-blur-sm"
               />
             </div>
 
             {/* Property Type Dropdown - Mobile Optimized */}
             <div className="sm:col-span-1 lg:col-span-3 relative">
-              <select className="w-full bg-white/20 border border-white/30 rounded-xl py-3 sm:py-3.5 px-3 sm:px-4 outline-none appearance-none cursor-pointer text-white text-sm sm:text-base backdrop-blur-sm focus:ring-2 ring-orange-500/50 focus:bg-white/25 transition-all">
-                <option className="text-black bg-white">Property Type</option>
+              <select 
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value)}
+                className="w-full bg-white/20 border border-white/30 rounded-xl py-3 sm:py-3.5 px-3 sm:px-4 outline-none appearance-none cursor-pointer text-white text-sm sm:text-base backdrop-blur-sm focus:ring-2 ring-orange-500/50 focus:bg-white/25 transition-all"
+              >
                 {propertyTypes.map(type => (
-                  <option key={type} className="text-black bg-white">{type}</option>
+                  <option key={type} value={type === "Property Type" ? "" : type} className="text-black bg-white">
+                    {type}
+                  </option>
                 ))}
               </select>
               <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-white/70">
@@ -163,17 +214,31 @@ const HeroSection = () => {
               </div>
             </div>
 
-            {/* Budget Input - Mobile Friendly */}
-            <div className="sm:col-span-1 lg:col-span-2">
-              <input 
-                type="text" 
-                placeholder="Budget" 
-                className="w-full bg-white/20 border border-white/30 rounded-xl py-3 sm:py-3.5 px-3 sm:px-4 outline-none text-white placeholder:text-white/60 text-sm sm:text-base backdrop-blur-sm focus:ring-2 ring-orange-500/50 focus:bg-white/25 transition-all"
-              />
+            {/* Budget Dropdown */}
+            <div className="sm:col-span-1 lg:col-span-3 relative">
+              <select 
+                value={selectedBudget}
+                onChange={(e) => setSelectedBudget(e.target.value)}
+                className="w-full bg-white/20 border border-white/30 rounded-xl py-3 sm:py-3.5 px-3 sm:px-4 outline-none appearance-none cursor-pointer text-white text-sm sm:text-base backdrop-blur-sm focus:ring-2 ring-orange-500/50 focus:bg-white/25 transition-all"
+              >
+                {budgetOptions.map(budget => (
+                  <option key={budget} value={budget === "Budget" ? "" : budget} className="text-black bg-white">
+                    {budget}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-white/70">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
             </div>
 
             {/* Search Button - Full Width on Mobile */}
-            <button className="sm:col-span-2 lg:col-span-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 py-3 sm:py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 text-sm sm:text-base">
+            <button 
+              onClick={handleSearch}
+              className="sm:col-span-2 lg:col-span-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 py-3 sm:py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 text-sm sm:text-base"
+            >
               <FaSearch className="text-sm sm:text-base" /> 
               <span>Search</span>
             </button>

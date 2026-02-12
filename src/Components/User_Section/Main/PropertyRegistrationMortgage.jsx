@@ -744,45 +744,7 @@ const PropertyInquiryPage = () => {
             </AnimatePresence>
           </motion.div>
 
-          {/* Contact info */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
-            className="mt-12 md:mt-16 grid grid-cols-1 md:grid-cols-3 gap-6"
-          >
-            {[
-              {
-                icon: "📞",
-                title: "Call Us",
-                content: "+91 (XXX) XXX-XXXX",
-              },
-              {
-                icon: "📧",
-                title: "Email",
-                content: "info@gharzoreality.com",
-              },
-              {
-                icon: "🕐",
-                title: "Working Hours",
-                content: "9 AM - 6 PM (Mon - Sat)",
-              },
-            ].map((item, idx) => (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.1, duration: 0.6 }}
-                viewport={{ once: true }}
-                className="text-center p-6 bg-slate-800/30 border border-slate-700/50 rounded-lg hover:border-orange-500/50 transition-all duration-300"
-              >
-                <div className="text-4xl mb-3">{item.icon}</div>
-                <h4 className="text-white font-semibold mb-2">{item.title}</h4>
-                <p className="text-slate-400">{item.content}</p>
-              </motion.div>
-            ))}
-          </motion.div>
+      
         </div>
       </section>
 

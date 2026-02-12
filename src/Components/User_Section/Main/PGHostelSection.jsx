@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../User_Section/Context/AuthContext.jsx";
 import axios from "axios";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import AOS from "aos";
 import "aos/dist/aos.css";
 import {
@@ -11,40 +11,68 @@ import {
   CarFront,
   MapPin,
   Home,
-  IndianRupee,
-  ChevronDown,
   Building2,
   Hotel,
   Briefcase,
   ShoppingCart,
   BadgeIndianRupee,
   Landmark,
-  PlusCircle,
-  Projector,
   ProjectorIcon,
+  ChevronLeft,
+  ChevronRight,
+  Pause,
+  Play,
 } from "lucide-react";
 
 const PGHostelSection = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [properties, setProperties] = useState([]);
   const [filteredProperties, setFilteredProperties] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [noProperties, setNoProperties] = useState(false); // ✅ FIXED: Added missing state
+  const [noProperties, setNoProperties] = useState(false);
+
+  // Filter states from URL
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState("");
   const [selectedBudget, setSelectedBudget] = useState("");
-  const [showTypeDropdown, setShowTypeDropdown] = useState(false);
-  const [showBudgetDropdown, setShowBudgetDropdown] = useState(false);
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const propertiesPerPage = 9;
+  // Enhanced Carousel states
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+  const [itemsPerView, setItemsPerView] = useState(3);
+
+  // Responsive items per view
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 640) {
+        setItemsPerView(1);
+      } else if (window.innerWidth < 1024) {
+        setItemsPerView(2);
+      } else {
+        setItemsPerView(3);
+      }
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     AOS.init({ duration: 800, once: true });
 
-    // ✅ FIXED: Moved fetchProperties function outside to avoid duplication
+    // Read filters from URL params
+    const typeParam = searchParams.get("type");
+    const budgetParam = searchParams.get("budget");
+    const qParam = searchParams.get("q");
+
+    if (typeParam) setSelectedType(typeParam);
+    if (budgetParam) setSelectedBudget(budgetParam);
+    if (qParam) setSearchQuery(qParam);
+
     const fetchProperties = async () => {
       setLoading(true);
       setNoProperties(false);
@@ -56,26 +84,44 @@ const PGHostelSection = () => {
 
         let list = res.data?.data || [];
 
-        // ✅ Filter only PG & Hostel
-        list = list.filter(
-          (p) =>
-            (p.listingType === "PG" || p.listingType === "Hostel") &&
-            (p.isActive === undefined ? true : p.isActive === true)
-        );
+        // Filter based on type from URL
+        if (typeParam && typeParam !== "Rent" && typeParam !== "PG") {
+          list = list.filter(
+            (p) =>
+              (p.listingType?.toLowerCase() === typeParam.toLowerCase() ||
+                p.category?.toLowerCase() === typeParam.toLowerCase()) &&
+              (p.isActive === undefined ? true : p.isActive === true)
+          );
+        } else if (typeParam === "PG") {
+          // Filter specifically for PG properties
+          list = list.filter(
+            (p) =>
+              (p.listingType?.toLowerCase() === "pg" ||
+                p.category?.toLowerCase() === "pg") &&
+              (p.isActive === undefined ? true : p.isActive === true)
+          );
+        } else {
+          // Default: Show Rent properties
+          list = list.filter(
+            (p) =>
+              (p.listingType === "Rent" || p.listingType === "rent") &&
+              (p.isActive === undefined ? true : p.isActive === true)
+          );
+        }
 
         if (list.length === 0) {
           setNoProperties(true);
           setProperties([]);
           setFilteredProperties([]);
         } else {
-          // ✅ Map properties with proper fallbacks
           const mapped = list.map((p) => ({
             id: p._id,
-            name: p.title || p.name || "PG Property",
-            type: p.listingType || "PG",
+            name: p.title || p.name || "Property",
+            type: p.listingType || "Rent",
+            category: p.category || "",
             lowestPrice: p.price?.amount || 0,
-            totalBeds: p.pgDetails?.totalBeds || 1,
-            totalRooms: Math.ceil((p.pgDetails?.totalBeds || 1) / 2),
+            totalBeds: p.pgDetails?.totalBeds || p.bedrooms || 1,
+            totalRooms: p.pgDetails?.totalRooms || Math.ceil((p.pgDetails?.totalBeds || p.bedrooms || 1) / 2),
             images: p.images?.map((img) => img.url) || [],
             location: {
               city: p.location?.city || "",
@@ -102,7 +148,7 @@ const PGHostelSection = () => {
           setNoProperties(false);
         }
       } catch (error) {
-        console.error("Error fetching PG & Hostel properties:", error);
+        console.error("Error fetching properties:", error);
         setProperties([]);
         setFilteredProperties([]);
         setNoProperties(true);
@@ -112,65 +158,91 @@ const PGHostelSection = () => {
     };
 
     fetchProperties();
-  }, []);
+  }, [searchParams]);
 
-  // ✅ Filter logic - runs when search/filter criteria change
+  // Enhanced Filter logic with URL params - FIXED VERSION
   useEffect(() => {
-    let q = searchQuery.toLowerCase().trim();
-    let minPrice = 0;
-    let maxPrice = Infinity;
-    let textQuery = q;
+    let filtered = properties;
 
-    const singlePriceMatch = q.match(/\b(\d+)\b/);
-    const priceRangeMatch = q.match(/(\d+)-(\d+)/);
-
-    if (priceRangeMatch) {
-      minPrice = parseFloat(priceRangeMatch[1]);
-      maxPrice = parseFloat(priceRangeMatch[2]);
-      textQuery = q.replace(priceRangeMatch[0], "").trim();
-    } else if (singlePriceMatch) {
-      minPrice = parseFloat(singlePriceMatch[1]);
-      maxPrice = minPrice + 1000;
-      textQuery = q.replace(singlePriceMatch[0], "").trim();
+    // Filter by Type
+    if (selectedType && selectedType !== "Property Type") {
+      filtered = filtered.filter((property) => {
+        const matchesType =
+          property.type?.toLowerCase() === selectedType.toLowerCase() ||
+          property.category?.toLowerCase() === selectedType.toLowerCase();
+        return matchesType;
+      });
     }
 
-    let filtered = properties.filter((property) => {
-      const price = parseFloat(property.lowestPrice) || 0;
-      const matchesPrice = price >= minPrice && price <= maxPrice;
-      const matchesText =
-        !textQuery ||
-        property.name?.toLowerCase().includes(textQuery) ||
-        property.type?.toLowerCase().includes(textQuery) ||
-        property.location?.city?.toLowerCase().includes(textQuery) ||
-        property.location?.area?.toLowerCase().includes(textQuery) ||
-        property.location?.state?.toLowerCase().includes(textQuery);
+    // Filter by Budget
+    if (selectedBudget && selectedBudget !== "Budget") {
+      filtered = filtered.filter((property) => {
+        const price = parseFloat(property.lowestPrice) || 0;
+        
+        if (selectedBudget === "Under 5000") {
+          return price <= 5000;
+        } else if (selectedBudget === "5000-8000") {
+          return price >= 5000 && price <= 8000;
+        } else if (selectedBudget === "8000-12000") {
+          return price >= 8000 && price <= 12000;
+        } else if (selectedBudget === "Above 12000") {
+          return price >= 12000;
+        }
+        return true;
+      });
+    }
 
-      const matchesType =
-        !selectedType ||
-        property.type?.toLowerCase() === selectedType.toLowerCase();
-
-      const matchesBudget =
-        !selectedBudget ||
-        (selectedBudget === "Under 5000" && price <= 5000) ||
-        (selectedBudget === "5000-8000" && price >= 5000 && price <= 8000) ||
-        (selectedBudget === "8000-12000" && price >= 8000 && price <= 12000) ||
-        (selectedBudget === "Above 12000" && price >= 12000);
-
-      return matchesPrice && matchesText && matchesType && matchesBudget;
-    });
+    // Filter by Search Query (location, name, etc.)
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter((property) => {
+        const matchesText =
+          property.name?.toLowerCase().includes(q) ||
+          property.type?.toLowerCase().includes(q) ||
+          property.category?.toLowerCase().includes(q) ||
+          property.location?.city?.toLowerCase().includes(q) ||
+          property.location?.area?.toLowerCase().includes(q) ||
+          property.location?.state?.toLowerCase().includes(q);
+        return matchesText;
+      });
+    }
 
     setFilteredProperties(filtered);
-    setCurrentPage(1);
+    setCurrentSlide(0);
   }, [searchQuery, selectedType, selectedBudget, properties]);
 
-  const handleSearch = () => {
-    setSearchQuery((prev) => prev.trim());
-  };
+  // Auto-slide functionality
+  useEffect(() => {
+    if (!isAutoPlaying || filteredProperties.length <= itemsPerView) return;
+
+    const interval = setInterval(() => {
+      nextSlide();
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [isAutoPlaying, filteredProperties.length, itemsPerView, currentSlide]);
 
   const handlePropertyClick = (id) => {
-    // Direct navigation to property details - NO login required
-    // Details page is public, login only needed for booking tour
     navigate(`/property/${id}`);
+  };
+
+  // Enhanced Carousel navigation
+  const nextSlide = () => {
+    const maxSlide = Math.max(0, filteredProperties.length - itemsPerView);
+    setCurrentSlide((prev) => (prev < maxSlide ? prev + 1 : 0));
+  };
+
+  const prevSlide = () => {
+    const maxSlide = Math.max(0, filteredProperties.length - itemsPerView);
+    setCurrentSlide((prev) => (prev > 0 ? prev - 1 : maxSlide));
+  };
+
+  const goToSlide = (index) => {
+    setCurrentSlide(index);
+  };
+
+  const toggleAutoPlay = () => {
+    setIsAutoPlaying(!isAutoPlaying);
   };
 
   // Navigation handlers
@@ -182,35 +254,26 @@ const PGHostelSection = () => {
   const goToServices = () => navigate("/services");
   const goToHomeLoan = () => navigate("/home-loan");
 
-  const goToAddProject = () => {
-    if (isAuthenticated) {
-      navigate("/add-project");
-    } else {
-      navigate("/login", { state: { from: "/add-project" } });
-    }
-  };
-
-  // Pagination
-  const indexOfLast = currentPage * propertiesPerPage;
-  const indexOfFirst = indexOfLast - propertiesPerPage;
-  const currentProperties = filteredProperties.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.ceil(filteredProperties.length / propertiesPerPage);
-
   const categoryButtons = [
     { label: "Rent", onClick: goToRent, icon: Home },
     { label: "Buy", onClick: goToSale, icon: ShoppingCart },
     { label: "Commercial", onClick: goToCommercial, icon: Building2 },
-    { label: "PG/Hostel", onClick: goToPG, isActive: true, icon: Hotel },
-    { label: "Franchise ", onClick: goToHostels, icon: Briefcase },
+    { label: "PG/Hostel", onClick: goToPG, icon: Hotel },
+    { label: "Franchise", onClick: goToHostels, icon: Briefcase },
     { label: "Services", onClick: goToServices, icon: BadgeIndianRupee },
     { label: "Home Loan", onClick: goToHomeLoan, icon: Landmark },
     { label: "Project", onClick: goToCommercial, icon: ProjectorIcon },
   ];
 
+  const totalSlides = Math.max(0, filteredProperties.length - itemsPerView + 1);
+
   return (
-    <section className="py-6 sm:py-8 px-4 sm:px-5 lg:px-6 bg-gradient-to-b from-blue-50 via-indigo-50/30 to-white min-h-screen">
+    <section 
+      id="properties-section" 
+      className="py-6 sm:py-8 px-4 sm:px-5 lg:px-6 bg-gradient-to-b from-blue-50 via-indigo-50/30 to-white min-h-screen"
+    >
       <div className="text-center mb-6 md:mb-8">
-        {/* Ultra Compact & Attractive Gradient Buttons */}
+        {/* Category Buttons */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-2 max-w-7xl mx-auto px-1">
           {categoryButtons.map((btn, index) => {
             const IconComponent = btn.icon;
@@ -237,21 +300,8 @@ const PGHostelSection = () => {
                   }
                 `}
               >
-                {/* Shine Effect */}
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-
-                {/* Top Glow */}
-                <div
-                  className={`absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-0 group-hover:opacity-100 rounded-lg sm:rounded-xl transition-opacity duration-300`}
-                />
-
-                {/* Bottom Shadow Glow */}
-                <div
-                  className={`absolute -inset-1 ${
-                    btn.isActive ? "bg-slate-600/20" : "bg-slate-600/20"
-                  } blur-md -z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg sm:rounded-xl`}
-                />
-
+                <div className={`absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-0 group-hover:opacity-100 rounded-lg sm:rounded-xl transition-opacity duration-300`} />
                 <span className="relative z-10 flex flex-col items-center gap-0.5 sm:gap-1">
                   <IconComponent
                     size={16}
@@ -265,8 +315,6 @@ const PGHostelSection = () => {
                     {btn.label}
                   </span>
                 </span>
-
-                {/* Active Indicator Pulse */}
                 {btn.isActive && (
                   <motion.div
                     className="absolute -top-1 -right-1 w-2 h-2 bg-white rounded-full shadow-lg"
@@ -280,7 +328,33 @@ const PGHostelSection = () => {
         </div>
       </div>
 
-      {/* Property cards section */}
+      {/* Active Filters Display */}
+      {(searchQuery || selectedType || selectedBudget) && (
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-7xl mx-auto mb-6 flex flex-wrap gap-2 items-center"
+        >
+          <span className="text-sm font-semibold text-gray-600">Active Filters:</span>
+          {searchQuery && (
+            <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+              Search: {searchQuery}
+            </span>
+          )}
+          {selectedType && selectedType !== "Property Type" && (
+            <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-medium">
+              Type: {selectedType}
+            </span>
+          )}
+          {selectedBudget && selectedBudget !== "Budget" && (
+            <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+              Budget: {selectedBudget}
+            </span>
+          )}
+        </motion.div>
+      )}
+
+      {/* Property Carousel Section */}
       {loading ? (
         <div className="flex justify-center items-center py-16">
           <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -289,112 +363,158 @@ const PGHostelSection = () => {
         <div className="flex flex-col items-center justify-center py-20">
           <Hotel size={80} className="text-gray-300 mb-4" />
           <p className="text-center text-gray-600 text-lg sm:text-xl font-semibold">
-            No PG/Hostel Properties Available
+            No Properties Available
           </p>
           <p className="text-center text-gray-500 text-sm sm:text-base mt-2">
-            Please check back later or try adjusting your filters
+            {searchQuery || selectedType || selectedBudget
+              ? "Try adjusting your filters"
+              : "Please check back later"}
           </p>
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 max-w-7xl mx-auto">
-            {currentProperties.map((property, index) => (
-              <motion.div
-                key={property.id}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.07, duration: 0.45 }}
-                whileHover={{ y: -6, scale: 1.03 }}
-                onClick={() => handlePropertyClick(property.id)}
-                className="group bg-white/85 backdrop-blur-md rounded-xl shadow-lg hover:shadow-xl overflow-hidden cursor-pointer transition-all duration-300 border border-blue-100/60"
+          {/* Enhanced Navigation with Auto-play */}
+          <div className="flex justify-between items-center gap-3 mb-6 max-w-7xl mx-auto">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-gray-600">
+                Showing {filteredProperties.length} {filteredProperties.length === 1 ? 'property' : 'properties'}
+              </span>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={toggleAutoPlay}
+                className="w-12 h-12 rounded-full bg-white/90 backdrop-blur-sm border border-blue-400 flex items-center justify-center hover:bg-blue-50 transition-all shadow-lg"
+                title={isAutoPlaying ? "Pause" : "Play"}
               >
-                <div className="relative">
-                  <img
-                    src={
-                      property.images?.[0] ||
-                      "https://via.placeholder.com/400x260"
-                    }
-                    alt={property.name}
-                    className="w-full h-44 sm:h-48 object-cover group-hover:scale-105 transition-transform duration-700"
-                  />
-                  <div className="absolute top-3 left-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-1.5 rounded-full font-semibold text-xs sm:text-sm shadow-md backdrop-blur-sm">
-                    ₹{property.lowestPrice}/mo
-                  </div>
-                </div>
+                {isAutoPlaying ? (
+                  <Pause className="w-5 h-5 text-blue-600" />
+                ) : (
+                  <Play className="w-5 h-5 text-blue-600 ml-0.5" />
+                )}
+              </button>
 
-                <div className="p-4 sm:p-5">
-                  <h3 className="text-base sm:text-lg font-bold text-gray-900 line-clamp-1">
-                    {property.name}
-                  </h3>
+              <button
+                onClick={prevSlide}
+                className="w-12 h-12 rounded-full bg-white/90 backdrop-blur-sm border border-blue-400 flex items-center justify-center hover:bg-blue-50 transition-all shadow-lg group"
+              >
+                <ChevronLeft className="w-6 h-6 text-blue-600 group-hover:-translate-x-0.5 transition-transform" />
+              </button>
 
-                  <div className="flex items-center text-gray-600 mt-1.5 text-xs sm:text-sm">
-                    <MapPin
-                      size={14}
-                      className="text-blue-600 mr-1 flex-shrink-0"
-                    />
-                    <span className="truncate">
-                      {property?.location?.city}, {property?.location?.area}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 mt-4 text-center text-gray-700 text-xs sm:text-sm">
-                    <div>
-                      <BedDouble size={18} className="mx-auto text-blue-600" />
-                      <p className="mt-1">{property.totalBeds || "N/A"} Beds</p>
-                    </div>
-                    <div>
-                      <Bath size={18} className="mx-auto text-blue-600" />
-                      <p className="mt-1">
-                        {property.totalRooms || "N/A"} Baths
-                      </p>
-                    </div>
-                    <div>
-                      <CarFront size={18} className="mx-auto text-blue-600" />
-                      <p className="mt-1">Parking</p>
-                    </div>
-                  </div>
-
-                  <p className="mt-4 text-xs sm:text-sm font-semibold text-blue-700 uppercase tracking-wide">
-                    {property.type}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
+              <button
+                onClick={nextSlide}
+                className="w-12 h-12 rounded-full bg-white/90 backdrop-blur-sm border border-blue-400 flex items-center justify-center hover:bg-blue-50 transition-all shadow-lg group"
+              >
+                <ChevronRight className="w-6 h-6 text-blue-600 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            </div>
           </div>
 
-          {totalPages > 1 && (
-            <div className="flex justify-center mt-8 sm:mt-10 gap-2 flex-wrap">
-              <button
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="px-4 sm:px-5 py-2 bg-white/80 backdrop-blur-sm border border-blue-400 text-blue-700 rounded-xl disabled:opacity-50 hover:bg-blue-50 text-sm transition-all"
+          {/* Carousel */}
+          <div className="max-w-7xl mx-auto overflow-hidden">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentSlide}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
+                initial={{ opacity: 0, x: 100 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -100 }}
+                transition={{ 
+                  type: "spring", 
+                  stiffness: 300, 
+                  damping: 30
+                }}
               >
-                Previous
-              </button>
+                {filteredProperties
+                  .slice(currentSlide, currentSlide + itemsPerView)
+                  .map((property, index) => (
+                    <motion.div
+                      key={property.id}
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1, duration: 0.5 }}
+                      whileHover={{ y: -8, scale: 1.02 }}
+                      onClick={() => handlePropertyClick(property.id)}
+                      className="group bg-white/95 backdrop-blur-md rounded-2xl shadow-xl hover:shadow-2xl overflow-hidden cursor-pointer transition-all duration-300 border border-blue-100/60"
+                    >
+                      <div className="relative">
+                        <img
+                          src={property.images?.[0] || "https://via.placeholder.com/400x260"}
+                          alt={property.name}
+                          className="w-full h-56 sm:h-64 object-cover group-hover:scale-105 transition-transform duration-700"
+                        />
+                        <div className="absolute top-4 left-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-full font-bold text-sm shadow-lg">
+                          ₹{property.lowestPrice?.toLocaleString() || 0}/mo
+                        </div>
+                        {property.isVerified && (
+                          <div className="absolute top-4 right-4 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-lg">
+                            Verified
+                          </div>
+                        )}
+                      </div>
 
-              {Array.from({ length: totalPages }, (_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setCurrentPage(i + 1)}
-                  className={`px-3 sm:px-4 py-2 rounded-xl text-sm min-w-[38px] sm:min-w-[44px] transition-all ${
-                    currentPage === i + 1
-                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
-                      : "bg-white/80 backdrop-blur-sm border border-blue-300 text-blue-700 hover:bg-blue-50"
+                      <div className="p-5">
+                        <h3 className="text-lg sm:text-xl font-bold text-gray-900 line-clamp-1">
+                          {property.name}
+                        </h3>
+
+                        <div className="flex items-center text-gray-600 mt-2 text-sm">
+                          <MapPin size={14} className="text-blue-600 mr-1.5 flex-shrink-0" />
+                          <span className="truncate">
+                            {property?.location?.city}, {property?.location?.area}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-3 mt-5 text-center">
+                          <div className="bg-blue-50 rounded-xl p-2">
+                            <BedDouble size={20} className="mx-auto text-blue-600" />
+                            <p className="text-xs font-semibold text-gray-700 mt-1">
+                              {property.totalBeds || "N/A"} Beds
+                            </p>
+                          </div>
+                          <div className="bg-blue-50 rounded-xl p-2">
+                            <Bath size={20} className="mx-auto text-blue-600" />
+                            <p className="text-xs font-semibold text-gray-700 mt-1">
+                              {property.totalRooms || "N/A"} Baths
+                            </p>
+                          </div>
+                          <div className="bg-blue-50 rounded-xl p-2">
+                            <CarFront size={20} className="mx-auto text-blue-600" />
+                            <p className="text-xs font-semibold text-gray-700 mt-1">Parking</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between mt-5 pt-4 border-t border-gray-100">
+                          <span className="text-xs font-bold text-blue-700 uppercase tracking-wider bg-blue-50 px-3 py-1 rounded-full">
+                            {property.type}
+                          </span>
+                          <button className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-md hover:shadow-lg transition-all hover:scale-105">
+                            View Details
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          {/* Pagination */}
+          {totalSlides > 1 && (
+            <div className="flex justify-center mt-8 gap-2">
+              {Array.from({ length: totalSlides }).map((_, index) => (
+                <motion.button
+                  key={index}
+                  onClick={() => goToSlide(index)}
+                  whileHover={{ scale: 1.2 }}
+                  whileTap={{ scale: 0.9 }}
+                  className={`h-3 rounded-full transition-all duration-300 ${
+                    index === currentSlide
+                      ? "bg-blue-600 w-8"
+                      : "bg-blue-300 hover:bg-blue-400 w-3"
                   }`}
-                >
-                  {i + 1}
-                </button>
+                />
               ))}
-
-              <button
-                onClick={() =>
-                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                }
-                disabled={currentPage === totalPages}
-                className="px-4 sm:px-5 py-2 bg-white/80 backdrop-blur-sm border border-blue-400 text-blue-700 rounded-xl disabled:opacity-50 hover:bg-blue-50 text-sm transition-all"
-              >
-                Next
-              </button>
             </div>
           )}
         </>

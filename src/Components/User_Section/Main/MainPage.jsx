@@ -441,7 +441,9 @@ function MainPage() {
       {/* 🎬 HERO SECTION WITH CINEMATIC BACKGROUND SLIDER */}
       <HeroSection />
 
-      <PGHostelSection />
+      <div id="properties-section">
+        <PGHostelSection />
+      </div>
       <AdsCarousel />
 
       <RentalPropety />
