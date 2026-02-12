@@ -25,6 +25,7 @@ import logo from "../../../assets/logo/logo.png";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../User_Section/Context/AuthContext.jsx"; 
 import useVisitCount from "../../../hooks/useVisitCount.js"; 
+import NotificationBell from "../../Common/Notifications/NotificationBell.jsx"; 
 
 // Download App Button Component
 const DownloadAppButton = () => (
@@ -332,6 +333,9 @@ function Navbar() {
               <div className="hidden sm:block">
                 <DownloadAppButton />
               </div>
+
+              {/* Notification Bell */}
+              {hasToken && <NotificationBell />}
 
               {/* Mobile Menu Button */}
               <div className="lg:hidden">
