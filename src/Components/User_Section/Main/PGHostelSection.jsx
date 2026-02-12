@@ -84,24 +84,23 @@ const PGHostelSection = () => {
 
         let list = res.data?.data || [];
 
+        // If no type param, show ALL properties
+        if (!typeParam || typeParam === "") {
+          list = list.filter(
+            (p) => p.isActive === undefined || p.isActive === true
+          );
+        }
         // Filter based on type from URL
-        if (typeParam && typeParam !== "Rent" && typeParam !== "PG") {
+        else if (typeParam && typeParam !== "Rent") {
           list = list.filter(
             (p) =>
-              (p.listingType?.toLowerCase() === typeParam.toLowerCase() ||
+              ((p.listingType?.toLowerCase() === typeParam.toLowerCase() ||
                 p.category?.toLowerCase() === typeParam.toLowerCase()) &&
-              (p.isActive === undefined ? true : p.isActive === true)
+              (p.isActive === undefined ? true : p.isActive === true))
           );
-        } else if (typeParam === "PG") {
-          // Filter specifically for PG properties
-          list = list.filter(
-            (p) =>
-              (p.listingType?.toLowerCase() === "pg" ||
-                p.category?.toLowerCase() === "pg") &&
-              (p.isActive === undefined ? true : p.isActive === true)
-          );
-        } else {
-          // Default: Show Rent properties
+        }
+        // If type is Rent, show all active properties (Rent type)
+        else {
           list = list.filter(
             (p) =>
               (p.listingType === "Rent" || p.listingType === "rent") &&

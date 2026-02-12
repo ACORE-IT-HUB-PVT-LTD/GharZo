@@ -371,61 +371,9 @@ const AdsCarousel = () => {
         </div>
       </div>
 
-      {/* Thumbnail Navigation (Desktop Only) */}
-      <div className="hidden lg:flex gap-4 mt-6 overflow-x-auto pb-2">
-        {advertisements.map((ad, index) => (
-          <button
-            key={ad.id}
-            onClick={() => goToSlide(index)}
-            className={`relative flex-shrink-0 w-32 h-20 rounded-lg overflow-hidden transition-all duration-300 ${
-              index === currentSlide
-                ? 'ring-4 ring-blue-500 scale-105'
-                : 'opacity-60 hover:opacity-100'
-            }`}
-          >
-            <img
-              src={ad.image}
-              alt={ad.title}
-              className="w-full h-full object-cover"
-              draggable="false"
-              onError={(e) => {
-                e.target.src = 'https://via.placeholder.com/1200x400?text=Ad';
-              }}
-            />
-            {index === currentSlide && (
-              <div className="absolute inset-0 bg-blue-600/30" />
-            )}
-          </button>
-        ))}
-      </div>
+      
 
-      {/* Mobile Thumbnail Navigation */}
-      <div className="flex lg:hidden gap-2 sm:gap-3 mt-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200">
-        {advertisements.map((ad, index) => (
-          <button
-            key={ad.id}
-            onClick={() => goToSlide(index)}
-            className={`relative flex-shrink-0 w-20 sm:w-24 h-14 sm:h-16 rounded-lg overflow-hidden transition-all duration-300 ${
-              index === currentSlide
-                ? 'ring-2 sm:ring-4 ring-blue-500 scale-105'
-                : 'opacity-60 hover:opacity-100'
-            }`}
-          >
-            <img
-              src={ad.image}
-              alt={ad.title}
-              className="w-full h-full object-cover"
-              draggable="false"
-              onError={(e) => {
-                e.target.src = 'https://via.placeholder.com/1200x400?text=Ad';
-              }}
-            />
-            {index === currentSlide && (
-              <div className="absolute inset-0 bg-blue-600/30" />
-            )}
-          </button>
-        ))}
-      </div>
+     
     </div>
   );
 };
