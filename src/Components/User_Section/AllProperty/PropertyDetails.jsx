@@ -783,7 +783,7 @@ function PropertyTabs({ activeTab, setActiveTab, property, openImageModal, place
     { id: "amenities", label: "Amenities", icon: <FaCheckCircle /> },
     { id: "location", label: "Location", icon: <FaMapMarkerAlt /> },
     { id: "gallery", label: "Gallery", icon: <Eye /> },
-    { id: "legal", label: "Legal & Pricing", icon: <FaFileContract /> },
+    { id: "legal", label: "Pricing", icon: <FaFileContract /> },
     { id: "reviews", label: "Reviews", icon: <MessageCircle /> },
   ];
 
@@ -1394,7 +1394,8 @@ function LegalPricingTab({ property }) {
 function OwnerInfoCard({ property }) {
   const ownerName = property.ownerId?.name || property.contactInfo?.name || "Property Manager";
   const ownerEmail = property.ownerId?.email || property.contactInfo?.email || "";
-  const ownerPhone = property.contactInfo?.phone || "";
+  // const ownerPhone = property.contactInfo?.phone || "";
+  const ownerPhone =  "9755271778";
   const alternatePhone = property.contactInfo?.alternatePhone || "";
   const preferredCallTime = property.contactInfo?.preferredCallTime || "";
 
@@ -1425,12 +1426,12 @@ function OwnerInfoCard({ property }) {
           </div>
         )}
 
-        {ownerPhone && (
+        {/* {ownerPhone && (
           <div className="flex items-center gap-2 text-indigo-100">
             <FaPhone size={16} />
             <span className="text-sm">{ownerPhone}</span>
           </div>
-        )}
+        )} */}
 
         {alternatePhone && (
           <div className="flex items-center gap-2 text-indigo-100">

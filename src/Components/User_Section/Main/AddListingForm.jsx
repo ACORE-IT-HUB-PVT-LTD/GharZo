@@ -135,11 +135,11 @@ const AddListingForm = () => {
   const categoryOptions = ['Residential', 'Commercial'];
   
   const propertyTypeOptions = {
-    Residential: ['Flat', 'Villa', 'Independent House', 'Builder Floor', 'Studio', 'Plot'],
+    Residential: ['Room','Flat', 'Villa', 'Independent House', 'Builder Floor', 'Studio', 'Plot'],
     Commercial: ['Shop', 'Office', 'Warehouse']
   };
 
-  const listingTypeOptions = ['Rent', 'Sale', 'PG'];
+  const listingTypeOptions = ['Rent', 'Sale', 'PG/Co-living'];
 
   const areaUnitOptions = ['sqft', 'sqm', 'sqyd', 'acre', 'hectare'];
   const roomTypeOptions = ['Single', 'Double Sharing', 'Triple Sharing', 'Dormitory'];
@@ -841,6 +841,30 @@ const AddListingForm = () => {
               </select>
             </div>
 
+ {formData.propertyType && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Listing Type *
+                </label>
+                <select
+                  name="listingType"
+                  value={formData.listingType}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none transition-colors"
+                >
+                  <option value="">Select Listing Type</option>
+                  {listingTypeOptions.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </motion.div>
+            )}
+
             {formData.category && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
@@ -865,29 +889,7 @@ const AddListingForm = () => {
               </motion.div>
             )}
 
-            {formData.propertyType && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Listing Type *
-                </label>
-                <select
-                  name="listingType"
-                  value={formData.listingType}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none transition-colors"
-                >
-                  <option value="">Select Listing Type</option>
-                  {listingTypeOptions.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-              </motion.div>
-            )}
+           
 
             {formData.category && formData.propertyType && formData.listingType && (
               <motion.div
@@ -928,7 +930,7 @@ const AddListingForm = () => {
                   isPlotProperty() ? "e.g., Prime Residential Plot in Vijay Nagar" :
                   isCommercialProperty() ? "e.g., Commercial Space in Prime Location" :
                   isPGProperty() ? "e.g., Comfortable PG for Students & Working Professionals" :
-                  "e.g., Spacious 2BHK Flat in Vijay Nagar"
+                  "Property title (e.g., Spacious 2BHK Apartment with Balcony)"
                 }
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none transition-colors"
               />

@@ -136,7 +136,7 @@ export default function PropertyInquiryForm() {
       return;
     }
 
-    const requiredFields = ['enquiryType', 'firstName', 'lastName', 'phone', 'email', 'city', 'budget', 'propertyType'];
+    const requiredFields = ['firstName', 'lastName', 'phone', 'email', 'city', 'budget', 'propertyType'];
     const missingFields = requiredFields.filter((field) => !formData[field]);
     if (missingFields.length > 0) {
       alert('Please fill all required fields: ' + missingFields.join(', '));
@@ -158,12 +158,7 @@ export default function PropertyInquiryForm() {
       return;
     }
 
-    // For property-specific enquiries, property must be selected
-    if (formData.enquiryType !== 'general' && !selectedProperty) {
-      alert('Please select a property for this enquiry type');
-      return;
-    }
-
+   
     // ── Build payload based on API structure ──
     const inquiryPayload = {
       enquiryType: formData.enquiryType,

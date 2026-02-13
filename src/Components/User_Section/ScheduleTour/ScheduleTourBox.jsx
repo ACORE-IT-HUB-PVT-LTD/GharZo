@@ -531,7 +531,7 @@ const ScheduleTourBox = () => {
             ) : (
               <span className="flex items-center justify-center gap-2">
                 <FaCalendarAlt />
-                Schedule Tour
+                Schedule Visit
               </span>
             )}
           </motion.button>
