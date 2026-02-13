@@ -136,10 +136,18 @@ const AddListingForm = () => {
   
   const propertyTypeOptions = {
     Residential: ['Room','Flat', 'Villa', 'Independent House', 'Builder Floor', 'Studio', 'Plot'],
-    Commercial: ['Shop', 'Office', 'Warehouse']
+    Commercial: ['Office', 'Showroom', 'Shop', 'Plot', 'Warehouse', 'Others']
   };
 
   const listingTypeOptions = ['Rent', 'Sale', 'PG/Co-living'];
+
+  // Get filtered listing types based on category (PG/Co-living only for Residential)
+  const getFilteredListingTypes = () => {
+    if (formData.category === 'Commercial') {
+      return listingTypeOptions.filter(type => type !== 'PG/Co-living');
+    }
+    return listingTypeOptions;
+  };
 
   const areaUnitOptions = ['sqft', 'sqm', 'sqyd', 'acre', 'hectare'];
   const roomTypeOptions = ['Single', 'Double Sharing', 'Triple Sharing', 'Dormitory'];
@@ -841,7 +849,7 @@ const AddListingForm = () => {
               </select>
             </div>
 
- {formData.propertyType && (
+            {formData.category && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -858,14 +866,14 @@ const AddListingForm = () => {
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none transition-colors"
                 >
                   <option value="">Select Listing Type</option>
-                  {listingTypeOptions.map(type => (
+                  {getFilteredListingTypes().map(type => (
                     <option key={type} value={type}>{type}</option>
                   ))}
                 </select>
               </motion.div>
             )}
 
-            {formData.category && (
+            {formData.category && formData.listingType && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -927,10 +935,10 @@ const AddListingForm = () => {
                 onChange={handleChange}
                 required
                 placeholder={
-                  isPlotProperty() ? "e.g., Prime Residential Plot in Vijay Nagar" :
+                  isPlotProperty() ? "e.g., Prime Plot for Sale in City Center" :
                   isCommercialProperty() ? "e.g., Commercial Space in Prime Location" :
                   isPGProperty() ? "e.g., Comfortable PG for Students & Working Professionals" :
-                  "Property title (e.g., Spacious 2BHK Apartment with Balcony)"
+                  "Title / Name"
                 }
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none transition-colors"
               />
@@ -1050,7 +1058,7 @@ const AddListingForm = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      <Square className="inline mr-1" size={16} />
+                      {/* <Square className="inline mr-1" size={16} /> */}
                       {isPlotProperty() ? 'Plot Area *' : 'Carpet Area *'}
                     </label>
                     <input
@@ -1512,7 +1520,7 @@ const AddListingForm = () => {
                 value={formData.address}
                 onChange={handleChange}
                 required
-                placeholder="Plot No, Street, Area"
+                placeholder="Plot No, Street, Area / Building/Project/Society"
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
               />
             </div>

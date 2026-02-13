@@ -58,7 +58,7 @@ const PublicLayout = () => {
       {/* Navbar sirf tab show hoga jab /reels nahi hai */}
       {!isReelsPage && <Navbar />}
 
-      <AdsPopup />
+      {/* <AdsPopup /> */}
 
       {/* 
         pt-20 sirf tab lagega jab Navbar dikha raha ho.
