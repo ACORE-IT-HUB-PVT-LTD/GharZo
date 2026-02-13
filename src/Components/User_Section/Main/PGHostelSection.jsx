@@ -22,6 +22,7 @@ import {
   ChevronRight,
   Pause,
   Play,
+  ArrowRight,
 } from "lucide-react";
 
 const PGHostelSection = () => {
@@ -42,17 +43,19 @@ const PGHostelSection = () => {
   // Enhanced Carousel states
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
-  const [itemsPerView, setItemsPerView] = useState(3);
+  const [itemsPerView, setItemsPerView] = useState(4);
 
   // Responsive items per view
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 640) {
         setItemsPerView(1);
-      } else if (window.innerWidth < 1024) {
+      } else if (window.innerWidth < 768) {
         setItemsPerView(2);
-      } else {
+      } else if (window.innerWidth < 1024) {
         setItemsPerView(3);
+      } else {
+        setItemsPerView(4);
       }
     };
 
@@ -159,7 +162,7 @@ const PGHostelSection = () => {
     fetchProperties();
   }, [searchParams]);
 
-  // Enhanced Filter logic with URL params - FIXED VERSION
+  // Enhanced Filter logic with URL params
   useEffect(() => {
     let filtered = properties;
 
@@ -265,12 +268,16 @@ const PGHostelSection = () => {
   ];
 
   const totalSlides = Math.max(0, filteredProperties.length - itemsPerView + 1);
+  const maxSlide = Math.max(0, filteredProperties.length - itemsPerView);
+  const canNavigate = filteredProperties.length > itemsPerView;
 
   return (
     <section 
       id="properties-section" 
-      className="py-6 sm:py-8 px-4 sm:px-5 lg:px-6 bg-gradient-to-b from-blue-50 via-indigo-50/30 to-white min-h-screen"
+      className="py-6 sm:py-8 px-4 sm:px-5 lg:px-6 bg-white min-h-screen"
     >
+    
+
       <div className="text-center mb-6 md:mb-8">
         {/* Category Buttons */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-2 max-w-7xl mx-auto px-1">
@@ -372,49 +379,62 @@ const PGHostelSection = () => {
         </div>
       ) : (
         <>
-          {/* Enhanced Navigation with Auto-play */}
+          {/* Auto-play control - top right */}
           <div className="flex justify-between items-center gap-3 mb-6 max-w-7xl mx-auto">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-gray-600">
-                Showing {filteredProperties.length} {filteredProperties.length === 1 ? 'property' : 'properties'}
-              </span>
-            </div>
+            <span className="text-sm font-semibold text-gray-600 bg-amber-300 px-4 rounded-2xl">
+             Hot Properties
+            </span>
             
-            <div className="flex gap-3">
-              <button
-                onClick={toggleAutoPlay}
-                className="w-12 h-12 rounded-full bg-white/90 backdrop-blur-sm border border-blue-400 flex items-center justify-center hover:bg-blue-50 transition-all shadow-lg"
-                title={isAutoPlaying ? "Pause" : "Play"}
-              >
-                {isAutoPlaying ? (
-                  <Pause className="w-5 h-5 text-blue-600" />
-                ) : (
-                  <Play className="w-5 h-5 text-blue-600 ml-0.5" />
-                )}
-              </button>
-
-              <button
-                onClick={prevSlide}
-                className="w-12 h-12 rounded-full bg-white/90 backdrop-blur-sm border border-blue-400 flex items-center justify-center hover:bg-blue-50 transition-all shadow-lg group"
-              >
-                <ChevronLeft className="w-6 h-6 text-blue-600 group-hover:-translate-x-0.5 transition-transform" />
-              </button>
-
-              <button
-                onClick={nextSlide}
-                className="w-12 h-12 rounded-full bg-white/90 backdrop-blur-sm border border-blue-400 flex items-center justify-center hover:bg-blue-50 transition-all shadow-lg group"
-              >
-                <ChevronRight className="w-6 h-6 text-blue-600 group-hover:translate-x-0.5 transition-transform" />
-              </button>
-            </div>
+              {/* Header with title and See All button */}
+    
           </div>
 
-          {/* Carousel */}
-          <div className="max-w-7xl mx-auto overflow-hidden">
+ <div className="max-w-7xl mx-auto flex flex-col items-end mb-6 md:mb-8 px-1">
+  {/* Yahan agar koi Heading hai toh wo left side rahegi agar aapne 'items-end' hataya, 
+      lekin sirf button ko right karne ke liye niche wala style best hai */}
+  
+  <motion.button
+    onClick={() => navigate('/properties')}
+    whileHover={{ scale: 1.05 }}
+    whileTap={{ scale: 0.95 }}
+    className="self-end mt-2 sm:mt-0 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-lg flex items-center gap-2 hover:shadow-lg transition-all"
+  >
+    See all Properties 
+    <ArrowRight size={18} />
+  </motion.button>
+</div>
+          {/* Carousel with Centered Navigation Buttons */}
+          <div className="max-w-7xl mx-auto overflow-hidden relative">
+            {/* Left Navigation Button - Centered vertically */}
+            {canNavigate && currentSlide > 0 && (
+              <motion.button
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                onClick={prevSlide}
+                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-white/90 backdrop-blur-sm border-2 border-orange-500 flex items-center justify-center hover:bg-white transition-all shadow-2xl group"
+              >
+                <ChevronLeft className="w-6 h-6 text-orange-600 group-hover:-translate-x-0.5 transition-transform" />
+              </motion.button>
+            )}
+
+            {/* Right Navigation Button - Centered vertically */}
+            {canNavigate && currentSlide < maxSlide && (
+              <motion.button
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                onClick={nextSlide}
+                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-white/90 backdrop-blur-sm border-2 border-orange-500 flex items-center justify-center hover:bg-white transition-all shadow-2xl group"
+              >
+                <ChevronRight className="w-6 h-6 text-orange-600 group-hover:translate-x-0.5 transition-transform" />
+              </motion.button>
+            )}
+
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentSlide}
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
+                className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 px-2"
                 initial={{ opacity: 0, x: 100 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -100 }}
@@ -432,63 +452,69 @@ const PGHostelSection = () => {
                       initial={{ opacity: 0, y: 30 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1, duration: 0.5 }}
-                      whileHover={{ y: -8, scale: 1.02 }}
+                      whileHover={{ y: -6, scale: 1.02 }}
                       onClick={() => handlePropertyClick(property.id)}
-                      className="group bg-white/95 backdrop-blur-md rounded-2xl shadow-xl hover:shadow-2xl overflow-hidden cursor-pointer transition-all duration-300 border border-blue-100/60"
+                      className="group bg-white/95 backdrop-blur-md rounded-xl shadow-lg hover:shadow-xl overflow-hidden cursor-pointer transition-all duration-300 border border-gray-100"
                     >
+                      {/* Image Section - Smaller */}
                       <div className="relative">
                         <img
-                          src={property.images?.[0] || "https://via.placeholder.com/400x260"}
+                          src={property.images?.[0] || "https://via.placeholder.com/400x200"}
                           alt={property.name}
-                          className="w-full h-56 sm:h-64 object-cover group-hover:scale-105 transition-transform duration-700"
+                          className="w-full h-36 object-cover group-hover:scale-105 transition-transform duration-700"
                         />
-                        <div className="absolute top-4 left-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-full font-bold text-sm shadow-lg">
+                        <div className="absolute top-3 left-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-2.5 py-1 rounded-full font-bold text-xs shadow-lg">
                           ₹{property.lowestPrice?.toLocaleString() || 0}/mo
                         </div>
                         {property.isVerified && (
-                          <div className="absolute top-4 right-4 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-lg">
-                            Verified
+                          <div className="absolute top-3 right-3 bg-green-500 text-white px-2 py-0.5 rounded-full text-xs font-semibold shadow-lg">
+                            ✓
                           </div>
                         )}
                       </div>
 
-                      <div className="p-5">
-                        <h3 className="text-lg sm:text-xl font-bold text-gray-900 line-clamp-1">
+                      {/* Content Section - Compact */}
+                      <div className="p-3">
+                        <h3 className="text-base font-bold text-gray-900 line-clamp-1">
                           {property.name}
                         </h3>
 
-                        <div className="flex items-center text-gray-600 mt-2 text-sm">
-                          <MapPin size={14} className="text-blue-600 mr-1.5 flex-shrink-0" />
+                        <div className="flex items-center text-gray-600 mt-1.5 text-xs">
+                          <MapPin size={12} className="text-orange-500 mr-1 flex-shrink-0" />
                           <span className="truncate">
                             {property?.location?.city}, {property?.location?.area}
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-3 gap-3 mt-5 text-center">
-                          <div className="bg-blue-50 rounded-xl p-2">
-                            <BedDouble size={20} className="mx-auto text-blue-600" />
-                            <p className="text-xs font-semibold text-gray-700 mt-1">
-                              {property.totalBeds || "N/A"} Beds
+                        {/* Stats Grid - Compact */}
+                        <div className="grid grid-cols-3 gap-2 mt-3">
+                          <div className="bg-blue-50 rounded-lg p-1.5 text-center">
+                            <BedDouble size={16} className="mx-auto text-blue-600" />
+                            <p className="text-[10px] font-semibold text-gray-700 mt-0.5">
+                              {property.totalBeds || "N/A"}
                             </p>
                           </div>
-                          <div className="bg-blue-50 rounded-xl p-2">
-                            <Bath size={20} className="mx-auto text-blue-600" />
-                            <p className="text-xs font-semibold text-gray-700 mt-1">
-                              {property.totalRooms || "N/A"} Baths
+                          <div className="bg-blue-50 rounded-lg p-1.5 text-center">
+                            <Bath size={16} className="mx-auto text-blue-600" />
+                            <p className="text-[10px] font-semibold text-gray-700 mt-0.5">
+                              {property.totalRooms || "N/A"}
                             </p>
                           </div>
-                          <div className="bg-blue-50 rounded-xl p-2">
-                            <CarFront size={20} className="mx-auto text-blue-600" />
-                            <p className="text-xs font-semibold text-gray-700 mt-1">Parking</p>
+                          <div className="bg-blue-50 rounded-lg p-1.5 text-center">
+                            <CarFront size={16} className="mx-auto text-blue-600" />
+                            <p className="text-[10px] font-semibold text-gray-700 mt-0.5">
+                              Parking
+                            </p>
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between mt-5 pt-4 border-t border-gray-100">
-                          <span className="text-xs font-bold text-blue-700 uppercase tracking-wider bg-blue-50 px-3 py-1 rounded-full">
+                        {/* Footer - Compact */}
+                        <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-100">
+                          <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider bg-blue-50 px-2 py-0.5 rounded-full">
                             {property.type}
                           </span>
-                          <button className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-md hover:shadow-lg transition-all hover:scale-105">
-                            View Details
+                          <button className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-2.5 py-1 rounded-md text-[10px] font-semibold shadow-md hover:shadow-lg transition-all hover:scale-105">
+                            View
                           </button>
                         </div>
                       </div>
@@ -498,19 +524,19 @@ const PGHostelSection = () => {
             </AnimatePresence>
           </div>
 
-          {/* Pagination */}
+          {/* Pagination Dots */}
           {totalSlides > 1 && (
-            <div className="flex justify-center mt-8 gap-2">
+            <div className="flex justify-center mt-6 gap-2">
               {Array.from({ length: totalSlides }).map((_, index) => (
                 <motion.button
                   key={index}
                   onClick={() => goToSlide(index)}
                   whileHover={{ scale: 1.2 }}
                   whileTap={{ scale: 0.9 }}
-                  className={`h-3 rounded-full transition-all duration-300 ${
+                  className={`h-2.5 rounded-full transition-all duration-300 ${
                     index === currentSlide
-                      ? "bg-blue-600 w-8"
-                      : "bg-blue-300 hover:bg-blue-400 w-3"
+                      ? "bg-orange-600 w-8"
+                      : "bg-orange-300 hover:bg-orange-400 w-2.5"
                   }`}
                 />
               ))}
