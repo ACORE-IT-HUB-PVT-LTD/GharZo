@@ -82,6 +82,9 @@ function PropertyDetails() {
   const [showModal, setShowModal] = useState(false);
   const [selectedImages, setSelectedImages] = useState([]);
   const [initialSlide, setInitialSlide] = useState(0);
+  const [mainSwiper, setMainSwiper] = useState(null);
+  const [thumbSwiper, setThumbSwiper] = useState(null);
+  const [activeThumbIndex, setActiveThumbIndex] = useState(0);
 
   useEffect(() => {
     return () => {
@@ -204,6 +207,12 @@ function PropertyDetails() {
     setInitialSlide(0);
   };
 
+  const handleThumbClick = (index) => {
+    if (mainSwiper) {
+      mainSwiper.slideTo(index);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex flex-col items-center justify-center">
@@ -226,10 +235,11 @@ function PropertyDetails() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <style>
         {`
-          @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;700&display=swap');
+          @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap');
           
-          .font-display { font-family: 'Playfair Display', serif; }
-          .font-body { font-family: 'DM Sans', sans-serif; }
+          .font-display { font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-weight: 800; letter-spacing: -0.5px; }
+          .font-body { font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-weight: 500; }
+          .font-heading { font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-weight: 700; }
           
           .animate-3d-check {
             animation: spin3D 2s infinite ease-in-out;
@@ -281,6 +291,32 @@ function PropertyDetails() {
           .gradient-overlay {
             background: linear-gradient(135deg, rgba(79, 70, 229, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
           }
+          
+          /* Thumbnail Carousel Styles */
+          .thumbnail-swiper .swiper-wrapper {
+            padding: 8px 0;
+          }
+          
+          .thumbnail-swiper .swiper-slide {
+            width: 80px !important;
+            height: 80px !important;
+            opacity: 0.5;
+            cursor: pointer;
+            border: 2px solid transparent;
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+          }
+          .thumbnail-swiper .swiper-slide-thumb-active {
+            opacity: 1;
+            border-color: #FF6B00;
+            box-shadow: 0 0 8px rgba(255, 107, 0, 0.4);
+          }
+          .thumbnail-swiper .swiper-slide img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+          }
         `}
       </style>
 
@@ -293,6 +329,8 @@ function PropertyDetails() {
           className="relative h-[60vh] lg:h-[70vh] overflow-hidden"
         >
           <Swiper
+            onSwiper={setMainSwiper}
+            onSlideChange={(swiper) => setActiveThumbIndex(swiper.activeIndex)}
             modules={[Navigation, Pagination]}
             navigation
             pagination={{ clickable: true }}
@@ -326,6 +364,42 @@ function PropertyDetails() {
               </SwiperSlide>
             )}
           </Swiper>
+
+          {/* Thumbnail Carousel */}
+          {property.images && property.images.length > 1 && (
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-6 pb-6 pt-12 z-10">
+              <Swiper
+                modules={[Navigation]}
+                slidesPerView={4}
+                spaceBetween={10}
+                className="thumbnail-swiper max-w-4xl mx-auto"
+                onSwiper={setThumbSwiper}
+                breakpoints={{
+                  320: { slidesPerView: 3, spaceBetween: 8 },
+                  640: { slidesPerView: 4, spaceBetween: 10 },
+                  1024: { slidesPerView: 5, spaceBetween: 12 },
+                  1280: { slidesPerView: 6, spaceBetween: 12 },
+                }}
+              >
+                {property.images.map((imgObj, i) => (
+                  <SwiperSlide 
+                    key={i} 
+                    className={activeThumbIndex === i ? 'swiper-slide-thumb-active' : ''}
+                  >
+                    <img
+                      src={imgObj?.url || imgObj}
+                      alt={`Thumbnail ${i}`}
+                      className="w-full h-full object-cover cursor-pointer transition-transform hover:scale-105"
+                      onClick={() => {
+                        mainSwiper?.slideTo(i);
+                        setActiveThumbIndex(i);
+                      }}
+                    />
+                  </SwiperSlide>
+                ))}
+              </Swiper>
+            </div>
+          )}
 
           {/* Floating Action Buttons */}
           <motion.button
@@ -1410,7 +1484,7 @@ function OwnerInfoCard({ property }) {
         <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
           <FaUserTie size={20} />
         </div>
-        Contact Information
+        Contact Information 
       </h2>
       
       <div className="space-y-4">

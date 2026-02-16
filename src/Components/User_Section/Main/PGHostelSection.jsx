@@ -252,7 +252,7 @@ const PGHostelSection = () => {
   const goToSale = () => navigate("/sale");
   const goToCommercial = () => navigate("/commercial");
   const goToPG = () => navigate("/pg");
-  const goToHostels = () => navigate("/franchise-request");
+  const goToHostels = () => navigate("/hotelsbanquets");
   const goToServices = () => navigate("/services");
   const goToHomeLoan = () => navigate("/home-loan");
 
@@ -261,7 +261,7 @@ const PGHostelSection = () => {
     { label: "Buy", onClick: goToSale, icon: ShoppingCart },
     { label: "Commercial", onClick: goToCommercial, icon: Building2 },
     { label: "PG/Hostel", onClick: goToPG, icon: Hotel },
-    { label: "Franchise", onClick: goToHostels, icon: Briefcase },
+    { label: "Hotel/Banquet", onClick: goToHostels, icon: Briefcase },
     { label: "Services", onClick: goToServices, icon: BadgeIndianRupee },
     { label: "Home Loan", onClick: goToHomeLoan, icon: Landmark },
     { label: "Project", onClick: goToCommercial, icon: ProjectorIcon },
