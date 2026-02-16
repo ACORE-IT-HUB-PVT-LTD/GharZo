@@ -4,7 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   FaSearch, FaMapMarkerAlt, FaHome, FaBuilding, 
-  FaWarehouse, FaTimes, FaUserAlt, FaUserTie, FaTools 
+  FaWarehouse, FaTimes, FaUserAlt, FaUserTie, FaTools,
+  FaEdit, FaList
 } from "react-icons/fa";
 import { useAuth } from "../Context/AuthContext";
 
@@ -19,6 +20,7 @@ const HeroSection = () => {
   const [selectedCategory, setSelectedCategory] = useState("Rent");
   const [selectedType, setSelectedType] = useState("");
   const [selectedBudget, setSelectedBudget] = useState("");
+  const [budgetInputMode, setBudgetInputMode] = useState("dropdown"); // "dropdown" or "manual"
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -51,13 +53,86 @@ const HeroSection = () => {
     "Banquet"
   ];
 
-  const budgetOptions = [
-    "Budget",
-    "Under 5000",
-    "5000-8000",
-    "8000-12000",
-    "Above 12000"
-  ];
+  // Budget options based on property type
+  const budgetOptionsByType = {
+    "Buy": [
+      "Budget",
+      "Under 25 Lac",
+      "25-50 Lac",
+      "50-1 Cr",
+      "1-2 Cr",
+      "Above 2 Cr"
+    ],
+    "Rent": [
+      "Budget",
+      "Under 5000",
+      "5000-10000",
+      "10000-20000",
+      "20000-30000",
+      "Above 30000"
+    ],
+    "PG": [
+      "Budget",
+      "Under 3000",
+      "3000-5000",
+      "5000-8000",
+      "8000-12000",
+      "Above 12000"
+    ],
+    "Plot": [
+      "Budget",
+      "Under 5 Lac",
+      "5-10 Lac",
+      "10-25 Lac",
+      "25-50 Lac",
+      "Above 50 Lac"
+    ],
+    "Commercial": [
+      "Budget",
+      "Under 50000",
+      "50000-1 Lac",
+      "1-2 Lac",
+      "2-5 Lac",
+      "Above 5 Lac"
+    ],
+    "Hostel": [
+      "Budget",
+      "Under 4000",
+      "4000-7000",
+      "7000-10000",
+      "10000-15000",
+      "Above 15000"
+    ],
+    "Hotel": [
+      "Budget",
+      "Under 100000",
+      "100000-2 Lac",
+      "2-5 Lac",
+      "5-10 Lac",
+      "Above 10 Lac"
+    ],
+    "Banquet": [
+      "Budget",
+      "Under 50000",
+      "50000-1 Lac",
+      "1-3 Lac",
+      "3-5 Lac",
+      "Above 5 Lac"
+    ]
+  };
+
+  // Get budget options for selected property type
+  const getBudgetOptions = () => {
+    if (selectedType && selectedType !== "Property Type" && budgetOptionsByType[selectedType]) {
+      return budgetOptionsByType[selectedType];
+    }
+    return ["Budget", "Under 5000", "5000-8000", "8000-12000", "Above 12000"];
+  };
+
+  // Reset budget when property type changes
+  useEffect(() => {
+    setSelectedBudget("");
+  }, [selectedType]);
 
   // Background Slider Logic
   useEffect(() => {
@@ -214,24 +289,62 @@ const HeroSection = () => {
               </div>
             </div>
 
-            {/* Budget Dropdown */}
-            <div className="sm:col-span-1 lg:col-span-3 relative">
-              <select 
-                value={selectedBudget}
-                onChange={(e) => setSelectedBudget(e.target.value)}
-                className="w-full bg-white/20 border border-white/30 rounded-xl py-3 sm:py-3.5 px-3 sm:px-4 outline-none appearance-none cursor-pointer text-white text-sm sm:text-base backdrop-blur-sm focus:ring-2 ring-orange-500/50 focus:bg-white/25 transition-all"
-              >
-                {budgetOptions.map(budget => (
-                  <option key={budget} value={budget === "Budget" ? "" : budget} className="text-black bg-white">
-                    {budget}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-white/70">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
+            {/* Budget Input/Dropdown - Hybrid Mode with Icons */}
+            <div className="sm:col-span-1 lg:col-span-3 relative group">
+              {budgetInputMode === "dropdown" ? (
+                <>
+                  <div className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-orange-400 text-sm sm:text-base z-10">
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M8.16 5a.75.75 0 00-.712 1.104l1.382 3.105H4.75a.75.75 0 000 1.5h3.792l-1.381 3.105A.75.75 0 008.16 15a.75.75 0 00.712-1.104l-1.382-3.105h3.792a.75.75 0 000-1.5H7.49l1.381-3.105A.75.75 0 008.16 5z" />
+                    </svg>
+                  </div>
+                  <select 
+                    value={selectedBudget}
+                    onChange={(e) => setSelectedBudget(e.target.value)}
+                    className="w-full bg-white/20 border border-white/30 rounded-xl py-3 sm:py-3.5 pl-10 sm:pl-12 pr-10 outline-none appearance-none cursor-pointer text-white text-sm sm:text-base backdrop-blur-sm focus:ring-2 focus:ring-orange-500 focus:bg-white/30 transition-all hover:bg-white/25"
+                  >
+                    {getBudgetOptions().map(budget => (
+                      <option key={budget} value={budget === "Budget" ? "" : budget} className="text-black bg-white">
+                        {budget}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-10  pointer-events-none text-white/70">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                <button
+  onClick={() => setBudgetInputMode("manual")}
+  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 p-2 rounded-lg"
+  title="Switch to manual input"
+>
+  <FaEdit size={16} />
+</button>
+
+                </>
+              ) : (
+                <>
+                  <FaMapMarkerAlt className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-orange-400 text-sm sm:text-base z-10" />
+                  <input 
+                    type="text" 
+                    placeholder="Enter budget (e.g., 25000 or 5 Lac)"
+                    value={selectedBudget}
+                    onChange={(e) => setSelectedBudget(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                    className="w-full bg-white/20 border border-white/30 rounded-xl py-3 sm:py-3.5 pl-10 sm:pl-12 pr-10 outline-none focus:ring-2 ring-orange-500/50 focus:bg-white/25 transition-all text-white placeholder:text-white/60 text-sm sm:text-base backdrop-blur-sm hover:bg-white/25"
+                  />
+                  <button 
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setBudgetInputMode("dropdown")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 hover:text-white hover:bg-white/20 p-2 rounded-lg transition-all"
+                    title="Switch to dropdown"
+                  >
+                    <FaList size={16} />
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Search Button - Full Width on Mobile */}

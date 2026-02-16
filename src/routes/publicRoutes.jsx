@@ -29,6 +29,7 @@ import SaleListingPage from "../Components/User_Section/Main/SaleListingPage.jsx
 import RoomsListingPage from "../Components/User_Section/Main/RoomsListingPage.jsx";
 import CommercialListingPage from "../Components/User_Section/Main/CommercialListingPage.jsx";
 import PGHostelSection from "../Components/User_Section/Main/PGHostelSection.jsx";
+import HotelBanquetDetail from "../Components/User_Section/Main/HotelBanquetDetail.jsx";
 import HotelsBanquetsPage from "../Components/User_Section/Main/hotelsbanquets.jsx";
 import ServicesListingPage from "../Components/User_Section/Main/ServicesListingPage.jsx";
 import ServiceDetailPage from "../Components/User_Section/Main/ServiceDetailPage.jsx";
@@ -91,6 +92,7 @@ const PublicLayout = () => {
           <Route path="/rooms" element={<RoomsListingPage />} />
           <Route path="/commercial" element={<CommercialListingPage />} />
           <Route path="/pg-hostel" element={<PGHostelSection />} />
+          <Route path="/hotel-banquet/:id" element={<HotelBanquetDetail />} />
           <Route path="/hotelsbanquets" element={<HotelsBanquetsPage />} />
           <Route path="/services" element={<ServicesListingPage />} />
           <Route path="/service/:id" element={<ServiceDetailPage />} />

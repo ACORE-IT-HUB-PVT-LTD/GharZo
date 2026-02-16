@@ -20,15 +20,7 @@ import {
   Mail,
   User,
   Building,
-  Store,
-  ChevronRight,
-  Sofa,
-  TreePine,
-  Building2,
-  Grid3x3,
-  FileText,
-  Shield,
-  Star
+  Store
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -132,12 +124,12 @@ const AddListingForm = () => {
   const [userProfile, setUserProfile] = useState(null);
 
   const steps = [
-    { number: 1, title: 'Property Details', icon: Building, status: 'In progress' },
-    { number: 2, title: 'Address', icon: MapPin, status: 'Pending' },
-    { number: 3, title: 'Photos', icon: Upload, status: 'Pending' },
-    { number: 4, title: 'Verify', icon: CheckCircle, status: 'Pending' },
-    { number: 5, title: 'Property Highlights', icon: Star, status: 'Pending' },
-    { number: 6, title: 'Review', icon: FileText, status: 'Pending' }
+    { number: 1, title: 'Property Type' },
+    { number: 2, title: 'Basic Details' },
+    { number: 3, title: 'Features' },
+    { number: 4, title: 'Location' },
+    { number: 5, title: 'Photos' },
+    { number: 6, title: 'Contact Info' }
   ];
 
   // Backend Schema Enums
@@ -829,6 +821,13 @@ const AddListingForm = () => {
       case 1:
         return (
           <div className="space-y-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-gradient-to-br from-blue-600 to-orange-500 rounded-2xl shadow-lg">
+                <Home className="text-white" size={28} />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900">Select Property Type</h2>
+            </div>
+            
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Category *
@@ -913,6 +912,13 @@ const AddListingForm = () => {
       case 2:
         return (
           <div className="space-y-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-gradient-to-br from-blue-600 to-orange-500 rounded-2xl shadow-lg">
+                <Building className="text-white" size={28} />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900">Basic Details</h2>
+            </div>
+            
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Property Title *
@@ -1169,6 +1175,7 @@ const AddListingForm = () => {
               </div>
             </div>
 
+
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Posted By *
@@ -1197,44 +1204,12 @@ const AddListingForm = () => {
       case 3:
         return (
           <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Furnishing Type *
-              </label>
-              <select
-                name="furnishingType"
-                value={formData.furnishingType}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-              >
-                <option value="Unfurnished">Unfurnished</option>
-                <option value="Semi-Furnished">Semi-Furnished</option>
-                <option value="Fully-Furnished">Fully-Furnished</option>
-              </select>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-gradient-to-br from-blue-600 to-orange-500 rounded-2xl shadow-lg">
+                <Wifi className="text-white" size={28} />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900">Property Features</h2>
             </div>
-
-            {(formData.furnishingType === 'Semi-Furnished' || formData.furnishingType === 'Fully-Furnished') && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-              >
-                <label className="block text-sm font-semibold text-gray-700 mb-3">Furnishing Items</label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {furnishingItemsOptions.map(item => (
-                    <label key={item} className="flex items-center gap-2 cursor-pointer p-3 border-2 border-gray-200 rounded-xl hover:border-[#FF6B00] transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={formData.furnishingItems.includes(item)}
-                        onChange={() => handleFurnishingItemToggle(item)}
-                        className="w-5 h-5 text-[#FF6B00] border-gray-300 rounded focus:ring-[#FF6B00]"
-                      />
-                      <span className="text-sm font-medium text-gray-700">{item}</span>
-                    </label>
-                  ))}
-                </div>
-              </motion.div>
-            )}
 
             {isPGProperty() && (
               <motion.div
@@ -1381,6 +1356,53 @@ const AddListingForm = () => {
               </motion.div>
             )}
 
+            {!isPlotProperty() && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-4"
+              >
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Furnishing Type *
+                  </label>
+                  <select
+                    name="furnishingType"
+                    value={formData.furnishingType}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
+                  >
+                    <option value="Unfurnished">Unfurnished</option>
+                    <option value="Semi-Furnished">Semi-Furnished</option>
+                    <option value="Fully-Furnished">Fully-Furnished</option>
+                  </select>
+                </div>
+
+                {(formData.furnishingType === 'Semi-Furnished' || formData.furnishingType === 'Fully-Furnished') && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                  >
+                    <label className="block text-sm font-semibold text-gray-700 mb-3">Furnishing Items</label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {furnishingItemsOptions.map(item => (
+                        <label key={item} className="flex items-center gap-2 cursor-pointer p-3 border-2 border-gray-200 rounded-xl hover:border-[#FF6B00] transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={formData.furnishingItems.includes(item)}
+                            onChange={() => handleFurnishingItemToggle(item)}
+                            className="w-5 h-5 text-[#FF6B00] border-gray-300 rounded focus:ring-[#FF6B00]"
+                          />
+                          <span className="text-sm font-medium text-gray-700">{item}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </motion.div>
+            )}
+
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-3">
                 Amenities
@@ -1477,6 +1499,13 @@ const AddListingForm = () => {
       case 4:
         return (
           <div className="space-y-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-gradient-to-br from-blue-600 to-orange-500 rounded-2xl shadow-lg">
+                <MapPin className="text-white" size={28} />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900">Location Details</h2>
+            </div>
+            
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Full Address *
@@ -1650,57 +1679,74 @@ const AddListingForm = () => {
       case 5:
         return (
           <div className="space-y-6">
-            <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-[#FF6B00] transition-colors cursor-pointer">
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
-                id="image-upload"
-              />
-              <label htmlFor="image-upload" className="cursor-pointer">
-                <Upload className="mx-auto text-gray-400 mb-3" size={48} />
-                <p className="text-lg text-gray-600 font-semibold">Click to upload images</p>
-                <p className="text-sm text-gray-500 mt-2">PNG, JPG up to 10MB each</p>
-                <p className="text-xs text-gray-400 mt-1">Upload multiple high-quality images</p>
-              </label>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-gradient-to-br from-blue-600 to-orange-500 rounded-2xl shadow-lg">
+                <Upload className="text-white" size={28} />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900">Upload Photos</h2>
             </div>
+            
+            <div>
+              <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-[#FF6B00] transition-colors cursor-pointer">
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  id="image-upload"
+                />
+                <label htmlFor="image-upload" className="cursor-pointer">
+                  <Upload className="mx-auto text-gray-400 mb-3" size={48} />
+                  <p className="text-lg text-gray-600 font-semibold">Click to upload images</p>
+                  <p className="text-sm text-gray-500 mt-2">PNG, JPG up to 10MB each</p>
+                  <p className="text-xs text-gray-400 mt-1">Upload multiple high-quality images</p>
+                </label>
+              </div>
 
-            {imagePreviews.length > 0 && (
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <p className="text-sm font-semibold text-gray-700 mb-3">
-                  Uploaded Images ({imagePreviews.length})
-                </p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {imagePreviews.map((preview, index) => (
-                    <div key={index} className="relative group">
-                      <img
-                        src={preview}
-                        alt={`Preview ${index + 1}`}
-                        className="w-full h-32 object-cover rounded-xl border-2 border-gray-200"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(index)}
-                        className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-red-600"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
+              {imagePreviews.length > 0 && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-6"
+                >
+                  <p className="text-sm font-semibold text-gray-700 mb-3">
+                    Uploaded Images ({imagePreviews.length})
+                  </p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {imagePreviews.map((preview, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={preview}
+                          alt={`Preview ${index + 1}`}
+                          className="w-full h-32 object-cover rounded-xl border-2 border-gray-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-red-600"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </div>
           </div>
         );
 
       case 6:
         return (
           <div className="space-y-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-gradient-to-br from-blue-600 to-orange-500 rounded-2xl shadow-lg">
+                <Phone className="text-white" size={28} />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900">Contact Information</h2>
+            </div>
+            
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 <User className="inline mr-2" size={18} />
@@ -1798,7 +1844,7 @@ const AddListingForm = () => {
           <button
             onClick={() => navigate(-1)}
             className="p-2 hover:bg-white rounded-full transition-colors"
-          > 
+          >
             <ArrowLeft size={24} className="text-gray-700" />
           </button>
           <div>
