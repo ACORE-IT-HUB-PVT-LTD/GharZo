@@ -42,7 +42,7 @@ const PGHostelSection = () => {
 
   // Enhanced Carousel states
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(false);
   const [itemsPerView, setItemsPerView] = useState(4);
 
   // Responsive items per view
@@ -381,8 +381,9 @@ const PGHostelSection = () => {
         <>
           {/* Auto-play control - top right */}
           <div className="flex justify-between items-center gap-3 mb-6 max-w-7xl mx-auto">
-            <span className="text-sm font-semibold text-gray-600 bg-amber-300 px-4 rounded-2xl">
+            <span className="text-4xl font-semibold text-gray-600  px-4 rounded-2xl">
              Hot Properties
+            <div className=" gap-2 bg-orange-500 h-2 w-20 rounded"></div>
             </span>
             
               {/* Header with title and See All button */}
@@ -524,24 +525,7 @@ const PGHostelSection = () => {
             </AnimatePresence>
           </div>
 
-          {/* Pagination Dots */}
-          {totalSlides > 1 && (
-            <div className="flex justify-center mt-6 gap-2">
-              {Array.from({ length: totalSlides }).map((_, index) => (
-                <motion.button
-                  key={index}
-                  onClick={() => goToSlide(index)}
-                  whileHover={{ scale: 1.2 }}
-                  whileTap={{ scale: 0.9 }}
-                  className={`h-2.5 rounded-full transition-all duration-300 ${
-                    index === currentSlide
-                      ? "bg-orange-600 w-8"
-                      : "bg-orange-300 hover:bg-orange-400 w-2.5"
-                  }`}
-                />
-              ))}
-            </div>
-          )}
+         
         </>
       )}
     </section>
