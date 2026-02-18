@@ -15,6 +15,7 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
+import FilterBar from "./FilterBar";
 
 const RentListingPage = () => {
   const navigate = useNavigate();
@@ -34,6 +35,14 @@ const RentListingPage = () => {
   const [selectedStatus, setSelectedStatus] = useState("");
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  
+  // FilterBar States
+  const [listingType, setListingType] = useState("Rent");
+  const [selectedLocalities, setSelectedLocalities] = useState([]);
+  const [minBudget, setMinBudget] = useState("");
+  const [maxBudget, setMaxBudget] = useState("");
+  const [selectedPropertyTypes, setSelectedPropertyTypes] = useState([]);
+  const [showFilterBar, setShowFilterBar] = useState(true);
   
   // Plot specific filters
   const [cornerPlot, setCornerPlot] = useState(false);
@@ -61,6 +70,40 @@ const RentListingPage = () => {
     setCornerPlot(false);
     setGatedColony(false);
     setCurrentPage(1);
+    // Reset FilterBar states
+    setListingType("Rent");
+    setSelectedLocalities([]);
+    setMinBudget("");
+    setMaxBudget("");
+    setSelectedPropertyTypes([]);
+  };
+
+  // Handle filter changes from FilterBar
+  const handleFilterChange = (filters) => {
+    if (filters.searchQuery !== undefined) setSearchQuery(filters.searchQuery);
+    if (filters.listingType !== undefined) setListingType(filters.listingType);
+    if (filters.selectedLocalities !== undefined) setSelectedLocalities(filters.selectedLocalities);
+    if (filters.minBudget !== undefined) setMinBudget(filters.minBudget);
+    if (filters.maxBudget !== undefined) setMaxBudget(filters.maxBudget);
+    if (filters.selectedBHK !== undefined) setSelectedBHK(filters.selectedBHK);
+    if (filters.selectedPropertyTypes !== undefined) setSelectedPropertyTypes(filters.selectedPropertyTypes);
+    
+    // Update price range for existing filter logic
+    if (filters.minBudget !== undefined || filters.maxBudget !== undefined) {
+      setPriceRange([
+        filters.minBudget ? parseInt(filters.minBudget) : 0,
+        filters.maxBudget ? parseInt(filters.maxBudget) : 100000
+      ]);
+    }
+    
+    // Update property type for existing filter logic
+    if (filters.selectedPropertyTypes && filters.selectedPropertyTypes.length > 0) {
+      setPropertyType(filters.selectedPropertyTypes[0]);
+    } else if (filters.selectedPropertyTypes !== undefined) {
+      setPropertyType("");
+    }
+    
+    setCurrentPage(1);
   };
 
   useEffect(() => {
@@ -78,9 +121,9 @@ const RentListingPage = () => {
         });
         const data = await res.json();
         
-        // Filter only properties with listingType = "Rent"
+        // Filter only properties with listingType = "Rent" or "Buy"
         let list = data?.data || [];
-        list = list.filter(p => p.listingType === "Rent");
+        list = list.filter(p => p.listingType === listingType);
         
         // Apply search filter
         if (searchQuery) {
@@ -88,6 +131,24 @@ const RentListingPage = () => {
             p.location?.city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             p.location?.locality?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             p.location?.area?.toLowerCase().includes(searchQuery.toLowerCase())
+          );
+        }
+        
+        // Apply locality filter
+        if (selectedLocalities.length > 0) {
+          list = list.filter(p => 
+            selectedLocalities.some(loc => 
+              p.location?.locality?.toLowerCase() === loc.toLowerCase()
+            )
+          );
+        }
+        
+        // Apply property type filter from FilterBar
+        if (selectedPropertyTypes.length > 0) {
+          list = list.filter(p => 
+            selectedPropertyTypes.some(type => 
+              p.propertyType?.toLowerCase().includes(type.toLowerCase().split('/')[0])
+            )
           );
         }
         
@@ -163,7 +224,7 @@ const RentListingPage = () => {
 
     fetchProperties();
     return () => controller.abort();
-  }, [currentPage, searchQuery, propertyType, priceRange, selectedBHK, selectedStatus, verifiedOnly]);
+  }, [currentPage, searchQuery, propertyType, priceRange, selectedBHK, selectedStatus, verifiedOnly, listingType, selectedLocalities, minBudget, maxBudget, selectedPropertyTypes]);
 
   return (
     <section className="py-8 sm:py-12 px-4 sm:px-6 lg:px-10 bg-gradient-to-b from-blue-50/50 to-white min-h-screen">
@@ -178,6 +239,25 @@ const RentListingPage = () => {
         </button>
       </div>
 
+      {/* FilterBar Component */}
+      <FilterBar
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        listingType={listingType}
+        setListingType={setListingType}
+        selectedLocalities={selectedLocalities}
+        setSelectedLocalities={setSelectedLocalities}
+        minBudget={minBudget}
+        setMinBudget={setMinBudget}
+        maxBudget={maxBudget}
+        setMaxBudget={setMaxBudget}
+        selectedBHK={selectedBHK}
+        setSelectedBHK={setSelectedBHK}
+        selectedPropertyTypes={selectedPropertyTypes}
+        setSelectedPropertyTypes={setSelectedPropertyTypes}
+        onFilterChange={handleFilterChange}
+      />
+
       {/* Header with Add Listing Button */}
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
         <motion.div
@@ -186,10 +266,10 @@ const RentListingPage = () => {
         >
           <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900">
             <span className="bg-gradient-to-b from-[#0c2344] to-[#0b4f91] bg-clip-text text-transparent">
-              Properties for Rent
+              Properties for {listingType}
             </span>
           </h2>
-          <p className="mt-2 text-gray-600">Find your perfect rental home</p>
+          <p className="mt-2 text-gray-600">Find your perfect {listingType === 'Rent' ? 'rental' : 'buy'} home</p>
         </motion.div>
 
         <motion.button
@@ -211,7 +291,7 @@ const RentListingPage = () => {
         </motion.button>
       </div>
 
-      {/* Search Bar */}
+      {/* Search Bar - Hidden, using FilterBar instead */}
       <div className="max-w-5xl mx-auto mb-6">
         <div className="bg-white rounded-2xl shadow-xl p-4 flex items-center gap-4">
           <div className="flex-1 relative w-full">
@@ -234,181 +314,6 @@ const RentListingPage = () => {
           </button>
         </div>
       </div>
-
-      {/* Advanced Filters Panel */}
-      {showAdvancedFilters && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          exit={{ opacity: 0, height: 0 }}
-          className="max-w-5xl mx-auto mb-8"
-        >
-          <div className="bg-white p-6 shadow-xl rounded-2xl border border-gray-100">
-            {/* Quick Filter Chips */}
-            <div className="flex flex-wrap gap-3 mb-6 items-center">
-              <select 
-                className="border rounded-full px-4 py-2 text-sm bg-purple-50 text-purple-700 border-purple-200 focus:outline-none cursor-pointer"
-                value={propertyType}
-                onChange={(e) => setPropertyType(e.target.value)}
-              >
-                <option value="">All Property Types</option>
-                <option value="Apartment">Flat / Apartment</option>
-                <option value="Plot">Plot / Land</option>
-                <option value="Villa">Independent House / Villa</option>
-                <option value="Studio">Studio</option>
-                <option value="Penthouse">Penthouse</option>
-                <option value="Office">Office</option>
-                <option value="Shop">Shop</option>
-              </select>
-
-              <label className="flex items-center gap-2 border rounded-full px-4 py-2 text-sm hover:bg-gray-50 cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  className="accent-purple-600"
-                  checked={verifiedOnly}
-                  onChange={(e) => setVerifiedOnly(e.target.checked)}
-                />
-                <span className="text-purple-600 font-semibold">Verified ✅</span>
-              </label>
-
-              <button 
-                className="text-sm text-blue-600 font-medium ml-auto hover:underline"
-                onClick={resetFilters}
-              >
-                Reset All Filters
-              </button>
-            </div>
-
-            <hr className="mb-6" />
-
-            {/* Dynamic Filter Sections */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              
-              {/* BHK Type - Only for Apartments/Villas/Studios */}
-              {propertyType !== 'Plot' && propertyType !== 'Office' && propertyType !== 'Shop' && (
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-gray-700 flex items-center gap-2">
-                    <BedDouble size={18} className="text-purple-600" />
-                    BHK Type
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {['1 BHK', '2 BHK', '3 BHK', '4+ BHK'].map((bhk) => (
-                      <button
-                        key={bhk}
-                        onClick={() => toggleBHK(bhk)}
-                        className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${
-                          selectedBHK.includes(bhk) 
-                            ? 'bg-purple-600 text-white border-purple-600' 
-                            : 'bg-white text-gray-600 border-gray-300 hover:border-purple-400'
-                        }`}
-                      >
-                        {bhk}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Plot Features - Only for Plots */}
-              {propertyType === 'Plot' && (
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-gray-700 flex items-center gap-2">
-                    <Home size={18} className="text-purple-600" />
-                    Plot Features
-                  </h3>
-                  <div className="flex flex-col gap-3">
-                    <label className="flex items-center space-x-2 text-sm cursor-pointer hover:text-purple-600">
-                      <input 
-                        type="checkbox" 
-                        className="accent-purple-600 w-4 h-4"
-                        checked={cornerPlot}
-                        onChange={(e) => setCornerPlot(e.target.checked)}
-                      />
-                      <span>Corner Plot</span>
-                    </label>
-                    <label className="flex items-center space-x-2 text-sm cursor-pointer hover:text-purple-600">
-                      <input 
-                        type="checkbox" 
-                        className="accent-purple-600 w-4 h-4"
-                        checked={gatedColony}
-                        onChange={(e) => setGatedColony(e.target.checked)}
-                      />
-                      <span>Gated Colony</span>
-                    </label>
-                  </div>
-                </div>
-              )}
-
-              {/* Price Range Slider */}
-              <div className="space-y-3">
-                <h3 className="font-semibold text-gray-700 flex items-center gap-2">
-                  <IndianRupee size={18} className="text-purple-600" />
-                  Budget Range
-                </h3>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3">
-                    <input 
-                      type="number"
-                      placeholder="Min"
-                      value={priceRange[0]}
-                      onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])}
-                      className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-purple-500"
-                    />
-                    <span className="text-gray-400">-</span>
-                    <input 
-                      type="number"
-                      placeholder="Max"
-                      value={priceRange[1]}
-                      onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
-                      className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-purple-500"
-                    />
-                  </div>
-                  <input 
-                    type="range" 
-                    min="0" 
-                    max="100000" 
-                    step="5000"
-                    value={priceRange[1]}
-                    onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
-                  />
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>₹{priceRange[0].toLocaleString()}</span>
-                    <span>₹{priceRange[1].toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Construction Status */}
-              <div className="space-y-3">
-                <h3 className="font-semibold text-gray-700">Construction Status</h3>
-                <div className="flex flex-wrap gap-2">
-                  <button 
-                    onClick={() => setSelectedStatus(selectedStatus === "Ready to Move" ? "" : "Ready to Move")}
-                    className={`px-4 py-2 border rounded-lg text-sm font-medium transition ${
-                      selectedStatus === "Ready to Move"
-                        ? 'bg-purple-600 text-white border-purple-600'
-                        : 'bg-white text-gray-600 border-gray-300 hover:border-purple-400'
-                    }`}
-                  >
-                    Ready to Move
-                  </button>
-                  <button 
-                    onClick={() => setSelectedStatus(selectedStatus === "Under Construction" ? "" : "Under Construction")}
-                    className={`px-4 py-2 border rounded-lg text-sm font-medium transition ${
-                      selectedStatus === "Under Construction"
-                        ? 'bg-purple-600 text-white border-purple-600'
-                        : 'bg-white text-gray-600 border-gray-300 hover:border-purple-400'
-                    }`}
-                  >
-                    Under Construction
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      )}
 
       {/* Active Filters Display */}
       {(propertyType || selectedBHK.length > 0 || selectedStatus || verifiedOnly || priceRange[0] > 0 || priceRange[1] < 100000) && (
