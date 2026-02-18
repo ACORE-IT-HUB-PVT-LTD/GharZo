@@ -17,6 +17,7 @@ import {
   X,
   Square,
 } from "lucide-react";
+import FilterBar from "./FilterBar";
 
 const CommercialListingPage = () => {
   const navigate = useNavigate();
@@ -39,6 +40,13 @@ const CommercialListingPage = () => {
   const [furnishingStatus, setFurnishingStatus] = useState("");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   
+  // FilterBar States
+  const [selectedLocalities, setSelectedLocalities] = useState([]);
+  const [minBudget, setMinBudget] = useState("");
+  const [maxBudget, setMaxBudget] = useState("");
+  const [selectedPropertyTypes, setSelectedPropertyTypes] = useState([]);
+  const [selectedBHK, setSelectedBHK] = useState([]);
+  
   const propertiesPerPage = 9;
 
   const handlePropertyClick = (id) => {
@@ -60,6 +68,38 @@ const CommercialListingPage = () => {
     setSelectedAmenities([]);
     setVerifiedOnly(false);
     setFurnishingStatus("");
+    setCurrentPage(1);
+    // Reset FilterBar states
+    setSelectedLocalities([]);
+    setMinBudget("");
+    setMaxBudget("");
+    setSelectedPropertyTypes([]);
+  };
+
+  // Handle filter changes from FilterBar
+  const handleFilterChange = (filters) => {
+    if (filters.searchQuery !== undefined) setSearchQuery(filters.searchQuery);
+    if (filters.selectedLocalities !== undefined) setSelectedLocalities(filters.selectedLocalities);
+    if (filters.minBudget !== undefined) setMinBudget(filters.minBudget);
+    if (filters.maxBudget !== undefined) setMaxBudget(filters.maxBudget);
+    if (filters.selectedBHK !== undefined) setSelectedBHK(filters.selectedBHK);
+    if (filters.selectedPropertyTypes !== undefined) setSelectedPropertyTypes(filters.selectedPropertyTypes);
+    
+    // Update price range for existing filter logic
+    if (filters.minBudget !== undefined || filters.maxBudget !== undefined) {
+      setPriceRange([
+        filters.minBudget ? parseInt(filters.minBudget) : 0,
+        filters.maxBudget ? parseInt(filters.maxBudget) : 10000000
+      ]);
+    }
+    
+    // Update property type for existing filter logic
+    if (filters.selectedPropertyTypes && filters.selectedPropertyTypes.length > 0) {
+      setPropertyType(filters.selectedPropertyTypes[0]);
+    } else if (filters.selectedPropertyTypes !== undefined) {
+      setPropertyType("");
+    }
+    
     setCurrentPage(1);
   };
 
@@ -88,6 +128,24 @@ const CommercialListingPage = () => {
             p.location?.city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             p.location?.locality?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             p.location?.area?.toLowerCase().includes(searchQuery.toLowerCase())
+          );
+        }
+        
+        // Apply locality filter
+        if (selectedLocalities.length > 0) {
+          list = list.filter(p => 
+            selectedLocalities.some(loc => 
+              p.location?.locality?.toLowerCase() === loc.toLowerCase()
+            )
+          );
+        }
+        
+        // Apply property type filter from FilterBar
+        if (selectedPropertyTypes.length > 0) {
+          list = list.filter(p => 
+            selectedPropertyTypes.some(type => 
+              p.propertyType?.toLowerCase().includes(type.toLowerCase().split('/')[0])
+            )
           );
         }
         
@@ -174,7 +232,7 @@ const CommercialListingPage = () => {
 
     fetchProperties();
     return () => controller.abort();
-  }, [currentPage, searchQuery, propertyType, priceRange, areaRange, listingType, selectedAmenities, verifiedOnly, furnishingStatus]);
+  }, [currentPage, searchQuery, propertyType, priceRange, areaRange, listingType, selectedAmenities, verifiedOnly, furnishingStatus, selectedLocalities, minBudget, maxBudget, selectedPropertyTypes]);
 
   return (
     <section className="py-8 sm:py-12 px-4 sm:px-6 lg:px-10 bg-gradient-to-b from-purple-50/50 to-white min-h-screen">
@@ -188,6 +246,25 @@ const CommercialListingPage = () => {
           <span>Back</span>
         </button>
       </div>
+
+      {/* FilterBar Component */}
+      <FilterBar
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        listingType={listingType}
+        setListingType={setListingType}
+        selectedLocalities={selectedLocalities}
+        setSelectedLocalities={setSelectedLocalities}
+        minBudget={minBudget}
+        setMinBudget={setMinBudget}
+        maxBudget={maxBudget}
+        setMaxBudget={setMaxBudget}
+        selectedBHK={selectedBHK}
+        setSelectedBHK={setSelectedBHK}
+        selectedPropertyTypes={selectedPropertyTypes}
+        setSelectedPropertyTypes={setSelectedPropertyTypes}
+        onFilterChange={handleFilterChange}
+      />
 
       {/* Header with Add Listing Button */}
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
@@ -222,7 +299,8 @@ const CommercialListingPage = () => {
         </motion.button>
       </div>
 
-      {/* Search Bar */}
+      {/* Search Bar - Hidden, using FilterBar instead */}
+      {/*
       <div className="max-w-5xl mx-auto mb-6">
         <div className="bg-white rounded-2xl shadow-xl p-4 flex items-center gap-4">
           <div className="flex-1 relative w-full">
@@ -246,7 +324,9 @@ const CommercialListingPage = () => {
         </div>
       </div>
 
-      {/* Advanced Filters Panel */}
+      */}
+
+      {/* Active Filters Display */}
       {showAdvancedFilters && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}

@@ -38,6 +38,14 @@ const HotelsBanquetsPage = () => {
   const [banquets, setBanquets] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   
+  // FilterBar States
+  const [activeFilter, setActiveFilter] = useState(null);
+  const [minBudget, setMinBudget] = useState("");
+  const [maxBudget, setMaxBudget] = useState("");
+  const [selectedLocalities, setSelectedLocalities] = useState([]);
+  const [selectedPropertyTypes, setSelectedPropertyTypes] = useState([]);
+  const [localities, setLocalities] = useState([]);
+
   // Filter States
   const [selectedCity, setSelectedCity] = useState("");
   const [priceRange, setPriceRange] = useState([0, 500000]);
@@ -46,8 +54,66 @@ const HotelsBanquetsPage = () => {
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [featuredOnly, setFeaturedOnly] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+
+  // Hotel specific property types
+  const hotelPropertyTypes = ['Hotel', 'Guest House', 'Resort', 'Lodge'];
+  
+  // Banquet specific property types
+  const banquetPropertyTypes = ['Banquet Hall', 'Party Hall', 'Lawn', 'Conference Hall', 'Event Venue'];
+
+  // Get property types based on active tab
+  const getPropertyTypes = () => {
+    return activeTab === 'hotels' ? hotelPropertyTypes : banquetPropertyTypes;
+  };
   
   const itemsPerPage = 9;
+
+  const toggleFilter = (filter) => {
+    setActiveFilter(activeFilter === filter ? null : filter);
+  };
+
+  const handleLocalityChange = (locality) => {
+    setSelectedLocalities(prev => 
+      prev.includes(locality) 
+        ? prev.filter(l => l !== locality) 
+        : [...prev, locality]
+    );
+  };
+
+  const handlePropertyTypeChange = (type) => {
+    setSelectedPropertyTypes(prev => 
+      prev.includes(type) 
+        ? prev.filter(t => t !== type) 
+        : [...prev, type]
+    );
+  };
+
+  const clearAllFilters = () => {
+    setMinBudget('');
+    setMaxBudget('');
+    setSelectedLocalities([]);
+    setSelectedPropertyTypes([]);
+    setSelectedCity('');
+    setSelectedCategory('');
+    setSelectedVenueType('');
+    setPriceRange([0, 500000]);
+    setCurrentPage(1);
+  };
+
+  // Fetch localities for filter
+  useEffect(() => {
+    const fetchLocalities = () => {
+      const sourceData = activeTab === 'hotels' ? hotels : banquets;
+      const uniqueLocalities = [...new Set(sourceData.map(item => item.location?.locality).filter(Boolean))];
+      setLocalities(uniqueLocalities.slice(0, 10));
+    };
+    fetchLocalities();
+  }, [activeTab, hotels, banquets]);
+
+  // Reset property types when tab changes
+  useEffect(() => {
+    setSelectedPropertyTypes([]);
+  }, [activeTab]);
 
   const handlePropertyClick = (id) => {
     navigate(`/hotel-banquet/${id}?type=${activeTab}`);
@@ -138,6 +204,34 @@ const HotelsBanquetsPage = () => {
              (maxPrice >= priceRange[0] && maxPrice <= priceRange[1]) ||
              (minPrice <= priceRange[0] && maxPrice >= priceRange[1]);
     });
+
+    // Apply FilterBar locality filter
+    if (selectedLocalities.length > 0) {
+      list = list.filter(p => 
+        selectedLocalities.includes(p.location?.locality)
+      );
+    }
+
+    // Apply FilterBar budget filter
+    const minBudgetFilter = minBudget ? parseInt(minBudget) : 0;
+    const maxBudgetFilter = maxBudget ? parseInt(maxBudget) : 500000;
+    list = list.filter(p => {
+      const price = p.priceRange?.min || 0;
+      return price >= minBudgetFilter && price <= maxBudgetFilter;
+    });
+
+    // Apply FilterBar property type filter (Hotel/Banquet specific)
+    if (selectedPropertyTypes.length > 0) {
+      if (activeTab === 'hotels') {
+        list = list.filter(p => 
+          selectedPropertyTypes.includes(p.propertyType)
+        );
+      } else {
+        list = list.filter(p => 
+          selectedPropertyTypes.includes(p.venueType)
+        );
+      }
+    }
     
     // Apply category filter for hotels
     if (activeTab === 'hotels' && selectedCategory) {
@@ -226,7 +320,7 @@ const HotelsBanquetsPage = () => {
     }
     
     setLoading(false);
-  }, [activeTab, hotels, banquets, currentPage, searchQuery, selectedCity, priceRange, selectedCategory, selectedVenueType, verifiedOnly, featuredOnly]);
+  }, [activeTab, hotels, banquets, currentPage, searchQuery, selectedCity, priceRange, selectedCategory, selectedVenueType, verifiedOnly, featuredOnly, minBudget, maxBudget, selectedLocalities, selectedPropertyTypes]);
 
   // Get unique cities from data
   const getUniqueCities = () => {
@@ -294,27 +388,163 @@ const HotelsBanquetsPage = () => {
         </button>
       </div>
 
-      {/* Search Bar */}
-      <div className="max-w-5xl mx-auto mb-6">
-        <div className="bg-white rounded-2xl shadow-xl p-4 flex items-center gap-4">
-          <div className="flex-1 relative w-full">
-            <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500" size={20} />
-            <input
-              type="text"
-              placeholder={`Search by name, city, locality...`}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 sm:py-4 rounded-xl border border-gray-200 focus:border-orange-500 focus:outline-none"
-            />
+      {/* FilterBar for Hotels & Banquets */}
+      <div className="w-full bg-white shadow-md border-b sticky top-0 z-50 font-sans">
+        <div className="max-w-7xl mx-auto px-4 py-3">
+          {/* Primary Filters */}
+          <div className="flex flex-wrap items-center gap-3">
+            
+            {/* Search Input */}
+            <div className="flex-1 min-w-[200px] relative">
+              <Search className="absolute left-3 top-2.5 text-slate-400" size={18} />
+              <input 
+                type="text" 
+                placeholder="Search by name, city, locality..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 border-slate-200"
+              />
+            </div>
+
+            {/* Dropdown Filters */}
+            <div className="flex flex-wrap gap-2">
+              
+              {/* Locality Filter */}
+              <div className="relative">
+                <button 
+                  onClick={() => toggleFilter('locality')}
+                  className={`flex items-center gap-1 px-4 py-2 border rounded-full text-sm font-medium transition-all ${activeFilter === 'locality' ? 'border-orange-500 text-orange-600 bg-orange-50' : 'hover:border-slate-400'}`}
+                >
+                  Locality <ChevronDown size={16} />
+                </button>
+                {activeFilter === 'locality' && (
+                  <div className="absolute top-12 left-0 w-64 bg-white shadow-xl border rounded-lg p-4 z-50">
+                    <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto">
+                      {localities.length > 0 ? (
+                        localities.map(loc => (
+                          <label key={loc} className="flex items-center gap-2 text-slate-700 cursor-pointer hover:text-orange-600">
+                            <input 
+                              type="checkbox" 
+                              className="accent-orange-500"
+                              checked={selectedLocalities.includes(loc)}
+                              onChange={() => handleLocalityChange(loc)}
+                            /> {loc}
+                          </label>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-400">No localities found</p>
+                      )}
+                    </div>
+                    <button onClick={() => setActiveFilter(null)} className="mt-4 w-full bg-orange-500 text-white py-1.5 rounded-md">Done</button>
+                  </div>
+                )}
+              </div>
+
+              {/* Budget Filter */}
+              <div className="relative">
+                <button 
+                  onClick={() => toggleFilter('budget')}
+                  className={`flex items-center gap-1 px-4 py-2 border rounded-full text-sm font-medium ${activeFilter === 'budget' ? 'border-orange-500 text-orange-600' : ''}`}
+                >
+                  Budget <ChevronDown size={16} />
+                </button>
+                {activeFilter === 'budget' && (
+                  <div className="absolute top-12 left-0 w-72 bg-white shadow-xl border rounded-lg p-4 z-50">
+                    <p className="text-sm font-bold text-slate-800 mb-3">Price Range</p>
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="number" 
+                        placeholder="Min" 
+                        value={minBudget}
+                        onChange={(e) => setMinBudget(e.target.value)}
+                        className="w-full border p-2 rounded text-sm focus:border-orange-500 outline-none"
+                      />
+                      <span className="text-slate-400">to</span>
+                      <input 
+                        type="number" 
+                        placeholder="Max" 
+                        value={maxBudget}
+                        onChange={(e) => setMaxBudget(e.target.value)}
+                        className="w-full border p-2 rounded text-sm focus:border-orange-500 outline-none"
+                      />
+                    </div>
+                    <div className="mt-4 flex justify-between items-center">
+                      <button onClick={() => {setMinBudget(''); setMaxBudget('')}} className="text-sm text-slate-500 underline">Clear</button>
+                      <button onClick={() => setActiveFilter(null)} className="bg-orange-500 text-white px-4 py-1.5 rounded-md text-sm">Apply</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Property Type Filter (Hotel/Banquet Specific) */}
+              <div className="relative">
+                <button 
+                  onClick={() => toggleFilter('propertyType')}
+                  className={`flex items-center gap-1 px-4 py-2 border rounded-full text-sm font-medium ${activeFilter === 'propertyType' ? 'border-orange-500 text-orange-600' : ''}`}
+                >
+                  {activeTab === 'hotels' ? 'Hotel Type' : 'Venue Type'} <ChevronDown size={16} />
+                </button>
+                {activeFilter === 'propertyType' && (
+                  <div className="absolute top-12 left-0 w-64 bg-white shadow-xl border rounded-lg p-4 z-50">
+                    <div className="grid grid-cols-1 gap-2">
+                      {getPropertyTypes().map(type => (
+                        <label key={type} className="flex items-center gap-2 text-slate-700 cursor-pointer hover:text-orange-600">
+                          <input 
+                            type="checkbox" 
+                            className="accent-orange-500"
+                            checked={selectedPropertyTypes.includes(type)}
+                            onChange={() => handlePropertyTypeChange(type)}
+                          /> {type}
+                        </label>
+                      ))}
+                    </div>
+                    <button onClick={() => setActiveFilter(null)} className="mt-4 w-full bg-orange-500 text-white py-1.5 rounded-md">Done</button>
+                  </div>
+                )}
+              </div>
+
+              {/* More Filters Button */}
+              <button 
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                className="flex items-center gap-1 px-4 py-2 bg-slate-50 border rounded-full text-sm font-medium hover:bg-slate-100 transition-colors"
+              >
+                More Filters 
+              </button>
+              
+              {/* Clear All Button */}
+              {(selectedLocalities.length > 0 || minBudget || maxBudget || selectedPropertyTypes.length > 0) && (
+                <button 
+                  onClick={clearAllFilters}
+                  className="flex items-center gap-1 px-4 py-2 text-red-500 text-sm font-medium hover:underline"
+                >
+                  <X size={14} /> Clear
+                </button>
+              )}
+            </div>
           </div>
-          
-          <button
-            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-            className="flex items-center gap-2 px-5 py-3 sm:px-6 sm:py-4 rounded-xl bg-purple-50 text-purple-700 border-2 border-purple-200 hover:bg-purple-100 transition-colors font-semibold"
-          >
-            <SlidersHorizontal size={20} />
-            <span className="hidden sm:inline">Filters</span>
-          </button>
+
+          {/* Active Filter Tags */}
+          {(selectedLocalities.length > 0 || selectedPropertyTypes.length > 0 || minBudget || maxBudget) && (
+            <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t">
+              {selectedLocalities.map(loc => (
+                <span key={loc} className="inline-flex items-center gap-1 px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs">
+                  {loc}
+                  <X size={12} className="cursor-pointer" onClick={() => handleLocalityChange(loc)} />
+                </span>
+              ))}
+              {selectedPropertyTypes.map(type => (
+                <span key={type} className="inline-flex items-center gap-1 px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs">
+                  {type}
+                  <X size={12} className="cursor-pointer" onClick={() => handlePropertyTypeChange(type)} />
+                </span>
+              ))}
+              {(minBudget || maxBudget) && (
+                <span className="inline-flex items-center gap-1 px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs">
+                  ₹{minBudget || '0'} - ₹{maxBudget || '500000'}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
