@@ -292,7 +292,7 @@ const RentListingPage = () => {
       </div>
 
       {/* Search Bar - Hidden, using FilterBar instead */}
-      <div className="max-w-5xl mx-auto mb-6">
+      {/* <div className="max-w-5xl mx-auto mb-6">
         <div className="bg-white rounded-2xl shadow-xl p-4 flex items-center gap-4">
           <div className="flex-1 relative w-full">
             <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500" size={20} />
@@ -313,7 +313,7 @@ const RentListingPage = () => {
             <span className="hidden sm:inline">Filters</span>
           </button>
         </div>
-      </div>
+      </div> */}
 
       {/* Active Filters Display */}
       {(propertyType || selectedBHK.length > 0 || selectedStatus || verifiedOnly || priceRange[0] > 0 || priceRange[1] < 100000) && (

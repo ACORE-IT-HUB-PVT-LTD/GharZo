@@ -40,12 +40,12 @@ const DUMMY_PROFILE = {
 };
 
 function LandlordProfile() {
-  const [profile, setProfile] = useState(DUMMY_PROFILE);
+  const [profile, setProfile] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({});
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [previewImage, setPreviewImage] = useState(null);
-  const [kycVerified, setKycVerified] = useState(true); // Pre-verified for dummy data
+  const [kycVerified, setKycVerified] = useState(false);
 
   // Signature state
   const [signatureUrl, setSignatureUrl] = useState(null);
@@ -68,45 +68,68 @@ function LandlordProfile() {
     }
   }, []);
 
-  // Initialize with dummy data
+  // Get token
+  const getToken = () => localStorage.getItem("usertoken") || localStorage.getItem("token");
+
+  // Fetch profile from API
   useEffect(() => {
-    // Load from localStorage or use dummy data
-    const storedProfile = localStorage.getItem("landlordProfile");
-    const storedSignature = localStorage.getItem("landlordSignature");
-
-    if (storedProfile) {
-      const parsedProfile = JSON.parse(storedProfile);
-      setProfile(parsedProfile);
-      setFormData({
-        ...parsedProfile,
-        bankAccountHolderName: parsedProfile.bankAccount?.accountHolderName || "",
-        bankAccountNumber: parsedProfile.bankAccount?.accountNumber || "",
-        bankIfscCode: parsedProfile.bankAccount?.ifscCode || "",
-        bankName: parsedProfile.bankAccount?.bankName || "",
-        branchName: parsedProfile.bankAccount?.branchName || ""
-      });
-      if (parsedProfile.bankAccount?.accountNumber && parsedProfile.bankAccount?.ifscCode) {
-        setKycVerified(true);
+    const fetchProfile = async () => {
+      const token = getToken();
+      if (!token) {
+        setLoading(false);
+        return;
       }
-    } else {
-      // Use dummy data
-      setProfile(DUMMY_PROFILE);
-      setFormData({
-        ...DUMMY_PROFILE,
-        bankAccountHolderName: DUMMY_PROFILE.bankAccount?.accountHolderName || "",
-        bankAccountNumber: DUMMY_PROFILE.bankAccount?.accountNumber || "",
-        bankIfscCode: DUMMY_PROFILE.bankAccount?.ifscCode || "",
-        bankName: DUMMY_PROFILE.bankAccount?.bankName || "",
-        branchName: DUMMY_PROFILE.bankAccount?.branchName || ""
-      });
-      localStorage.setItem("landlordProfile", JSON.stringify(DUMMY_PROFILE));
-    }
 
-    if (storedSignature) {
-      setSignatureUrl(storedSignature);
-    }
+      try {
+        const res = await fetch("https://api.gharzoreality.com/api/auth/me", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+        const data = await res.json();
 
-    setLoading(false);
+        if (res.ok && data.success && data.data?.user) {
+          const user = data.data.user;
+          
+          // Set profile from API
+          const profileData = {
+            name: user.name || "",
+            email: user.email || "",
+            phone: user.phone || "",
+            dob: user.dob || "",
+            gender: user.gender || "",
+            address: user.address || "",
+            pinCode: user.pinCode || "",
+            state: user.state || "",
+            aadhaarNumber: user.aadhaarNumber || "",
+            panNumber: user.panNumber || "",
+            profilePhoto: user.profileImage || null,
+            isVerified: user.isVerified || false,
+          };
+          
+          setProfile(profileData);
+          setFormData({
+            ...profileData,
+            bankAccountHolderName: user.bankAccount?.accountHolderName || "",
+            bankAccountNumber: user.bankAccount?.accountNumber || "",
+            bankIfscCode: user.bankAccount?.ifscCode || "",
+            bankName: user.bankAccount?.bankName || "",
+            branchName: user.bankAccount?.branchName || "",
+          });
+
+          if (user.bankAccount?.accountNumber && user.bankAccount?.ifscCode) {
+            setKycVerified(true);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
   }, []);
 
   const handleLogout = () => {
@@ -309,11 +332,15 @@ Bank: ${formData.bankName || "SBI"}`, {
     }
   };
 
-  // Get profile image URL – fallback to local instaUser.jpg
+  // Get profile image URL
   const getProfileImage = () => {
+    if (loading) return instaUser;
     if (editMode && previewImage) return previewImage;
     if (profile?.profilePhoto) {
-      // Check if it's a base64 string or URL
+      // Check if it's a URL or base64
+      if (typeof profile.profilePhoto === 'string' && profile.profilePhoto.startsWith('http')) {
+        return profile.profilePhoto;
+      }
       if (typeof profile.profilePhoto === 'string' && profile.profilePhoto.startsWith('data:')) {
         return profile.profilePhoto;
       }

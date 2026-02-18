@@ -126,6 +126,12 @@ const Sidebar = ({ propertyId, setSidebarWidth }) => {
       gradient: "from-orange-600 to-blue-500",
     },
     {
+      to: "/landlord/room-switch",
+      icon: FaExchangeAlt,
+      label: "Room Switch",
+      gradient: "from-purple-600 to-pink-500",
+    },
+    {
       to: "/landlord/workers",
       icon: FaUser,
       label: "Workers",
