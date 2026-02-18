@@ -64,6 +64,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { jwtDecode } from "jwt-decode";
+import { toast, ToastContainer } from "react-toastify";
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
@@ -85,6 +86,7 @@ function PropertyDetails() {
   const [mainSwiper, setMainSwiper] = useState(null);
   const [thumbSwiper, setThumbSwiper] = useState(null);
   const [activeThumbIndex, setActiveThumbIndex] = useState(0);
+  const [savingProperty, setSavingProperty] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -190,10 +192,89 @@ function PropertyDetails() {
 
     if (id) {
       fetchProperty();
+      checkIfPropertySaved();
     } else {
       navigate("/", { replace: true });
     }
   }, [id, navigate]);
+
+  // Check if property is saved
+  const checkIfPropertySaved = async () => {
+    const token = localStorage.getItem("usertoken");
+    if (!token || !id) return;
+    
+    try {
+      const response = await axios.get(
+        `https://api.gharzoreality.com/api/saved-properties/${id}/check`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      
+      if (response.data?.success) {
+        setLiked(response.data.isSaved);
+      }
+    } catch (error) {
+      console.error("Error checking saved status:", error);
+      // If API fails, set liked to false
+      setLiked(false);
+    }
+  };
+
+  // Handle save/unsave property
+  const handleSaveProperty = async () => {
+    const token = localStorage.getItem("usertoken");
+    
+    if (!token) {
+      toast.error("Please login to save properties");
+      navigate("/user/login");
+      return;
+    }
+
+    setSavingProperty(true);
+    try {
+      if (liked) {
+        // Unsave - DELETE request
+        await axios.delete(
+          `https://api.gharzoreality.com/api/saved-properties/${id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        setLiked(false);
+        toast.success("Property removed from wishlist");
+      } else {
+        // Save - POST request
+        const response = await axios.post(
+          `https://api.gharzoreality.com/api/saved-properties/${id}`,
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        
+        if (response.data?.success) {
+          setLiked(true);
+          toast.success(response.data.message || "Property saved to wishlist");
+        }
+      }
+    } catch (error) {
+      console.error("Error saving property:", error);
+      const errorMessage = error.response?.data?.message || "Failed to update wishlist";
+      toast.error(errorMessage);
+    } finally {
+      setSavingProperty(false);
+    }
+  };
 
   const openImageModal = (images, index = 0) => {
     setSelectedImages(images);
@@ -233,6 +314,18 @@ function PropertyDetails() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
       <style>
         {`
           @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap');
@@ -415,14 +508,22 @@ function PropertyDetails() {
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
-              onClick={() => setLiked(!liked)}
-              className="bg-white/95 backdrop-blur-md rounded-full p-3 shadow-2xl hover:shadow-3xl transition-all"
+              onClick={handleSaveProperty}
+              disabled={savingProperty}
+              className="bg-white/95 backdrop-blur-md rounded-full p-3 shadow-2xl hover:shadow-3xl transition-all disabled:opacity-50"
             >
-              <Heart
-                size={20}
-                className={liked ? "text-rose-500" : "text-gray-800"}
-                fill={liked ? "#f43f5e" : "none"}
-              />
+              {savingProperty ? (
+                <svg className="animate-spin h-5 w-5 text-gray-800" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : (
+                <Heart
+                  size={20}
+                  className={liked ? "text-rose-500" : "text-gray-800"}
+                  fill={liked ? "#f43f5e" : "none"}
+                />
+              )}
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.1 }}

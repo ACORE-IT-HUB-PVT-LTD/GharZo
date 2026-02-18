@@ -30,6 +30,7 @@ import {
   FaUser,
   FaSpinner
 } from 'react-icons/fa';
+import Wishlist from './Wishlist';
 
 const ProfileTabs = ({ role }) => {
   // If the logged-in user is a tenant, hide the tabs and only show profile data
@@ -194,6 +195,7 @@ const ProfileTabs = ({ role }) => {
     { id: 'listings', label: 'My Listings', icon: <FaBuilding /> },
     { id: 'reels', label: 'My Reels', icon: <FaVideo /> },
     { id: 'visits', label: 'My Visits', icon: <FaClipboardList /> },
+    { id: 'wishlist', label: 'Wishlist', icon: <FaHeart /> },
     { id: 'subscriptions', label: 'Subscriptions', icon: <FaCrown /> }
   ];
 
@@ -839,6 +841,18 @@ const ProfileTabs = ({ role }) => {
                 </button>
               </div>
             ))}
+          </motion.div>
+        )}
+
+        {activeTab === 'wishlist' && (
+          <motion.div
+            key="wishlist"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Wishlist />
           </motion.div>
         )}
       </AnimatePresence>
