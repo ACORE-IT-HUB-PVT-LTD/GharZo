@@ -1,1961 +1,1998 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Home, 
-  MapPin, 
-  IndianRupee, 
-  Upload, 
-  X,
-  BedDouble,
-  Bath,
-  Square,
-  Users,
-  Wifi,
-  Car,
-  ArrowLeft,
-  CheckCircle,
-  Loader,
-  Phone,
-  Mail,
-  User,
-  Building,
-  Store
-} from 'lucide-react';
-import axios from 'axios';
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  FiHome, FiMapPin, FiCamera, FiCheckCircle, FiEye, FiChevronRight,
+  FiChevronLeft, FiPlus, FiMinus, FiX, FiUpload, FiPhone, FiMail,
+  FiUser, FiDollarSign, FiLayers, FiShield, FiZap, FiDroplet,
+  FiWifi, FiTruck, FiStar, FiInfo, FiAlertCircle, FiCheck,
+  FiSearch, FiLoader, FiGrid, FiBriefcase, FiKey, FiClock,
+  FiCalendar, FiAward, FiTool, FiPackage, FiSun, FiWind, FiMenu
+} from "react-icons/fi";
+import {
+  MdPool, MdFitnessCenter, MdSecurity, MdLocalParking, MdElevator,
+  MdOutdoorGrill, MdSolarPower, MdBalcony, MdKitchen, MdBed,
+  MdChair, MdAir, MdLocalLaundryService, MdOutlineGasMeter,
+  MdOutlineWaterDrop, MdFireExtinguisher, MdPets, MdOutlineApartment,
+  MdVilla, MdStorefront, MdOutlineWarehouse, MdDoorSliding
+} from "react-icons/md";
+import { BiBuildingHouse, BiBuildings, BiArea } from "react-icons/bi";
+import {
+  GiFireplace, GiParkBench, GiCctvCamera, GiWaterTower
+} from "react-icons/gi";
+import { TbBuildingCommunity, TbSwimming, TbParking } from "react-icons/tb";
+import { RiHotelBedLine, RiParkingBoxLine, RiBuilding2Line } from "react-icons/ri";
+import { HiOutlineOfficeBuilding } from "react-icons/hi";
+import { LuBuilding2, LuBath } from "react-icons/lu";
+import { PiHouseLine, PiBuilding, PiBuildingApartment } from "react-icons/pi";
 
-const API_BASE_URL = 'https://api.gharzoreality.com/api/v2';
-const MASTER_DATA_API = 'https://api.gharzoreality.com/api/master-data/v2';
+const API_BASE = "https://api.gharzoreality.com/api/v2/properties";
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+const getAuthToken = () => localStorage.getItem("usertoken");
 
-const AddListingForm = () => {
+const STEPS = [
+  { id: "property-type", label: "Property Details", icon: FiHome, score: null },
+  { id: "location-details", label: "Address", icon: FiMapPin, score: 15 },
+  { id: "upload-photos", label: "Photos", icon: FiCamera, score: 15 },
+  { id: "ownership-details", label: "Verify", icon: FiShield, score: 20 },
+  { id: "property-features", label: "Property Highlights", icon: FiStar, score: null },
+  { id: "preview-submit", label: "Review", icon: FiEye, score: null },
+];
+
+// Toast Component
+function Toast({ toasts, removeToast }) {
+  return (
+    <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
+      {toasts.map((t) => (
+        <div
+          key={t.id}
+          className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-white text-sm font-medium min-w-[280px] animate-slide-in
+            ${t.type === "success" ? "bg-emerald-500" : t.type === "error" ? "bg-red-500" : "bg-blue-500"}`}
+        >
+          {t.type === "success" ? <FiCheck size={16} /> : <FiAlertCircle size={16} />}
+          <span className="flex-1">{t.message}</span>
+          <button onClick={() => removeToast(t.id)} className="opacity-70 hover:opacity-100">
+            <FiX size={14} />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Counter Box Component
+function CounterBox({ label, value, onChange, min = 0, max = 20, icon: Icon }) {
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center text-violet-600">
+        <Icon size={20} />
+      </div>
+      <span className="text-xs text-gray-500 font-medium text-center">{label}</span>
+      <div className="flex items-center gap-2 bg-gray-50 rounded-xl p-1">
+        <button
+          type="button"
+          onClick={() => onChange(Math.max(min, value - 1))}
+          className="w-7 h-7 rounded-lg bg-white shadow-sm flex items-center justify-center text-gray-600 hover:bg-violet-50 hover:text-violet-600 transition-colors"
+        >
+          <FiMinus size={12} />
+        </button>
+        <span className="w-6 text-center font-bold text-gray-800 text-sm">{value}</span>
+        <button
+          type="button"
+          onClick={() => onChange(Math.min(max, value + 1))}
+          className="w-7 h-7 rounded-lg bg-white shadow-sm flex items-center justify-center text-gray-600 hover:bg-violet-50 hover:text-violet-600 transition-colors"
+        >
+          <FiPlus size={12} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Selection Card
+function SelectCard({ label, icon: Icon, selected, onClick, className = "" }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all cursor-pointer text-center
+        ${selected
+          ? "border-violet-500 bg-violet-50 text-violet-700"
+          : "border-gray-200 bg-white text-gray-600 hover:border-violet-300 hover:bg-violet-50/50"
+        } ${className}`}
+    >
+      {Icon && <Icon size={22} />}
+      <span className="text-xs font-medium leading-tight">{label}</span>
+    </button>
+  );
+}
+
+// Chip Toggle
+function Chip({ label, selected, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all
+        ${selected
+          ? "bg-violet-600 border-violet-600 text-white"
+          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"}`}
+    >
+      {label}
+    </button>
+  );
+}
+
+// Input Field with validation
+function InputField({ label, required, error, children, hint }) {
+  return (
+    <div className="flex flex-col gap-1">
+      {label && (
+        <label className="text-sm font-semibold text-gray-700">
+          {label} {required && <span className="text-red-500">*</span>}
+        </label>
+      )}
+      {children}
+      {hint && !error && <p className="text-xs text-gray-400">{hint}</p>}
+      {error && (
+        <p className="text-xs text-red-500 flex items-center gap-1">
+          <FiAlertCircle size={12} /> {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function TextInput({ className = "", ...props }) {
+  return (
+    <input
+      {...props}
+      className={`w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 placeholder-gray-400 
+        focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition-all bg-white
+        ${props.disabled ? "bg-gray-50 opacity-60" : ""}
+        ${className}`}
+    />
+  );
+}
+
+function SelectInput({ className = "", children, ...props }) {
+  return (
+    <select
+      {...props}
+      className={`w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 
+        focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition-all bg-white appearance-none
+        ${className}`}
+    >
+      {children}
+    </select>
+  );
+}
+
+// Main Component
+export default function PropertyListingForm() {
   const navigate = useNavigate();
-  
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(0);
   const [propertyId, setPropertyId] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  // Master data states
+  const [toasts, setToasts] = useState([]);
+  const [errors, setErrors] = useState({});
   const [cities, setCities] = useState([]);
-  const [localities, setLocalities] = useState([]);
-  const [amenitiesData, setAmenitiesData] = useState({
-    basic: [],
-    nearby: [],
-    society: []
-  });
-  const [loadingMasterData, setLoadingMasterData] = useState({
-    cities: false,
-    localities: false,
-    amenities: false
-  });
+  const [citySearch, setCitySearch] = useState("");
+  const [showCityDropdown, setShowCityDropdown] = useState(false);
+  const [locationSuggestions, setLocationSuggestions] = useState([]);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const mapRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const markerRef = useRef(null);
 
-  const [formData, setFormData] = useState({
-    // Step 1: Property Type
-    category: '',
-    propertyType: '',
-    listingType: '',
-    
-    // Step 2: Basic Details
-    title: '',
-    description: '',
-    bhk: '1',
-    bathrooms: '1',
-    balconies: '0',
-    price: '',
-    negotiable: true,
-    securityDeposit: '',
-    carpetArea: '',
-    builtUpArea: '',
-    areaUnit: 'sqft',
-    currentFloor: '0',
-    totalFloors: '1',
-    propertyAge: '',
-    postedBy: 'Owner',
-    availableFrom: '',
-    
-    // Step 3: Features (PG specific)
-    furnishingType: 'Unfurnished',
-    amenitiesList: [],
-    furnishingItems: [],
-    
-    // PG Details
-    roomType: '',
-    foodIncluded: false,
-    foodType: '',
-    genderPreference: 'Any',
-    totalBeds: '',
-    availableBeds: '',
-    commonWashroom: false,
-    attachedWashroom: false,
-    commonAreas: [],
-    foodTimings: {},
-    facilities: {},
-    securityFeatures: {},
-    
-    // Property Features
-    powerBackup: '',
-    waterSupply: '',
-    gatedSecurity: false,
-    liftAvailable: false,
-    
-    // Step 4: Location
-    address: '',
-    city: '',
-    locality: '',
-    subLocality: '',
-    landmark: '',
-    pincode: '',
-    state: '',
-    latitude: '',
-    longitude: '',
-    
-    // Step 5: Images
+  // Form Data
+  const [form, setForm] = useState({
+    // Step 1
+    category: "Residential",
+    propertyType: "",
+    listingType: "Rent",
+    // Step 2 - Basic
+    title: "",
+    description: "",
+    bhk: 2,
+    bathrooms: 1,
+    balconies: 1,
+    propertyAge: "",
+    availableFrom: "",
+    floor: { current: 0, total: 1 },
+    area: { carpet: "", builtUp: "", unit: "sqft" },
+    price: {
+      amount: "",
+      negotiable: true,
+      securityDeposit: "",
+      maintenanceCharges: { amount: "", frequency: "Monthly" },
+      lockInPeriod: "",
+      noticePeriod: "",
+      per: "Property",
+    },
+    // Step 3 - Features
+    furnishing: { type: "Unfurnished", items: [] },
+    parking: { covered: 0, open: 0 },
+    facing: "",
+    amenities: { society: [], security: [], essential: [], nearby: [] },
+    propertyFeatures: {
+      powerBackup: "",
+      waterSupply: "",
+      gatedSecurity: false,
+      liftAvailable: false,
+      petFriendly: false,
+      bachelorsAllowed: false,
+      nonVegAllowed: false,
+      electricityStatus: "Available",
+      flooring: "",
+      ceilingHeight: "",
+      overlooking: [],
+      widthOfFacingRoad: "",
+      boundaryWall: false,
+      corners: 0,
+      fireSafety: { fireExtinguisher: false, fireSensor: false, sprinklers: false },
+      constructionQuality: "",
+      rainwaterHarvesting: false,
+      wasteDisposal: "",
+      servantsRoom: false,
+      studyRoom: false,
+      poojaRoom: false,
+      storeRoom: false,
+    },
+    // Step 4 - Location
+    location: {
+      address: "",
+      city: "",
+      locality: "",
+      subLocality: "",
+      landmark: "",
+      pincode: "",
+      state: "",
+      coordinates: { latitude: null, longitude: null },
+    },
+    // Step 5 - Ownership
+    ownership: {
+      type: "",
+      verified: false,
+      occupancyCertificate: false,
+      approvedBy: [],
+      stampDutyCharges: "Excluded - Paid by Buyer",
+      registrationCharges: "Excluded - Paid by Buyer",
+      propertyTaxPerYear: "",
+      legalDocumentsAvailable: false,
+    },
+    builder: {
+      name: "",
+      reraId: "",
+      projectName: "",
+      possessionDate: "",
+      totalUnits: "",
+      totalTowers: "",
+      totalFloors: "",
+      launchDate: "",
+      loanFacility: { available: false, approvedBanks: [] },
+      bookingProcess: { tokenAmount: "", documentsRequired: [] },
+    },
+    transactionType: "Resale",
+    inclusionsInPrice: [],
+    additionalRooms: [],
+    // Step 6 - Photos
     images: [],
-    
-    // Step 6: Contact Info
-    contactName: '',
-    contactPhone: '',
-    alternatePhone: '',
-    contactEmail: '',
-    preferredCallTime: 'Evening (5PM-9PM)'
+    imageFiles: [],
+    // Step 7 - Contact
+    contactInfo: {
+      name: "",
+      phone: "",
+      alternatePhone: "",
+      email: "",
+      preferredCallTime: "Anytime",
+    },
   });
 
-  const [imagePreviews, setImagePreviews] = useState([]);
-  const [userProfile, setUserProfile] = useState(null);
-
-  const steps = [
-    { number: 1, title: 'Property Type' },
-    { number: 2, title: 'Basic Details' },
-    { number: 3, title: 'Features' },
-    { number: 4, title: 'Location' },
-    { number: 5, title: 'Photos' },
-    { number: 6, title: 'Contact Info' }
-  ];
-
-  // Backend Schema Enums
-  const categoryOptions = ['Residential', 'Commercial'];
-  
-  const propertyTypeOptions = {
-    Residential: ['Flat', 'Villa', 'Independent House', 'Builder Floor', 'Studio', 'Plot'],
-    Commercial: ['Shop', 'Office', 'Warehouse']
-  };
-
-  const listingTypeOptions = ['Rent', 'Sale', 'PG'];
-
-  const areaUnitOptions = ['sqft', 'sqm', 'sqyd', 'acre', 'hectare'];
-  const roomTypeOptions = ['Single', 'Double Sharing', 'Triple Sharing', 'Dormitory'];
-  const foodTypeOptions = ['Veg', 'Non-Veg', 'Both'];
-  const genderPreferenceOptions = ['Male', 'Female', 'Any'];
-  const powerBackupOptions = ['None', 'Partial', 'Full'];
-  const waterSupplyOptions = ['Corporation', 'Borewell', 'Both'];
-
-  const commonAreasOptions = [
-    'Living Room', 'Kitchen', 'Terrace', 'Gym', 'Study Room', 'Parking'
-  ];
-
-  const furnishingItemsOptions = [
-    'Bed', 'Mattress', 'Pillow', 'Blanket', 'Fan', 'Light', 
-    'Charging Point', 'Wardrobe', 'Study Desk', 'Chair'
-  ];
-
-  const postedByOptions = ['Owner', 'Agent', 'Builder', 'Admin', 'Landlord', 'Worker', 'Tenant', 'Sub Owner'];
-
-  const propertyAgeOptions = [
-    'Under Construction',
-    '0-1 year',
-    '1-5 years',
-    '5-10 years',
-    '10+ years'
-  ];
-
-  const preferredCallTimeOptions = [
-    'Anytime',
-    'Morning (9AM-12PM)',
-    'Afternoon (12PM-5PM)',
-    'Evening (5PM-9PM)'
-  ];
-
-  // Fetch user profile and set postedBy automatically
-  useEffect(() => {
-    fetchUserProfile();
+  const addToast = useCallback((message, type = "success") => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
   }, []);
 
-  // Fetch master data
-  useEffect(() => {
-    fetchCities();
-    fetchAmenities();
+  const removeToast = useCallback((id) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  // Fetch localities when city changes
+  const apiHeaders = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${getAuthToken()}`,
+  };
+
+  // Load cities
   useEffect(() => {
-    if (formData.city) {
-      fetchLocalities(formData.city);
+    fetch("https://api.gharzoreality.com/api/master-data/v2/cities")
+      .then((r) => r.json())
+      .then((d) => setCities(d.data || []))
+      .catch(() => {});
+  }, []);
+
+  // Load Mapbox
+  useEffect(() => {
+    if (currentStep === 3 && !mapLoaded) {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = "https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css";
+      document.head.appendChild(link);
+
+      const script = document.createElement("script");
+      script.src = "https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js";
+      script.onload = () => setMapLoaded(true);
+      document.head.appendChild(script);
     }
-  }, [formData.city]);
+  }, [currentStep]);
 
-  const fetchCities = async () => {
-    try {
-      setLoadingMasterData(prev => ({ ...prev, cities: true }));
-      const response = await axios.get(`${MASTER_DATA_API}/cities`);
-      if (response.data.success) {
-        setCities(response.data.data || []);
-      }
-    } catch (err) {
-      console.error('Error fetching cities:', err);
-    } finally {
-      setLoadingMasterData(prev => ({ ...prev, cities: false }));
-    }
-  };
+  useEffect(() => {
+    if (mapLoaded && currentStep === 3 && mapRef.current && !mapInstanceRef.current) {
+      const mapboxgl = window.mapboxgl;
+      mapboxgl.accessToken = MAPBOX_TOKEN;
+      const lat = form.location.coordinates.latitude || 22.7196;
+      const lng = form.location.coordinates.longitude || 75.8577;
 
-  const fetchLocalities = async (cityName) => {
-    try {
-      setLoadingMasterData(prev => ({ ...prev, localities: true }));
-      const response = await axios.get(`${MASTER_DATA_API}/localities/${cityName}`);
-      if (response.data.success) {
-        setLocalities(response.data.data || []);
-      }
-    } catch (err) {
-      console.error('Error fetching localities:', err);
-      setLocalities([]);
-    } finally {
-      setLoadingMasterData(prev => ({ ...prev, localities: false }));
-    }
-  };
-
-  const fetchAmenities = async () => {
-    try {
-      setLoadingMasterData(prev => ({ ...prev, amenities: true }));
-      const response = await axios.get(`${MASTER_DATA_API}/amenities`);
-      if (response.data.success) {
-        setAmenitiesData(response.data.data || {
-          basic: [],
-          nearby: [],
-          society: []
-        });
-      }
-    } catch (err) {
-      console.error('Error fetching amenities:', err);
-    } finally {
-      setLoadingMasterData(prev => ({ ...prev, amenities: false }));
-    }
-  };
-
-  const fetchUserProfile = async () => {
-    try {
-      const token = localStorage.getItem('usertoken') || localStorage.getItem('token');
-      if (!token) return;
-
-      const response = await axios.get(
-        'https://api.gharzoreality.com/api/auth/me',
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      if (response.data.success && response.data.data?.user) {
-        const user = response.data.data.user;
-        setUserProfile(user);
-        
-        // Format the role for postedBy field - map API roles to dropdown options
-        const roleMapping = {
-          'landlord': 'Landlord',
-          'Landlord': 'Landlord',
-          'worker': 'Worker',
-          'Worker': 'Worker',
-          'tenant': 'Tenant',
-          'Tenant': 'Tenant',
-          'subowner': 'Sub Owner',
-          'sub_owner': 'Sub Owner',
-          'SubOwner': 'Sub Owner',
-          'sub_owner': 'Sub Owner',
-          'admin': 'Admin',
-          'Admin': 'Admin',
-          'agent': 'Agent',
-          'Agent': 'Agent',
-          'builder': 'Builder',
-          'Builder': 'Builder'
-        };
-        
-        const roleFormatted = roleMapping[user.role] || 'Owner';
-        setFormData(prev => ({
-          ...prev,
-          postedBy: roleFormatted
-        }));
-      }
-    } catch (err) {
-      console.error('Error fetching user profile:', err);
-      // Fallback: keep default value
-    }
-  };
-
-  // Helper functions for conditional rendering
-  const isPGProperty = () => {
-    return formData.listingType === 'PG';
-  };
-
-  const needsResidentialFields = () => {
-    const residentialTypes = ['Flat', 'Villa', 'Independent House', 'Builder Floor', 'Studio'];
-    return residentialTypes.includes(formData.propertyType);
-  };
-
-  const isCommercialProperty = () => {
-    return formData.category === 'Commercial';
-  };
-
-  const isPlotProperty = () => {
-    return formData.propertyType === 'Plot';
-  };
-
-  const needsFloorDetails = () => {
-    const typesWithFloors = ['Flat', 'Builder Floor', 'Shop', 'Office'];
-    return typesWithFloors.includes(formData.propertyType);
-  };
-
-  const needsBHKDetails = () => {
-    const typesWithBHK = ['Flat', 'Villa', 'Independent House', 'Builder Floor', 'Studio'];
-    return typesWithBHK.includes(formData.propertyType) && !isPGProperty();
-  };
-
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    
-    if (name === 'category') {
-      setFormData(prev => ({
-        ...prev,
-        category: value,
-        propertyType: '',
-        listingType: ''
-      }));
-      return;
-    }
-
-    if (name === 'propertyType') {
-      setFormData(prev => ({
-        ...prev,
-        propertyType: value
-      }));
-      return;
-    }
-
-    if (name === 'city') {
-      setFormData(prev => ({
-        ...prev,
-        city: value,
-        locality: '',
-        subLocality: ''
-      }));
-      return;
-    }
-
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-  };
-
-  const handleCommonAreaToggle = (area) => {
-    setFormData(prev => ({
-      ...prev,
-      commonAreas: prev.commonAreas.includes(area)
-        ? prev.commonAreas.filter(a => a !== area)
-        : [...prev.commonAreas, area]
-    }));
-  };
-
-  const handleFurnishingItemToggle = (item) => {
-    setFormData(prev => ({
-      ...prev,
-      furnishingItems: prev.furnishingItems.includes(item)
-        ? prev.furnishingItems.filter(i => i !== item)
-        : [...prev.furnishingItems, item]
-    }));
-  };
-
-  const handleAmenityToggle = (amenity) => {
-    setFormData(prev => ({
-      ...prev,
-      amenitiesList: prev.amenitiesList.includes(amenity)
-        ? prev.amenitiesList.filter(a => a !== amenity)
-        : [...prev.amenitiesList, amenity]
-    }));
-  };
-
-  const handleImageUpload = (e) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-
-    const validFiles = files.filter((f) => f.size <= 10 * 1024 * 1024);
-
-    setFormData((prev) => ({
-      ...prev,
-      images: [...prev.images, ...validFiles]
-    }));
-
-    const newPreviews = validFiles.map((file) => URL.createObjectURL(file));
-    setImagePreviews((prev) => [...prev, ...newPreviews]);
-  };
-
-  const removeImage = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index)
-    }));
-    
-    setImagePreviews(prev => {
-      const url = prev[index];
-      if (url) URL.revokeObjectURL(url);
-      return prev.filter((_, i) => i !== index);
-    });
-  };
-
-  const getAuthToken = () => {
-    return localStorage.getItem('usertoken') || localStorage.getItem('token');
-  };
-
-  const getAuthHeaders = () => {
-    const token = getAuthToken();
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    };
-  };
-
-  // API Calls
-  const createDraft = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      
-      const token = getAuthToken();
-      if (!token) {
-        setError('Please login to continue');
-        return false;
-      }
-
-      const response = await axios.post(
-        `${API_BASE_URL}/properties/create-draft`, 
-        {
-          category: formData.category,
-          propertyType: formData.propertyType,
-          listingType: formData.listingType
-        },
-        {
-          headers: getAuthHeaders()
-        }
-      );
-
-      if (response.data.success) {
-        setPropertyId(response.data.data.propertyId);
-        return true;
-      }
-      return false;
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create draft');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateBasicDetails = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      
-      const areaPayload = {
-        carpet: parseFloat(formData.carpetArea) || 0,
-        unit: formData.areaUnit
-      };
-
-      if (!isPlotProperty()) {
-        areaPayload.builtUp = parseFloat(formData.builtUpArea) || 0;
-      }
-
-      if (isPlotProperty()) {
-        areaPayload.plotArea = parseFloat(formData.carpetArea) || 0;
-      }
-
-      const payload = {
-        title: formData.title,
-        description: formData.description,
-        bhk: parseInt(formData.bhk) || 1,
-        bathrooms: parseInt(formData.bathrooms) || 1,
-        balconies: parseInt(formData.balconies) || 0,
-        price: {
-          amount: parseFloat(formData.price),
-          negotiable: formData.negotiable,
-          securityDeposit: parseFloat(formData.securityDeposit) || 0
-        },
-        area: areaPayload,
-        floor: {
-          current: parseInt(formData.currentFloor) || 0,
-          total: parseInt(formData.totalFloors) || 1
-        },
-        propertyAge: formData.propertyAge,
-        postedBy: formData.postedBy,
-        availableFrom: formData.availableFrom
-      };
-
-      const response = await axios.put(
-        `${API_BASE_URL}/properties/${propertyId}/basic-details`,
-        payload,
-        {
-          headers: getAuthHeaders()
-        }
-      );
-
-      return response.data.success;
-    } catch (err) {
-      console.error('Error response:', err.response?.data);
-      setError(err.response?.data?.message || 'Failed to update basic details');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateFeatures = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      
-      const safeParseInt = (v) => {
-        const n = parseInt(v);
-        return isNaN(n) ? undefined : n;
-      };
-      const safeParseFloat = (v) => {
-        const n = parseFloat(v);
-        return isNaN(n) ? undefined : n;
-      };
-
-      const bhk = safeParseInt(formData.bhk);
-      const bathrooms = safeParseInt(formData.bathrooms);
-      const balconies = safeParseInt(formData.balconies);
-
-      const priceAmount = safeParseFloat(formData.price);
-      const maintenanceAmount = safeParseFloat(formData.maintenanceCharges) || 0;
-      const securityDeposit = safeParseFloat(formData.securityDeposit) || 0;
-
-      const carpetArea = safeParseFloat(formData.carpetArea);
-      const builtUpArea = safeParseFloat(formData.builtUpArea);
-
-      const floorCurrent = safeParseInt(formData.currentFloor);
-      const floorTotal = safeParseInt(formData.totalFloors);
-
-      const areaPayload = { unit: formData.areaUnit };
-      if (carpetArea !== undefined && carpetArea > 0) areaPayload.carpet = carpetArea;
-
-      if ((formData.propertyType || '').toLowerCase() === 'plot') {
-        if (carpetArea !== undefined && carpetArea > 0) {
-          areaPayload.plotArea = carpetArea;
-        }
-      } else {
-        if (builtUpArea !== undefined && builtUpArea > 0) areaPayload.builtUp = builtUpArea;
-      }
-
-      // Build amenities array from the amenitiesData
-      const selectedAmenities = formData.amenitiesList.map(amenityName => {
-        const amenity = allAmenitiesFlat.find(a => a.name === amenityName);
-        return {
-          name: amenityName,
-          icon: amenity?.icon || ''
-        };
+      const map = new mapboxgl.Map({
+        container: mapRef.current,
+        style: "mapbox://styles/mapbox/streets-v12",
+        center: [lng, lat],
+        zoom: 13,
       });
 
-      const payload = {
-        title: formData.title,
-        description: formData.description,
-        ...(bhk !== undefined && { bhk }),
-        ...(bathrooms !== undefined && { bathrooms }),
-        ...(balconies !== undefined && { balconies }),
-        price: {
-          ...(priceAmount !== undefined && { amount: priceAmount }),
-          negotiable: formData.negotiable,
-          maintenanceCharges: {
-            amount: maintenanceAmount,
-            frequency: formData.maintenanceFrequency
+      const marker = new mapboxgl.Marker({ color: "#7c3aed", draggable: true })
+        .setLngLat([lng, lat])
+        .addTo(map);
+
+      marker.on("dragend", () => {
+        const lngLat = marker.getLngLat();
+        setForm((prev) => ({
+          ...prev,
+          location: {
+            ...prev.location,
+            coordinates: { latitude: lngLat.lat, longitude: lngLat.lng },
           },
-          securityDeposit: securityDeposit
-        },
-        area: areaPayload,
-        floor: {
-          ...(floorCurrent !== undefined && { current: floorCurrent }),
-          ...(floorTotal !== undefined && { total: floorTotal })
-        },
-        propertyAge: formData.propertyAge,
-        availableFrom: formData.availableFrom,
-        amenities: selectedAmenities,
-        furnishingType: formData.furnishingType,
-        furnishingItems: formData.furnishingItems,
-        powerBackup: formData.powerBackup,
-        waterSupply: formData.waterSupply,
-        gatedSecurity: formData.gatedSecurity,
-        liftAvailable: formData.liftAvailable
-      };
+        }));
+      });
 
-      // PG specific fields
-      if (isPGProperty()) {
-        payload.pgDetails = {
-          roomType: formData.roomType,
-          foodIncluded: formData.foodIncluded,
-          foodType: formData.foodType,
-          foodTimings: formData.foodTimings || {},
-          genderPreference: formData.genderPreference,
-          totalBeds: parseInt(formData.totalBeds) || 0,
-          availableBeds: parseInt(formData.availableBeds) || 0,
-          commonWashroom: formData.commonWashroom,
-          attachedWashroom: formData.attachedWashroom,
-          commonAreas: formData.commonAreas,
-          facilities: formData.facilities || {},
-          securityFeatures: formData.securityFeatures || {}
-        };
-      }
+      map.on("click", (e) => {
+        marker.setLngLat(e.lngLat);
+        setForm((prev) => ({
+          ...prev,
+          location: {
+            ...prev.location,
+            coordinates: { latitude: e.lngLat.lat, longitude: e.lngLat.lng },
+          },
+        }));
+      });
 
-      const response = await axios.put(
-        `${API_BASE_URL}/properties/${propertyId}/features`,
-        payload,
-        {
-          headers: getAuthHeaders()
+      mapInstanceRef.current = map;
+      markerRef.current = marker;
+    }
+  }, [mapLoaded, currentStep]);
+
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setForm((prev) => ({
+          ...prev,
+          location: { ...prev.location, coordinates: { latitude, longitude } },
+        }));
+        if (mapInstanceRef.current && markerRef.current) {
+          mapInstanceRef.current.flyTo({ center: [longitude, latitude], zoom: 15 });
+          markerRef.current.setLngLat([longitude, latitude]);
         }
-      );
+        fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${MAPBOX_TOKEN}`)
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.features && d.features[0]) {
+              const place = d.features[0];
+              setForm((prev) => ({
+                ...prev,
+                location: { ...prev.location, address: place.place_name },
+              }));
+            }
+          });
+      },
+      () => addToast("Could not get location", "error")
+    );
+  };
 
-      return response.data.success;
-    } catch (err) {
-      console.error('Error response:', err.response?.data);
-      setError(err.response?.data?.message || 'Failed to update features');
-      return false;
+  const searchAddress = async (query) => {
+    if (!query || query.length < 3) return;
+    const res = await fetch(
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&country=in&limit=5`
+    );
+    const data = await res.json();
+    setLocationSuggestions(data.features || []);
+  };
+
+  const selectSuggestion = (feat) => {
+    const [lng, lat] = feat.center;
+    setForm((prev) => ({
+      ...prev,
+      location: {
+        ...prev.location,
+        address: feat.place_name,
+        coordinates: { latitude: lat, longitude: lng },
+      },
+    }));
+    if (mapInstanceRef.current && markerRef.current) {
+      mapInstanceRef.current.flyTo({ center: [lng, lat], zoom: 15 });
+      markerRef.current.setLngLat([lng, lat]);
+    }
+    setLocationSuggestions([]);
+  };
+
+  const updateForm = (path, value) => {
+    setForm((prev) => {
+      const keys = path.split(".");
+      const newForm = { ...prev };
+      let obj = newForm;
+      for (let i = 0; i < keys.length - 1; i++) {
+        obj[keys[i]] = { ...obj[keys[i]] };
+        obj = obj[keys[i]];
+      }
+      obj[keys[keys.length - 1]] = value;
+      return newForm;
+    });
+    if (errors[path]) {
+      setErrors((prev) => { const e = { ...prev }; delete e[path]; return e; });
+    }
+  };
+
+  const toggleArray = (path, value) => {
+    const keys = path.split(".");
+    let arr = form;
+    for (const k of keys) arr = arr[k];
+    const newArr = arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value];
+    updateForm(path, newArr);
+  };
+
+  const validateStep = () => {
+    const errs = {};
+    if (currentStep === 0) {
+      if (!form.category) errs.category = "Category is required";
+      if (!form.listingType) errs.listingType = "Listing type is required";
+      if (!form.propertyType) errs.propertyType = "Property type is required";
+    } else if (currentStep === 1) {
+      if (!form.title.trim()) errs.title = "Title is required";
+      if (!form.description.trim()) errs.description = "Description is required";
+      if (!form.price.amount) errs["price.amount"] = "Price is required";
+      if (!form.area.carpet) errs["area.carpet"] = "Carpet area is required";
+      if (!form.propertyAge) errs.propertyAge = "Property age is required";
+    } else if (currentStep === 3) {
+      if (!form.location.address.trim()) errs["location.address"] = "Address is required";
+      if (!form.location.city.trim()) errs["location.city"] = "City is required";
+      if (!form.location.locality.trim()) errs["location.locality"] = "Locality is required";
+      if (!form.location.pincode || !/^[0-9]{6}$/.test(form.location.pincode))
+        errs["location.pincode"] = "Valid 6-digit pincode required";
+    } else if (currentStep === 6) {
+      if (!form.contactInfo.name.trim()) errs["contactInfo.name"] = "Name is required";
+      if (!form.contactInfo.phone || !/^[0-9]{10}$/.test(form.contactInfo.phone))
+        errs["contactInfo.phone"] = "Valid 10-digit phone required";
+      if (form.contactInfo.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.contactInfo.email))
+        errs["contactInfo.email"] = "Invalid email format";
+    }
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const createDraft = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/create-draft`, {
+        method: "POST",
+        headers: apiHeaders,
+        body: JSON.stringify({
+          category: form.category,
+          propertyType: form.propertyType,
+          listingType: form.listingType,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPropertyId(data.data.propertyId);
+        addToast("Property draft created!");
+        setCurrentStep(1);
+      } else throw new Error(data.message);
+    } catch (e) {
+      addToast(e.message || "Failed to create draft", "error");
     } finally {
       setLoading(false);
     }
   };
 
-  const updateLocation = async () => {
+  const saveBasicDetails = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      setError('');
-      
-      const payload = {
-        location: {
-          address: formData.address,
-          city: formData.city,
-          locality: formData.locality,
-          subLocality: formData.subLocality,
-          landmark: formData.landmark,
-          pincode: formData.pincode,
-          state: formData.state,
-          coordinates: {
-            latitude: parseFloat(formData.latitude),
-            longitude: parseFloat(formData.longitude)
-          }
-        }
-      };
+      const res = await fetch(`${API_BASE}/${propertyId}/basic-details`, {
+        method: "PUT",
+        headers: apiHeaders,
+        body: JSON.stringify({
+          title: form.title,
+          description: form.description,
+          bhk: form.bhk,
+          bathrooms: form.bathrooms,
+          balconies: form.balconies,
+          propertyAge: form.propertyAge,
+          availableFrom: form.availableFrom,
+          floor: form.floor,
+          area: { carpet: Number(form.area.carpet), builtUp: Number(form.area.builtUp || 0), unit: form.area.unit },
+          price: {
+            amount: Number(form.price.amount),
+            negotiable: form.price.negotiable,
+            securityDeposit: Number(form.price.securityDeposit) || 0,
+            maintenanceCharges: {
+              amount: Number(form.price.maintenanceCharges.amount) || 0,
+              frequency: form.price.maintenanceCharges.frequency,
+            },
+            lockInPeriod: Number(form.price.lockInPeriod) || 0,
+            noticePeriod: Number(form.price.noticePeriod) || 0,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (data.success) { addToast("Basic details saved!"); setCurrentStep(2); }
+      else throw new Error(data.message);
+    } catch (e) {
+      addToast(e.message || "Failed to save basic details", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      const response = await axios.put(
-        `${API_BASE_URL}/properties/${propertyId}/location`,
-        payload,
-        {
-          headers: getAuthHeaders()
-        }
-      );
+  const saveFeatures = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/${propertyId}/features`, {
+        method: "PUT",
+        headers: apiHeaders,
+        body: JSON.stringify({
+          furnishing: form.furnishing,
+          parking: form.parking,
+          facing: form.facing,
+          amenities: form.amenities,
+          propertyFeatures: form.propertyFeatures,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) { addToast("Features saved!"); setCurrentStep(3); }
+      else throw new Error(data.message);
+    } catch (e) {
+      addToast(e.message || "Failed to save features", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      return response.data.success;
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update location');
-      return false;
+  const saveLocation = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/${propertyId}/location`, {
+        method: "PUT",
+        headers: apiHeaders,
+        body: JSON.stringify({ location: form.location }),
+      });
+      const data = await res.json();
+      if (data.success) { addToast("Location saved!"); setCurrentStep(4); }
+      else throw new Error(data.message);
+    } catch (e) {
+      addToast(e.message || "Failed to save location", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveOwnership = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/${propertyId}/ownership-details`, {
+        method: "PUT",
+        headers: apiHeaders,
+        body: JSON.stringify({
+          ownership: { ...form.ownership, propertyTaxPerYear: Number(form.ownership.propertyTaxPerYear) || 0 },
+          builder: {
+            ...form.builder,
+            totalUnits: Number(form.builder.totalUnits) || 0,
+            totalTowers: Number(form.builder.totalTowers) || 0,
+            totalFloors: Number(form.builder.totalFloors) || 0,
+            bookingProcess: {
+              ...form.builder.bookingProcess,
+              tokenAmount: Number(form.builder.bookingProcess.tokenAmount) || 0,
+            },
+          },
+          transactionType: form.transactionType,
+          inclusionsInPrice: form.inclusionsInPrice,
+          additionalRooms: form.additionalRooms,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) { addToast("Ownership details saved!"); setCurrentStep(5); }
+      else throw new Error(data.message);
+    } catch (e) {
+      addToast(e.message || "Failed to save ownership", "error");
     } finally {
       setLoading(false);
     }
   };
 
   const uploadPhotos = async () => {
+    if (form.imageFiles.length === 0) { setCurrentStep(6); return; }
+    setLoading(true);
     try {
-      setLoading(true);
-      setError('');
-      
-      const formDataToSend = new FormData();
-      
-      formData.images.forEach(image => {
-        formDataToSend.append('images', image);
+      const fd = new FormData();
+      form.imageFiles.forEach((f) => fd.append("images", f));
+      const res = await fetch(`${API_BASE}/${propertyId}/upload-photos`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${getAuthToken()}` },
+        body: fd,
       });
-
-      const token = getAuthToken();
-      const response = await axios.post(
-        `${API_BASE_URL}/properties/${propertyId}/upload-photos`,
-        formDataToSend,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          },
-          onUploadProgress: (progressEvent) => {
-            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-            console.log(`Upload Progress: ${percentCompleted}%`);
-          }
-        }
-      );
-
-      return response.data.success;
-    } catch (err) {
-      console.error('Upload error:', err.response?.data || err.message);
-      setError(err.response?.data?.message || 'Failed to upload photos');
-      return false;
+      const data = await res.json();
+      if (data.success) { addToast(`${data.data.uploadedCount} photo(s) uploaded!`); setCurrentStep(6); }
+      else throw new Error(data.message);
+    } catch (e) {
+      addToast(e.message || "Failed to upload photos", "error");
     } finally {
       setLoading(false);
     }
   };
 
-  const updateContactInfo = async () => {
+  const saveContact = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      setError('');
-      
-      const payload = {
-        contactInfo: {
-          name: formData.contactName,
-          phone: formData.contactPhone,
-          alternatePhone: formData.alternatePhone,
-          email: formData.contactEmail,
-          preferredCallTime: formData.preferredCallTime
-        }
-      };
-
-      const response = await axios.put(
-        `${API_BASE_URL}/properties/${propertyId}/contact-info`,
-        payload,
-        {
-          headers: getAuthHeaders()
-        }
-      );
-
-      return response.data.success;
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update contact info');
-      return false;
+      const res = await fetch(`${API_BASE}/${propertyId}/contact-info`, {
+        method: "PUT",
+        headers: apiHeaders,
+        body: JSON.stringify({ contactInfo: form.contactInfo }),
+      });
+      const data = await res.json();
+      if (data.success) { addToast("Contact info saved!"); setCurrentStep(7); }
+      else throw new Error(data.message);
+    } catch (e) {
+      addToast(e.message || "Failed to save contact", "error");
     } finally {
       setLoading(false);
     }
   };
 
   const submitProperty = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      setError('');
-      
-      const response = await axios.post(
-        `${API_BASE_URL}/properties/${propertyId}/submit`,
-        {},
-        {
-          headers: getAuthHeaders()
-        }
-      );
-
-      if (response.data.success) {
-        alert('Property submitted successfully! It will be reviewed within 24-48 hours.');
-        navigate('/properties');
-      }
-      return response.data.success;
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to submit property');
-      return false;
+      const res = await fetch(`${API_BASE}/${propertyId}/submit`, {
+        method: "POST",
+        headers: apiHeaders,
+      });
+      const data = await res.json();
+      if (data.success) { addToast("Property submitted for approval! 🎉"); setCurrentStep(8); }
+      else throw new Error(data.message);
+    } catch (e) {
+      addToast(e.message || "Failed to submit property", "error");
     } finally {
       setLoading(false);
     }
   };
 
   const handleNext = async () => {
-    let success = true;
-
-    switch(currentStep) {
-      case 1:
-        success = await createDraft();
-        break;
-      case 2:
-        success = await updateBasicDetails();
-        break;
-      case 3:
-        success = await updateFeatures();
-        break;
-      case 4:
-        success = await updateLocation();
-        break;
-      case 5:
-        if (formData.images.length > 0) {
-          success = await uploadPhotos();
-        } else {
-          success = true;
-        }
-        break;
-      case 6:
-        success = await updateContactInfo();
-        if (success) {
-          await submitProperty();
-          return;
-        }
-        break;
-      default:
-        break;
-    }
-
-    if (success && currentStep < 6) {
-      setCurrentStep(prev => prev + 1);
-    }
+    if (!validateStep()) { addToast("Please fix the errors before proceeding", "error"); return; }
+    if (currentStep === 0 && !propertyId) { await createDraft(); return; }
+    if (currentStep === 1) { await saveBasicDetails(); return; }
+    if (currentStep === 2) { await saveFeatures(); return; }
+    if (currentStep === 3) { await saveLocation(); return; }
+    if (currentStep === 4) { await saveOwnership(); return; }
+    if (currentStep === 5) { await uploadPhotos(); return; }
+    if (currentStep === 6) { await saveContact(); return; }
+    if (currentStep === 7) { await submitProperty(); return; }
   };
 
   const handleBack = () => {
-    if (currentStep > 1) {
-      setCurrentStep(prev => prev - 1);
-    }
+    if (currentStep > 0) setCurrentStep((p) => p - 1);
   };
 
-  // Flatten amenities for easier lookup
-  const allAmenitiesFlat = [
-    ...amenitiesData.basic,
-    ...amenitiesData.nearby,
-    ...amenitiesData.society
+  const sidebarSteps = [
+    { label: "Property Details", icon: FiHome, step: 0 },
+    { label: "Address", icon: FiMapPin, step: 3, score: 15 },
+    { label: "Photos", icon: FiCamera, step: 5, score: 15 },
+    { label: "Verify", icon: FiShield, step: 4, score: 20 },
+    { label: "Property Highlights", icon: FiStar, step: 2 },
+    { label: "Review", icon: FiEye, step: 7 },
   ];
 
-  const renderStepContent = () => {
-    switch(currentStep) {
-      case 1:
-        return (
-          <div className="space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 bg-gradient-to-br from-blue-600 to-orange-500 rounded-2xl shadow-lg">
-                <Home className="text-white" size={28} />
+  const filteredCities = cities.filter((c) =>
+    c.name.toLowerCase().includes(citySearch.toLowerCase())
+  );
+
+  const residentialTypes = [
+    { label: "Room", icon: RiHotelBedLine },
+    { label: "Flat", icon: PiBuildingApartment },
+    { label: "Villa", icon: MdVilla },
+    { label: "Plot", icon: BiArea },
+    { label: "Studio", icon: FiGrid },
+    { label: "Independent House", icon: PiHouseLine },
+    { label: "Builder Floor", icon: LuBuilding2 },
+    { label: "Other", icon: FiBriefcase },
+  ];
+
+  const commercialTypes = [
+    { label: "Office", icon: HiOutlineOfficeBuilding },
+    { label: "Shop", icon: MdStorefront },
+    { label: "Showroom", icon: MdDoorSliding },
+    { label: "Warehouse", icon: MdOutlineWarehouse },
+    { label: "Other", icon: FiBriefcase },
+  ];
+
+  const propertyTypes = form.category === "Residential" ? residentialTypes : commercialTypes;
+
+  const furnishingItems = [
+    "Sofa", "Center Table", "Dining Table", "TV Unit", "Curtains", "Carpet",
+    "Bed", "Wardrobe", "Mattress", "Side Table", "Dressing Table",
+    "Modular Kitchen", "Chimney", "Stove", "Refrigerator", "Microwave",
+    "Water Purifier", "Air Conditioner", "Geyser", "Washing Machine",
+    "Fan", "Light Fittings", "Inverter",
+  ];
+
+  const societyAmenities = [
+    "Swimming Pool", "Gym", "Club House", "Park", "Kids Play Area",
+    "Community Hall", "Indoor Games Room", "Jogging Track", "Sports Court",
+    "Meditation Area", "Amphitheatre", "Library", "Party Hall",
+  ];
+
+  const securityAmenities = [
+    "CCTV", "24x7 Security", "Intercom", "Fire Alarm", "Fire Extinguisher",
+    "Video Door Security", "Access Control", "Visitor Parking", "Security Cabin",
+  ];
+
+  const essentialAmenities = [
+    "Lift", "Power Backup", "Piped Gas", "Water Storage", "Rainwater Harvesting",
+    "Waste Disposal", "Sewage Treatment Plant", "DG Backup", "Solar Panels",
+  ];
+
+  const nearbyAmenities = [
+    "School", "Hospital", "Market", "ATM", "Bank", "Metro Station",
+    "Bus Stop", "Railway Station", "Mall", "Restaurant", "Pharmacy", "Park",
+  ];
+
+  const SidebarContent = () => (
+    <>
+      <div className="px-6 py-5 border-b border-gray-100">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-xs">G</span>
+            </div>
+            <span className="text-gray-800 font-bold text-sm tracking-wide">GHARZO <span className="text-orange-500 font-normal text-xs">REALTY™</span></span>
+          </div>
+          {/* Close button only on mobile */}
+          <button
+            className="lg:hidden text-gray-400 hover:text-gray-600"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <FiX size={20} />
+          </button>
+        </div>
+        <button className="text-xs text-gray-500 flex items-center gap-1 hover:text-violet-600 transition-colors"
+                            onClick={() => navigate("/landlord")}
+
+        >
+          <FiChevronLeft size={14} /> Return to dashboard
+        </button>
+      </div>
+
+      <div className="px-6 py-4 border-b border-gray-100">
+        <h2 className="font-bold text-gray-900 text-base leading-tight">Post your property</h2>
+        <p className="text-xs text-gray-400 mt-0.5">Sell or rent your property</p>
+        <div className="mt-3 flex items-center gap-2">
+          <div className="flex-1 bg-gray-100 rounded-full h-1.5">
+            <div
+              className="bg-gradient-to-r from-violet-500 to-violet-600 h-1.5 rounded-full transition-all duration-500"
+              style={{ width: `${Math.round((currentStep / 7) * 100)}%` }}
+            />
+          </div>
+          <span className="text-xs text-gray-500 font-medium">{Math.round((currentStep / 7) * 100)}%</span>
+          <FiInfo size={14} className="text-gray-400" />
+        </div>
+      </div>
+
+      <nav className="flex-1 px-4 py-4 flex flex-col gap-1 overflow-y-auto">
+        {sidebarSteps.map(({ label, icon: Icon, step, score }) => {
+          const isActive = currentStep === step || (step === 0 && currentStep <= 1) ||
+            (step === 2 && currentStep === 2) || (step === 3 && currentStep === 3);
+          const isDone = currentStep > step;
+          return (
+            <div key={label} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all
+              ${isActive ? "bg-violet-50" : "hover:bg-gray-50"}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
+                ${isDone ? "bg-emerald-100 text-emerald-600" : isActive ? "bg-violet-600 text-white" : "bg-gray-100 text-gray-400"}`}>
+                {isDone ? <FiCheck size={14} /> : <Icon size={14} />}
               </div>
-              <h2 className="text-2xl font-bold text-gray-900">Select Property Type</h2>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Category *
-              </label>
-              <select
-                name="category"
-                value={formData.category}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none transition-colors"
-              >
-                <option value="">Select Category</option>
-                {categoryOptions.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
-
-            {formData.category && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Property Type *
-                </label>
-                <select
-                  name="propertyType"
-                  value={formData.propertyType}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none transition-colors"
-                >
-                  <option value="">Select Type</option>
-                  {propertyTypeOptions[formData.category]?.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-              </motion.div>
-            )}
-
-            {formData.propertyType && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Listing Type *
-                </label>
-                <select
-                  name="listingType"
-                  value={formData.listingType}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none transition-colors"
-                >
-                  <option value="">Select Listing Type</option>
-                  {listingTypeOptions.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-              </motion.div>
-            )}
-
-            {formData.category && formData.propertyType && formData.listingType && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                className="p-4 bg-gradient-to-r from-blue-50 to-orange-50 border-2 border-blue-200 rounded-xl"
-              >
-                <p className="text-sm font-medium text-gray-800">
-                  <span className="font-bold">Selected:</span> {formData.propertyType} • {formData.category} • {formData.listingType}
+              <div className="flex-1 min-w-0">
+                <p className={`text-xs font-semibold truncate ${isActive ? "text-violet-700" : isDone ? "text-gray-700" : "text-gray-500"}`}>
+                  {label}
                 </p>
-              </motion.div>
-            )}
-          </div>
-        );
-
-      case 2:
-        return (
-          <div className="space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 bg-gradient-to-br from-blue-600 to-orange-500 rounded-2xl shadow-lg">
-                <Building className="text-white" size={28} />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900">Basic Details</h2>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Property Title *
-              </label>
-              <input
-                type="text"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                required
-                placeholder={
-                  isPlotProperty() ? "e.g., Prime Residential Plot in Vijay Nagar" :
-                  isCommercialProperty() ? "e.g., Commercial Space in Prime Location" :
-                  isPGProperty() ? "e.g., Comfortable PG for Students & Working Professionals" :
-                  "e.g., Spacious 2BHK Flat in Vijay Nagar"
-                }
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none transition-colors"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Description *
-              </label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                required
-                rows="4"
-                placeholder="Describe your property, its features, nearby facilities..."
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none resize-none transition-colors"
-              ></textarea>
-            </div>
-
-            {needsBHKDetails() && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="grid grid-cols-1 md:grid-cols-3 gap-4"
-              >
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    <BedDouble className="inline mr-1" size={16} />
-                    BHK *
-                  </label>
-                  <input
-                    type="number"
-                    name="bhk"
-                    value={formData.bhk}
-                    onChange={handleChange}
-                    required
-                    min="1"
-                    placeholder="e.g., 2"
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    <Bath className="inline mr-1" size={16} />
-                    Bathrooms *
-                  </label>
-                  <input
-                    type="number"
-                    name="bathrooms"
-                    value={formData.bathrooms}
-                    onChange={handleChange}
-                    required
-                    min="1"
-                    placeholder="e.g., 2"
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Balconies *
-                  </label>
-                  <input
-                    type="number"
-                    name="balconies"
-                    value={formData.balconies}
-                    onChange={handleChange}
-                    required
-                    min="0"
-                    placeholder="e.g., 1"
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                  />
-                </div>
-              </motion.div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  <IndianRupee className="inline mr-1" size={16} />
-                  {isPGProperty() ? 'Monthly Rent (₹) *' : 'Price (₹) *'}
-                </label>
-                <input
-                  type="number"
-                  name="price"
-                  value={formData.price}
-                  onChange={handleChange}
-                  required
-                  placeholder={isPGProperty() ? "Monthly rent amount" : "Enter price"}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Security Deposit (₹)
-                </label>
-                <input
-                  type="number"
-                  name="securityDeposit"
-                  value={formData.securityDeposit}
-                  onChange={handleChange}
-                  placeholder="Enter security deposit"
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                />
-              </div>
-            </div>
-
-            {!isPGProperty() && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-4"
-              >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      <Square className="inline mr-1" size={16} />
-                      {isPlotProperty() ? 'Plot Area *' : 'Carpet Area *'}
-                    </label>
-                    <input
-                      type="number"
-                      name="carpetArea"
-                      value={formData.carpetArea}
-                      onChange={handleChange}
-                      required
-                      placeholder="Enter area"
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                    />
-                  </div>
-
-                  {!isPlotProperty() && (
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Built-up Area *
-                      </label>
-                      <input
-                        type="number"
-                        name="builtUpArea"
-                        value={formData.builtUpArea}
-                        onChange={handleChange}
-                        required
-                        placeholder="Enter area"
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Area Unit *</label>
-                  <select
-                    name="areaUnit"
-                    value={formData.areaUnit}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                  >
-                    {areaUnitOptions.map(u => (
-                      <option key={u} value={u}>{u}</option>
-                    ))}
-                  </select>
-                </div>
-              </motion.div>
-            )}
-
-            {needsFloorDetails() && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="grid grid-cols-1 md:grid-cols-2 gap-4"
-              >
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Current Floor *
-                  </label>
-                  <input
-                    type="number"
-                    name="currentFloor"
-                    value={formData.currentFloor}
-                    onChange={handleChange}
-                    required
-                    min="0"
-                    placeholder="e.g., 2"
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Total Floors *
-                  </label>
-                  <input
-                    type="number"
-                    name="totalFloors"
-                    value={formData.totalFloors}
-                    onChange={handleChange}
-                    required
-                    min="1"
-                    placeholder="e.g., 5"
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                  />
-                </div>
-              </motion.div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Property Age *
-                </label>
-                <select
-                  name="propertyAge"
-                  value={formData.propertyAge}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                >
-                  <option value="">Select Age</option>
-                  {propertyAgeOptions.map(age => (
-                    <option key={age} value={age}>{age}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Available From *
-                </label>
-                <input
-                  type="date"
-                  name="availableFrom"
-                  value={formData.availableFrom}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                />
-              </div>
-            </div>
-
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Posted By *
-              </label>
-              <div className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-gray-50 flex items-center">
-                <span className="text-gray-700 font-medium">
-                  {formData.postedBy || 'Loading...'}
-                </span>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">Based on your account type</p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                name="negotiable"
-                checked={formData.negotiable}
-                onChange={handleChange}
-                className="w-5 h-5 text-[#FF6B00] border-gray-300 rounded focus:ring-[#FF6B00]"
-              />
-              <label className="text-sm font-medium text-gray-700">Price Negotiable</label>
-            </div>
-          </div>
-        );
-
-      case 3:
-        return (
-          <div className="space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 bg-gradient-to-br from-blue-600 to-orange-500 rounded-2xl shadow-lg">
-                <Wifi className="text-white" size={28} />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900">Property Features</h2>
-            </div>
-
-            {isPGProperty() && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-6 p-6 bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-2xl"
-              >
-                <h3 className="text-xl font-bold text-purple-900 flex items-center gap-2">
-                  <Users size={24} />
-                  PG/Hostel Details
-                </h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Room Type *</label>
-                    <select 
-                      name="roomType" 
-                      value={formData.roomType} 
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                    >
-                      <option value="">Select Room Type</option>
-                      {roomTypeOptions.map(r => (<option key={r} value={r}>{r}</option>))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Gender Preference *</label>
-                    <select 
-                      name="genderPreference" 
-                      value={formData.genderPreference} 
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                    >
-                      {genderPreferenceOptions.map(g => (<option key={g} value={g}>{g}</option>))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Total Beds *</label>
-                    <input
-                      type="number"
-                      name="totalBeds"
-                      value={formData.totalBeds}
-                      onChange={handleChange}
-                      required
-                      min="1"
-                      placeholder="e.g., 10"
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Available Beds *</label>
-                    <input
-                      type="number"
-                      name="availableBeds"
-                      value={formData.availableBeds}
-                      onChange={handleChange}
-                      required
-                      min="0"
-                      placeholder="e.g., 3"
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <label className="flex items-center gap-2 cursor-pointer p-3 border-2 border-gray-200 rounded-xl hover:border-[#FF6B00] transition-colors bg-white">
-                    <input
-                      type="checkbox"
-                      name="foodIncluded"
-                      checked={formData.foodIncluded}
-                      onChange={handleChange}
-                      className="w-5 h-5 text-[#FF6B00] border-gray-300 rounded focus:ring-[#FF6B00]"
-                    />
-                    <span className="text-sm font-medium text-gray-700">Food Included</span>
-                  </label>
-
-                  {formData.foodIncluded && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                    >
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Food Type *</label>
-                      <select 
-                        name="foodType" 
-                        value={formData.foodType} 
-                        onChange={handleChange}
-                        required={formData.foodIncluded}
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                      >
-                        <option value="">Select Food Type</option>
-                        {foodTypeOptions.map(f => (<option key={f} value={f}>{f}</option>))}
-                      </select>
-                    </motion.div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <label className="flex items-center gap-2 cursor-pointer p-3 border-2 border-gray-200 rounded-xl hover:border-[#FF6B00] transition-colors bg-white">
-                    <input
-                      type="checkbox"
-                      name="commonWashroom"
-                      checked={formData.commonWashroom}
-                      onChange={handleChange}
-                      className="w-5 h-5 text-[#FF6B00] border-gray-300 rounded focus:ring-[#FF6B00]"
-                    />
-                    <span className="text-sm font-medium text-gray-700">Common Washroom</span>
-                  </label>
-
-                  <label className="flex items-center gap-2 cursor-pointer p-3 border-2 border-gray-200 rounded-xl hover:border-[#FF6B00] transition-colors bg-white">
-                    <input
-                      type="checkbox"
-                      name="attachedWashroom"
-                      checked={formData.attachedWashroom}
-                      onChange={handleChange}
-                      className="w-5 h-5 text-[#FF6B00] border-gray-300 rounded focus:ring-[#FF6B00]"
-                    />
-                    <span className="text-sm font-medium text-gray-700">Attached Washroom</span>
-                  </label>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-3">Common Areas</label>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {commonAreasOptions.map(area => (
-                      <label key={area} className="flex items-center gap-2 cursor-pointer p-3 border-2 border-gray-200 rounded-xl hover:border-[#FF6B00] transition-colors bg-white">
-                        <input
-                          type="checkbox"
-                          checked={formData.commonAreas.includes(area)}
-                          onChange={() => handleCommonAreaToggle(area)}
-                          className="w-5 h-5 text-[#FF6B00] border-gray-300 rounded focus:ring-[#FF6B00]"
-                        />
-                        <span className="text-sm font-medium text-gray-700">{area}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {!isPlotProperty() && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-4"
-              >
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Furnishing Type *
-                  </label>
-                  <select
-                    name="furnishingType"
-                    value={formData.furnishingType}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                  >
-                    <option value="Unfurnished">Unfurnished</option>
-                    <option value="Semi-Furnished">Semi-Furnished</option>
-                    <option value="Fully-Furnished">Fully-Furnished</option>
-                  </select>
-                </div>
-
-                {(formData.furnishingType === 'Semi-Furnished' || formData.furnishingType === 'Fully-Furnished') && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                  >
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">Furnishing Items</label>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {furnishingItemsOptions.map(item => (
-                        <label key={item} className="flex items-center gap-2 cursor-pointer p-3 border-2 border-gray-200 rounded-xl hover:border-[#FF6B00] transition-colors">
-                          <input
-                            type="checkbox"
-                            checked={formData.furnishingItems.includes(item)}
-                            onChange={() => handleFurnishingItemToggle(item)}
-                            className="w-5 h-5 text-[#FF6B00] border-gray-300 rounded focus:ring-[#FF6B00]"
-                          />
-                          <span className="text-sm font-medium text-gray-700">{item}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </motion.div>
+                {isActive && (
+                  <p className="text-xs text-violet-500">In progress</p>
                 )}
-              </motion.div>
-            )}
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
-                Amenities
-              </label>
-              {loadingMasterData.amenities ? (
-                <div className="flex items-center gap-2 text-gray-500">
-                  <Loader className="animate-spin" size={20} />
-                  Loading amenities...
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {allAmenitiesFlat.length > 0 ? (
-                    allAmenitiesFlat.map(amenity => (
-                      <label key={amenity.name} className="flex items-center gap-2 cursor-pointer p-3 border-2 border-gray-200 rounded-xl hover:border-[#FF6B00] transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={formData.amenitiesList.includes(amenity.name)}
-                          onChange={() => handleAmenityToggle(amenity.name)}
-                          className="w-5 h-5 text-[#FF6B00] border-gray-300 rounded focus:ring-[#FF6B00]"
-                        />
-                        <span className="text-lg">{amenity.icon}</span>
-                        <span className="text-sm font-medium text-gray-700">{amenity.name}</span>
-                      </label>
-                    ))
-                  ) : (
-                    <p className="text-gray-500">No amenities available</p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Power Backup
-                </label>
-                <select
-                  name="powerBackup"
-                  value={formData.powerBackup}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                >
-                  <option value="">Select</option>
-                  {powerBackupOptions.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Water Supply
-                </label>
-                <select
-                  name="waterSupply"
-                  value={formData.waterSupply}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                >
-                  <option value="">Select</option>
-                  {waterSupplyOptions.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <label className="flex items-center gap-2 cursor-pointer p-3 border-2 border-gray-200 rounded-xl hover:border-[#FF6B00] transition-colors">
-                <input
-                  type="checkbox"
-                  name="gatedSecurity"
-                  checked={formData.gatedSecurity}
-                  onChange={handleChange}
-                  className="w-5 h-5 text-[#FF6B00] border-gray-300 rounded focus:ring-[#FF6B00]"
-                />
-                <span className="text-sm font-medium text-gray-700">Gated Security</span>
-              </label>
-
-              <label className="flex items-center gap-2 cursor-pointer p-3 border-2 border-gray-200 rounded-xl hover:border-[#FF6B00] transition-colors">
-                <input
-                  type="checkbox"
-                  name="liftAvailable"
-                  checked={formData.liftAvailable}
-                  onChange={handleChange}
-                  className="w-5 h-5 text-[#FF6B00] border-gray-300 rounded focus:ring-[#FF6B00]"
-                />
-                <span className="text-sm font-medium text-gray-700">Lift Available</span>
-              </label>
-            </div>
-          </div>
-        );
-
-      case 4:
-        return (
-          <div className="space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 bg-gradient-to-br from-blue-600 to-orange-500 rounded-2xl shadow-lg">
-                <MapPin className="text-white" size={28} />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900">Location Details</h2>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Full Address *
-              </label>
-              <input
-                type="text"
-                name="address"
-                value={formData.address}
-                onChange={handleChange}
-                required
-                placeholder="Plot No, Street, Area"
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  City *
-                </label>
-                {loadingMasterData.cities ? (
-                  <div className="flex items-center gap-2 text-gray-500 py-3">
-                    <Loader className="animate-spin" size={20} />
-                    Loading cities...
-                  </div>
-                ) : (
-                  <select
-                    name="city"
-                    value={formData.city}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                  >
-                    <option value="">Select City</option>
-                    {cities.map(city => (
-                      <option key={city._id} value={city.name}>
-                        {city.name}
-                      </option>
-                    ))}
-                  </select>
+                {!isActive && !isDone && score && (
+                  <p className="text-xs text-emerald-500">Score +{score}%</p>
                 )}
               </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  State *
-                </label>
-                <input
-                  type="text"
-                  name="state"
-                  value={formData.state}
-                  onChange={handleChange}
-                  required
-                  placeholder="e.g., Madhya Pradesh"
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                />
-              </div>
             </div>
+          );
+        })}
+      </nav>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Locality *
-                </label>
-                {loadingMasterData.localities ? (
-                  <div className="flex items-center gap-2 text-gray-500 py-3">
-                    <Loader className="animate-spin" size={20} />
-                    Loading localities...
-                  </div>
-                ) : (
-                  <select
-                    name="locality"
-                    value={formData.locality}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                  >
-                    <option value="">Select Locality</option>
-                    {localities.map(loc => (
-                      <option key={loc._id} value={loc.name}>
-                        {loc.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Sub Locality
-                </label>
-                <input
-                  type="text"
-                  name="subLocality"
-                  value={formData.subLocality}
-                  onChange={handleChange}
-                  placeholder="e.g., Scheme 54"
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Landmark
-                </label>
-                <input
-                  type="text"
-                  name="landmark"
-                  value={formData.landmark}
-                  onChange={handleChange}
-                  placeholder="e.g., Near C21 Mall"
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Pincode *
-                </label>
-                <input
-                  type="text"
-                  name="pincode"
-                  value={formData.pincode}
-                  onChange={handleChange}
-                  required
-                  pattern="[0-9]{6}"
-                  placeholder="6-digit pincode"
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Latitude *
-                </label>
-                <input
-                  type="number"
-                  step="0.0001"
-                  name="latitude"
-                  value={formData.latitude}
-                  onChange={handleChange}
-                  required
-                  placeholder="e.g., 22.7532"
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Longitude *
-                </label>
-                <input
-                  type="number"
-                  step="0.0001"
-                  name="longitude"
-                  value={formData.longitude}
-                  onChange={handleChange}
-                  required
-                  placeholder="e.g., 75.8937"
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                />
-              </div>
-            </div>
-          </div>
-        );
-
-      case 5:
-        return (
-          <div className="space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 bg-gradient-to-br from-blue-600 to-orange-500 rounded-2xl shadow-lg">
-                <Upload className="text-white" size={28} />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900">Upload Photos</h2>
-            </div>
-            
-            <div>
-              <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-[#FF6B00] transition-colors cursor-pointer">
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                  id="image-upload"
-                />
-                <label htmlFor="image-upload" className="cursor-pointer">
-                  <Upload className="mx-auto text-gray-400 mb-3" size={48} />
-                  <p className="text-lg text-gray-600 font-semibold">Click to upload images</p>
-                  <p className="text-sm text-gray-500 mt-2">PNG, JPG up to 10MB each</p>
-                  <p className="text-xs text-gray-400 mt-1">Upload multiple high-quality images</p>
-                </label>
-              </div>
-
-              {imagePreviews.length > 0 && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-6"
-                >
-                  <p className="text-sm font-semibold text-gray-700 mb-3">
-                    Uploaded Images ({imagePreviews.length})
-                  </p>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {imagePreviews.map((preview, index) => (
-                      <div key={index} className="relative group">
-                        <img
-                          src={preview}
-                          alt={`Preview ${index + 1}`}
-                          className="w-full h-32 object-cover rounded-xl border-2 border-gray-200"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index)}
-                          className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-red-600"
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </div>
-          </div>
-        );
-
-      case 6:
-        return (
-          <div className="space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 bg-gradient-to-br from-blue-600 to-orange-500 rounded-2xl shadow-lg">
-                <Phone className="text-white" size={28} />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900">Contact Information</h2>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                <User className="inline mr-2" size={18} />
-                Full Name *
-              </label>
-              <input
-                type="text"
-                name="contactName"
-                value={formData.contactName}
-                onChange={handleChange}
-                required
-                placeholder="Enter your full name"
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  <Phone className="inline mr-2" size={18} />
-                  Phone Number *
-                </label>
-                <input
-                  type="tel"
-                  name="contactPhone"
-                  value={formData.contactPhone}
-                  onChange={handleChange}
-                  required
-                  pattern="[0-9]{10}"
-                  placeholder="10-digit mobile number"
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Alternate Phone
-                </label>
-                <input
-                  type="tel"
-                  name="alternatePhone"
-                  value={formData.alternatePhone}
-                  onChange={handleChange}
-                  pattern="[0-9]{10}"
-                  placeholder="10-digit mobile number"
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                <Mail className="inline mr-2" size={18} />
-                Email Address *
-              </label>
-              <input
-                type="email"
-                name="contactEmail"
-                value={formData.contactEmail}
-                onChange={handleChange}
-                required
-                placeholder="your.email@example.com"
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Preferred Call Time
-              </label>
-              <select
-                name="preferredCallTime"
-                value={formData.preferredCallTime}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FF6B00] focus:outline-none"
-              >
-                {preferredCallTimeOptions.map(time => (
-                  <option key={time} value={time}>{time}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
+      <div className="px-6 py-4 border-t border-gray-100">
+        <p className="text-xs text-gray-400">Need Help? <span className="text-violet-600 cursor-pointer font-medium">📞 Call 08048811281</span></p>
+      </div>
+    </>
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-orange-50 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <button
-            onClick={() => navigate(-1)}
-            className="p-2 hover:bg-white rounded-full transition-colors"
-          >
-            <ArrowLeft size={24} className="text-gray-700" />
-          </button>
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
-              <span className="bg-gradient-to-r from-[#0b4f91] to-[#FF6B00] bg-clip-text text-transparent">
-                Add Your Property
-              </span>
-            </h1>
-            <p className="text-gray-600 mt-1">Complete all steps to list your property</p>
-          </div>
-        </div>
+    <div className="bg-gradient-to-br from-slate-50 via-violet-50/30 to-blue-50/30 font-sans">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display:ital@0;1&display=swap');
+        * { font-family: 'DM Sans', sans-serif; }
+        .heading { font-family: 'DM Serif Display', serif; }
+        @keyframes slide-in { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .animate-slide-in { animation: slide-in 0.3s ease; }
+        @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fade-in 0.4s ease; }
+        ::-webkit-scrollbar { width: 4px; } 
+        ::-webkit-scrollbar-track { background: transparent; } 
+        ::-webkit-scrollbar-thumb { background: #c4b5fd; border-radius: 2px; }
+        .toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; inset: 0; background: #e5e7eb; border-radius: 24px; transition: 0.3s; }
+        .slider:before { content: ''; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
+        input:checked + .slider { background: #7c3aed; }
+        input:checked + .slider:before { transform: translateX(20px); }
+        
+        /* Mobile sidebar overlay */
+        .sidebar-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,0.5);
+          z-index: 40;
+        }
+        .sidebar-drawer {
+          position: fixed;
+          top: 0;
+          left: 0;
+          height: 100%;
+          width: 280px;
+          background: white;
+          z-index: 50;
+          display: flex;
+          flex-direction: column;
+          box-shadow: 4px 0 24px rgba(0,0,0,0.1);
+          transform: translateX(-100%);
+          transition: transform 0.3s ease;
+        }
+        .sidebar-drawer.open {
+          transform: translateX(0);
+        }
+      `}</style>
 
-        {/* Progress Steps */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-          <div className="flex items-center justify-between mb-2">
-            {steps.map((step, index) => (
-              <React.Fragment key={step.number}>
-                <div className="flex flex-col items-center">
-                  <div className={`
-                    w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm
-                    ${currentStep > step.number ? 'bg-green-500 text-white' : 
-                      currentStep === step.number ? 'bg-[#FF6B00] text-white' : 
-                      'bg-gray-200 text-gray-500'}
-                    transition-all duration-300
-                  `}>
-                    {currentStep > step.number ? <CheckCircle size={20} /> : step.number}
-                  </div>
-                  <span className="text-xs font-medium text-gray-600 mt-2 hidden md:block">
-                    {step.title}
-                  </span>
-                </div>
-                {index < steps.length - 1 && (
-                  <div className={`
-                    flex-1 h-1 mx-2
-                    ${currentStep > step.number ? 'bg-green-500' : 'bg-gray-200'}
-                    transition-all duration-300
-                  `} />
-                )}
-              </React.Fragment>
-            ))}
-          </div>
-          
-          {/* Mobile step title */}
-          <div className="md:hidden text-center mt-4">
-            <p className="text-sm font-semibold text-gray-700">
-              Step {currentStep}: {steps[currentStep - 1].title}
-            </p>
-          </div>
-        </div>
+      <Toast toasts={toasts} removeToast={removeToast} />
 
-        {/* Form Card */}
-        <div className="bg-white rounded-3xl shadow-2xl p-6 md:p-8">
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700"
-            >
-              {error}
-            </motion.div>
+      {currentStep === 8 ? (
+        <SuccessScreen />
+      ) : (
+        <div className="flex min-h-screen">
+
+          {/* ===== DESKTOP SIDEBAR (lg+) ===== */}
+          <div className="hidden lg:flex w-64 bg-white border-r border-gray-100 flex-shrink-0 flex-col shadow-sm">
+            <SidebarContent />
+          </div>
+
+          {/* ===== MOBILE SIDEBAR DRAWER ===== */}
+          {sidebarOpen && (
+            <div className="lg:hidden">
+              <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
+              <div className={`sidebar-drawer open`}>
+                <SidebarContent />
+              </div>
+            </div>
           )}
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentStep}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              {renderStepContent()}
-            </motion.div>
-          </AnimatePresence>
+          {/* Main Content */}
+          <div className="flex-1 flex flex-col overflow-hidden min-w-0">
 
-          {/* Navigation Buttons */}
-          <div className="flex gap-4 mt-8">
-            {currentStep > 1 && (
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+            {/* ===== MOBILE TOP BAR ===== */}
+            <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100 sticky top-0 z-30">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setSidebarOpen(true)}
+                  className="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-50 text-gray-600 hover:bg-violet-50 hover:text-violet-600 transition-colors"
+                >
+                  <FiMenu size={18} />
+                </button>
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
+                    <span className="text-white font-bold text-xs">G</span>
+                  </div>
+                  <span className="text-gray-800 font-bold text-sm">GHARZO</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-28 bg-gray-100 rounded-full h-1.5">
+                  <div
+                    className="bg-gradient-to-r from-violet-500 to-violet-600 h-1.5 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.round((currentStep / 7) * 100)}%` }}
+                  />
+                </div>
+                <span className="text-xs text-gray-500 font-medium">{Math.round((currentStep / 7) * 100)}%</span>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 animate-fade-in">
+
+                {/* Return to Dashboard Button */}
+                <div className="flex items-center gap-3 mb-4">
+                  <button
+                    onClick={() => navigate("/landlord")}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 hover:bg-violet-100 hover:text-violet-600 transition-colors"
+                  >
+                    <FiChevronLeft size={18} />
+                  </button>
+                  <span className="text-sm text-gray-500">Return to Dashboard</span>
+                </div>
+
+                {/* Step 0: Property Type */}
+                {currentStep === 0 && (
+                  <div>
+                    <h1 className="heading text-xl sm:text-2xl text-gray-900 mb-1">Add Property Details</h1>
+                    <p className="text-gray-500 text-sm mb-6">Tell us about your property</p>
+
+                    <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100 space-y-6">
+                      <InputField label="Property Type" required error={errors.category}>
+                        <div className="flex gap-3 mt-1">
+                          {["Residential", "Commercial"].map((cat) => (
+                            <button
+                              key={cat}
+                              type="button"
+                              onClick={() => { updateForm("category", cat); updateForm("propertyType", ""); if (cat === "Commercial" && form.listingType === "PG/Co-living") { updateForm("listingType", "Rent"); } }}
+                              className={`flex-1 py-2.5 px-4 rounded-xl border-2 text-sm font-semibold transition-all
+                                ${form.category === cat
+                                  ? "border-violet-500 bg-violet-50 text-violet-700"
+                                  : "border-gray-200 text-gray-600 hover:border-violet-300"}`}
+                            >
+                              {cat}
+                            </button>
+                          ))}
+                        </div>
+                      </InputField>
+
+                      <InputField label="Looking to" required error={errors.listingType}>
+                        <div className="flex gap-2 sm:gap-3 mt-1">
+                          {["Rent", "Sale", ...(form.category === "Residential" ? ["PG/Co-living"] : [])].map((t) => (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => updateForm("listingType", t)}
+                              className={`flex-1 py-2.5 px-2 sm:px-4 rounded-xl border-2 text-xs sm:text-sm font-semibold transition-all
+                                ${form.listingType === t
+                                  ? "border-violet-500 bg-violet-50 text-violet-700"
+                                  : "border-gray-200 text-gray-600 hover:border-violet-300"}`}
+                            >
+                              {t}
+                            </button>
+                          ))}
+                        </div>
+                      </InputField>
+
+                      <InputField label="Property Type" required error={errors.propertyType}>
+                        <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 sm:gap-2.5 mt-1">
+                          {propertyTypes.map(({ label, icon }) => (
+                            <SelectCard
+                              key={label}
+                              label={label}
+                              icon={icon}
+                              selected={form.propertyType === label}
+                              onClick={() => updateForm("propertyType", label)}
+                            />
+                          ))}
+                        </div>
+                      </InputField>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 1: Basic Details */}
+                {currentStep === 1 && (
+                  <div>
+                    <h1 className="heading text-xl sm:text-2xl text-gray-900 mb-1">Basic Details</h1>
+                    <p className="text-gray-500 text-sm mb-6">Share key details about your property</p>
+
+                    <div className="space-y-4">
+                      <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100 space-y-4">
+                        <InputField label="Property Title" required error={errors.title}>
+                          <TextInput
+                            placeholder="e.g. Spacious 3BHK in Vijay Nagar"
+                            value={form.title}
+                            onChange={(e) => updateForm("title", e.target.value)}
+                            maxLength={200}
+                          />
+                        </InputField>
+
+                        <InputField label="Description" required error={errors.description}>
+                          <textarea
+                            placeholder="Describe your property..."
+                            value={form.description}
+                            onChange={(e) => updateForm("description", e.target.value)}
+                            rows={3}
+                            maxLength={5000}
+                            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition-all resize-none"
+                          />
+                        </InputField>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <InputField label="Property Age" required error={errors.propertyAge}>
+                            <SelectInput value={form.propertyAge} onChange={(e) => updateForm("propertyAge", e.target.value)}>
+                              <option value="">Select age</option>
+                              {["Under Construction", "0-1 year", "1-5 years", "5-10 years", "10+ years"].map((a) => (
+                                <option key={a} value={a}>{a}</option>
+                              ))}
+                            </SelectInput>
+                          </InputField>
+
+                          <InputField label="Available From">
+                            <TextInput
+                              type="date"
+                              value={form.availableFrom}
+                              onChange={(e) => updateForm("availableFrom", e.target.value)}
+                            />
+                          </InputField>
+                        </div>
+                      </div>
+
+                      {/* Configuration */}
+                      <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
+                        <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                          <FiHome size={16} className="text-violet-500" /> Configuration
+                        </h3>
+                        <div className="flex flex-wrap gap-4 sm:gap-6">
+                          <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                          <CounterBox label="Bathrooms" value={form.bathrooms} onChange={(v) => updateForm("bathrooms", v)} icon={LuBath} min={1} max={10} />
+                          <CounterBox label="Balconies" value={form.balconies} onChange={(v) => updateForm("balconies", v)} icon={MdBalcony} min={0} max={10} />
+                          <CounterBox label="Current Floor" value={form.floor.current} onChange={(v) => updateForm("floor.current", v)} icon={FiLayers} min={0} max={100} />
+                          <CounterBox label="Total Floors" value={form.floor.total} onChange={(v) => updateForm("floor.total", v)} icon={LuBuilding2} min={1} max={100} />
+                        </div>
+                      </div>
+
+                      {/* Area */}
+                      <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
+                        <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                          <BiArea size={16} className="text-violet-500" /> Area Details
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <InputField label="Carpet Area" required error={errors["area.carpet"]}>
+                            <TextInput
+                              type="number"
+                              placeholder="e.g. 1200"
+                              value={form.area.carpet}
+                              onChange={(e) => updateForm("area.carpet", e.target.value)}
+                            />
+                          </InputField>
+                          <InputField label="Built-up Area">
+                            <TextInput
+                              type="number"
+                              placeholder="e.g. 1400"
+                              value={form.area.builtUp}
+                              onChange={(e) => updateForm("area.builtUp", e.target.value)}
+                            />
+                          </InputField>
+                          <InputField label="Unit">
+                            <SelectInput value={form.area.unit} onChange={(e) => updateForm("area.unit", e.target.value)}>
+                              {["sqft", "sqm", "sqyd"].map((u) => <option key={u} value={u}>{u}</option>)}
+                            </SelectInput>
+                          </InputField>
+                        </div>
+                      </div>
+
+                      {/* Pricing */}
+                      <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
+                        <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                          <FiDollarSign size={16} className="text-violet-500" /> Pricing
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <InputField label={form.listingType === "Sale" ? "Sale Price (₹)" : "Monthly Rent (₹)"} required error={errors["price.amount"]}>
+                            <TextInput
+                              type="number"
+                              placeholder="e.g. 25000"
+                              value={form.price.amount}
+                              onChange={(e) => updateForm("price.amount", e.target.value)}
+                            />
+                          </InputField>
+                          <InputField label="Security Deposit (₹)">
+                            <TextInput
+                              type="number"
+                              placeholder="e.g. 50000"
+                              value={form.price.securityDeposit}
+                              onChange={(e) => updateForm("price.securityDeposit", e.target.value)}
+                            />
+                          </InputField>
+                          <InputField label="Maintenance (₹/month)">
+                            <TextInput
+                              type="number"
+                              placeholder="e.g. 2500"
+                              value={form.price.maintenanceCharges.amount}
+                              onChange={(e) => updateForm("price.maintenanceCharges.amount", e.target.value)}
+                            />
+                          </InputField>
+                          <InputField label="Maintenance Frequency">
+                            <SelectInput
+                              value={form.price.maintenanceCharges.frequency}
+                              onChange={(e) => updateForm("price.maintenanceCharges.frequency", e.target.value)}
+                            >
+                              {["Monthly", "Quarterly", "Yearly"].map((f) => <option key={f} value={f}>{f}</option>)}
+                            </SelectInput>
+                          </InputField>
+                          <InputField label="Lock-in Period (months)">
+                            <TextInput
+                              type="number"
+                              placeholder="e.g. 11"
+                              value={form.price.lockInPeriod}
+                              onChange={(e) => updateForm("price.lockInPeriod", e.target.value)}
+                            />
+                          </InputField>
+                          <InputField label="Notice Period (months)">
+                            <TextInput
+                              type="number"
+                              placeholder="e.g. 2"
+                              value={form.price.noticePeriod}
+                              onChange={(e) => updateForm("price.noticePeriod", e.target.value)}
+                            />
+                          </InputField>
+                        </div>
+                        <div className="mt-3 flex items-center gap-3">
+                          <label className="toggle-switch">
+                            <input
+                              type="checkbox"
+                              checked={form.price.negotiable}
+                              onChange={(e) => updateForm("price.negotiable", e.target.checked)}
+                            />
+                            <span className="slider" />
+                          </label>
+                          <span className="text-sm text-gray-600">Price is negotiable</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 2: Property Features */}
+                {currentStep === 2 && (
+                  <div>
+                    <h1 className="heading text-xl sm:text-2xl text-gray-900 mb-1">Property Highlights</h1>
+                    <p className="text-gray-500 text-sm mb-6">Add features that make your property stand out</p>
+
+                    <div className="space-y-4">
+                      {/* Furnishing */}
+                      <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
+                        <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                          <MdChair size={16} className="text-violet-500" /> Furnishing
+                        </h3>
+                        <div className="flex gap-2 sm:gap-3 mb-4">
+                          {["Unfurnished", "Semi-Furnished", "Fully-Furnished"].map((f) => (
+                            <button
+                              key={f}
+                              type="button"
+                              onClick={() => updateForm("furnishing.type", f)}
+                              className={`flex-1 py-2 px-2 sm:px-3 rounded-xl border-2 text-xs font-semibold transition-all
+                                ${form.furnishing.type === f ? "border-violet-500 bg-violet-50 text-violet-700" : "border-gray-200 text-gray-600"}`}
+                            >
+                              {f}
+                            </button>
+                          ))}
+                        </div>
+                        {form.furnishing.type !== "Unfurnished" && (
+                          <div>
+                            <p className="text-xs text-gray-500 mb-2 font-medium">Select furnished items:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {furnishingItems.map((item) => (
+                                <Chip
+                                  key={item}
+                                  label={item}
+                                  selected={form.furnishing.items.includes(item)}
+                                  onClick={() => toggleArray("furnishing.items", item)}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Parking & Facing */}
+                      <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
+                        <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                          <MdLocalParking size={16} className="text-violet-500" /> Parking & Facing
+                        </h3>
+                        <div className="flex flex-wrap gap-4 sm:gap-6">
+                          <CounterBox label="Covered Parking" value={form.parking.covered} onChange={(v) => updateForm("parking.covered", v)} icon={RiParkingBoxLine} min={0} max={10} />
+                          <CounterBox label="Open Parking" value={form.parking.open} onChange={(v) => updateForm("parking.open", v)} icon={TbParking} min={0} max={10} />
+                        </div>
+                        <div className="mt-4">
+                          <p className="text-sm font-semibold text-gray-700 mb-2">Facing Direction</p>
+                          <div className="grid grid-cols-4 gap-2">
+                            {["North", "South", "East", "West", "North-East", "North-West", "South-East", "South-West"].map((dir) => (
+                              <button
+                                key={dir}
+                                type="button"
+                                onClick={() => updateForm("facing", dir)}
+                                className={`py-2 rounded-xl border-2 text-xs font-medium transition-all
+                                  ${form.facing === dir ? "border-violet-500 bg-violet-50 text-violet-700" : "border-gray-200 text-gray-600 hover:border-violet-300"}`}
+                              >
+                                {dir}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Society Amenities */}
+                      <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
+                        <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                          <TbBuildingCommunity size={16} className="text-violet-500" /> Society Amenities
+                        </h3>
+                        <div className="flex flex-wrap gap-2">
+                          {societyAmenities.map((a) => (
+                            <Chip key={a} label={a} selected={form.amenities.society.includes(a)} onClick={() => toggleArray("amenities.society", a)} />
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Security */}
+                      <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
+                        <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                          <MdSecurity size={16} className="text-violet-500" /> Security Features
+                        </h3>
+                        <div className="flex flex-wrap gap-2">
+                          {securityAmenities.map((a) => (
+                            <Chip key={a} label={a} selected={form.amenities.security.includes(a)} onClick={() => toggleArray("amenities.security", a)} />
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Essential & Nearby - stacked on mobile, side-by-side on tablet+ */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
+                          <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                            <FiZap size={16} className="text-violet-500" /> Essential Services
+                          </h3>
+                          <div className="flex flex-wrap gap-2">
+                            {essentialAmenities.map((a) => (
+                              <Chip key={a} label={a} selected={form.amenities.essential.includes(a)} onClick={() => toggleArray("amenities.essential", a)} />
+                            ))}
+                          </div>
+                        </div>
+                        <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
+                          <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                            <FiMapPin size={16} className="text-violet-500" /> Nearby Places
+                          </h3>
+                          <div className="flex flex-wrap gap-2">
+                            {nearbyAmenities.map((a) => (
+                              <Chip key={a} label={a} selected={form.amenities.nearby.includes(a)} onClick={() => toggleArray("amenities.nearby", a)} />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Property Features */}
+                      <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
+                        <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                          <FiTool size={16} className="text-violet-500" /> Property Features
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <InputField label="Power Backup">
+                            <SelectInput value={form.propertyFeatures.powerBackup} onChange={(e) => updateForm("propertyFeatures.powerBackup", e.target.value)}>
+                              <option value="">Select</option>
+                              {["None", "Partial", "Full"].map((v) => <option key={v} value={v}>{v}</option>)}
+                            </SelectInput>
+                          </InputField>
+                          <InputField label="Water Supply">
+                            <SelectInput value={form.propertyFeatures.waterSupply} onChange={(e) => updateForm("propertyFeatures.waterSupply", e.target.value)}>
+                              <option value="">Select</option>
+                              {["Corporation", "Borewell", "Both"].map((v) => <option key={v} value={v}>{v}</option>)}
+                            </SelectInput>
+                          </InputField>
+                          <InputField label="Flooring">
+                            <SelectInput value={form.propertyFeatures.flooring} onChange={(e) => updateForm("propertyFeatures.flooring", e.target.value)}>
+                              <option value="">Select</option>
+                              {["Marble", "Vitrified Tiles", "Wooden", "Granite", "Ceramic", "Cement", "Other"].map((v) => <option key={v} value={v}>{v}</option>)}
+                            </SelectInput>
+                          </InputField>
+                          <InputField label="Construction Quality">
+                            <SelectInput value={form.propertyFeatures.constructionQuality} onChange={(e) => updateForm("propertyFeatures.constructionQuality", e.target.value)}>
+                              <option value="">Select</option>
+                              {["Standard", "Above Standard", "Premium", "Luxury"].map((v) => <option key={v} value={v}>{v}</option>)}
+                            </SelectInput>
+                          </InputField>
+                          <InputField label="Ceiling Height (ft)">
+                            <TextInput
+                              type="number"
+                              placeholder="e.g. 10"
+                              value={form.propertyFeatures.ceilingHeight}
+                              onChange={(e) => updateForm("propertyFeatures.ceilingHeight", e.target.value)}
+                            />
+                          </InputField>
+                          <InputField label="Road Width (ft)">
+                            <TextInput
+                              type="number"
+                              placeholder="e.g. 40"
+                              value={form.propertyFeatures.widthOfFacingRoad}
+                              onChange={(e) => updateForm("propertyFeatures.widthOfFacingRoad", e.target.value)}
+                            />
+                          </InputField>
+                          <InputField label="Waste Disposal">
+                            <SelectInput value={form.propertyFeatures.wasteDisposal} onChange={(e) => updateForm("propertyFeatures.wasteDisposal", e.target.value)}>
+                              <option value="">Select</option>
+                              {["Municipal", "Private", "Biogas Plant", "None"].map((v) => <option key={v} value={v}>{v}</option>)}
+                            </SelectInput>
+                          </InputField>
+                        </div>
+
+                        {/* Toggles */}
+                        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {[
+                            ["gatedSecurity", "Gated Security"],
+                            ["liftAvailable", "Lift Available"],
+                            ["petFriendly", "Pet Friendly"],
+                            ["bachelorsAllowed", "Bachelors Allowed"],
+                            ["nonVegAllowed", "Non-Veg Allowed"],
+                            ["boundaryWall", "Boundary Wall"],
+                            ["rainwaterHarvesting", "Rainwater Harvesting"],
+                            ["servantsRoom", "Servants Room"],
+                            ["studyRoom", "Study Room"],
+                            ["poojaRoom", "Pooja Room"],
+                            ["storeRoom", "Store Room"],
+                          ].map(([key, label]) => (
+                            <div key={key} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-xl">
+                              <span className="text-sm text-gray-700">{label}</span>
+                              <label className="toggle-switch">
+                                <input
+                                  type="checkbox"
+                                  checked={form.propertyFeatures[key]}
+                                  onChange={(e) => updateForm(`propertyFeatures.${key}`, e.target.checked)}
+                                />
+                                <span className="slider" />
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Fire Safety */}
+                        <div className="mt-4 p-3 bg-red-50 rounded-xl border border-red-100">
+                          <p className="text-xs font-semibold text-red-700 mb-2 flex items-center gap-1.5">
+                            <MdFireExtinguisher size={14} /> Fire Safety
+                          </p>
+                          <div className="flex flex-wrap gap-4">
+                            {[["fireExtinguisher", "Fire Extinguisher"], ["fireSensor", "Fire Sensor"], ["sprinklers", "Sprinklers"]].map(([k, l]) => (
+                              <label key={k} className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={form.propertyFeatures.fireSafety[k]}
+                                  onChange={(e) => updateForm(`propertyFeatures.fireSafety.${k}`, e.target.checked)}
+                                  className="accent-red-500"
+                                />
+                                <span className="text-xs text-gray-700">{l}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Overlooking */}
+                        <div className="mt-4">
+                          <p className="text-sm font-semibold text-gray-700 mb-2">Overlooking</p>
+                          <div className="flex flex-wrap gap-2">
+                            {["Park/Garden", "Pool", "Main Road", "Club", "Not Overlooking"].map((v) => (
+                              <Chip key={v} label={v} selected={form.propertyFeatures.overlooking.includes(v)} onClick={() => toggleArray("propertyFeatures.overlooking", v)} />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 3: Location */}
+                {currentStep === 3 && (
+                  <div>
+                    <h1 className="heading text-xl sm:text-2xl text-gray-900 mb-1">Address Details</h1>
+                    <p className="text-gray-500 text-sm mb-6">Where is your property located?</p>
+
+                    <div className="space-y-4">
+                      <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100 space-y-4">
+                        {/* City Search */}
+                        <InputField label="City" required error={errors["location.city"]}>
+                          <div className="relative">
+                            <FiSearch size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                              type="text"
+                              placeholder="Search city..."
+                              value={citySearch || form.location.city}
+                              onChange={(e) => {
+                                setCitySearch(e.target.value);
+                                updateForm("location.city", e.target.value);
+                                setShowCityDropdown(true);
+                              }}
+                              onFocus={() => setShowCityDropdown(true)}
+                              onBlur={() => setTimeout(() => setShowCityDropdown(false), 200)}
+                              className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                            />
+                            {showCityDropdown && filteredCities.length > 0 && (
+                              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 max-h-48 overflow-y-auto">
+                                {filteredCities.slice(0, 20).map((city) => (
+                                  <button
+                                    key={city._id}
+                                    type="button"
+                                    onMouseDown={() => {
+                                      updateForm("location.city", city.name);
+                                      updateForm("location.state", city.state);
+                                      setCitySearch(city.name);
+                                      setShowCityDropdown(false);
+                                    }}
+                                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-violet-50 text-gray-700 flex items-center justify-between"
+                                  >
+                                    <span>{city.name}</span>
+                                    <span className="text-xs text-gray-400">{city.state}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </InputField>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <InputField label="Locality" required error={errors["location.locality"]}>
+                            <TextInput
+                              placeholder="e.g. Vijay Nagar"
+                              value={form.location.locality}
+                              onChange={(e) => updateForm("location.locality", e.target.value)}
+                            />
+                          </InputField>
+                          <InputField label="Sub Locality">
+                            <TextInput
+                              placeholder="e.g. Scheme 54"
+                              value={form.location.subLocality}
+                              onChange={(e) => updateForm("location.subLocality", e.target.value)}
+                            />
+                          </InputField>
+                        </div>
+
+                        <InputField label="Full Address" required error={errors["location.address"]}>
+                          <div className="relative">
+                            <TextInput
+                              placeholder="Search or type your address..."
+                              value={form.location.address}
+                              onChange={(e) => {
+                                updateForm("location.address", e.target.value);
+                                searchAddress(e.target.value);
+                              }}
+                            />
+                            {locationSuggestions.length > 0 && (
+                              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 max-h-48 overflow-y-auto">
+                                {locationSuggestions.map((feat) => (
+                                  <button
+                                    key={feat.id}
+                                    type="button"
+                                    onClick={() => selectSuggestion(feat)}
+                                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-violet-50 text-gray-700"
+                                  >
+                                    {feat.place_name}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </InputField>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <InputField label="Landmark">
+                            <TextInput
+                              placeholder="Near C21 Mall"
+                              value={form.location.landmark}
+                              onChange={(e) => updateForm("location.landmark", e.target.value)}
+                            />
+                          </InputField>
+                          <InputField label="Pincode" required error={errors["location.pincode"]}>
+                            <TextInput
+                              placeholder="452010"
+                              value={form.location.pincode}
+                              onChange={(e) => updateForm("location.pincode", e.target.value)}
+                              maxLength={6}
+                            />
+                          </InputField>
+                          <InputField label="State">
+                            <TextInput
+                              placeholder="Madhya Pradesh"
+                              value={form.location.state}
+                              onChange={(e) => updateForm("location.state", e.target.value)}
+                            />
+                          </InputField>
+                        </div>
+                      </div>
+
+                      {/* Map */}
+                      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                          <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                            <FiMapPin size={16} className="text-violet-500" /> Pin Location on Map
+                          </h3>
+                          <button
+                            type="button"
+                            onClick={getCurrentLocation}
+                            className="flex items-center gap-2 text-xs bg-violet-600 text-white px-3 py-1.5 rounded-lg hover:bg-violet-700 transition-colors self-start sm:self-auto"
+                          >
+                            <FiMapPin size={12} /> Use Current Location
+                          </button>
+                        </div>
+                        <div ref={mapRef} className="w-full h-56 sm:h-64 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center">
+                          {!mapLoaded && (
+                            <div className="text-gray-400 text-sm flex items-center gap-2">
+                              <FiLoader size={16} className="animate-spin" /> Loading map...
+                            </div>
+                          )}
+                        </div>
+                        {form.location.coordinates.latitude && (
+                          <p className="text-xs text-gray-400 mt-2 text-center">
+                            📍 {form.location.coordinates.latitude.toFixed(4)}, {form.location.coordinates.longitude.toFixed(4)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 4: Ownership */}
+                {currentStep === 4 && (
+                  <div>
+                    <h1 className="heading text-xl sm:text-2xl text-gray-900 mb-1">Ownership & Legal</h1>
+                    <p className="text-gray-500 text-sm mb-6">Verify your ownership details</p>
+
+                    <div className="space-y-4">
+                      <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100 space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <InputField label="Ownership Type">
+                            <SelectInput value={form.ownership.type} onChange={(e) => updateForm("ownership.type", e.target.value)}>
+                              <option value="">Select</option>
+                              {["Freehold", "Leasehold", "Co-operative Society", "Power of Attorney"].map((v) => <option key={v} value={v}>{v}</option>)}
+                            </SelectInput>
+                          </InputField>
+                          <InputField label="Transaction Type">
+                            <SelectInput value={form.transactionType} onChange={(e) => updateForm("transactionType", e.target.value)}>
+                              {["Resale", "New Booking"].map((v) => <option key={v} value={v}>{v}</option>)}
+                            </SelectInput>
+                          </InputField>
+                          <InputField label="Stamp Duty">
+                            <SelectInput value={form.ownership.stampDutyCharges} onChange={(e) => updateForm("ownership.stampDutyCharges", e.target.value)}>
+                              {["Included in Price", "Excluded - Paid by Buyer", "To be Decided"].map((v) => <option key={v} value={v}>{v}</option>)}
+                            </SelectInput>
+                          </InputField>
+                          <InputField label="Registration Charges">
+                            <SelectInput value={form.ownership.registrationCharges} onChange={(e) => updateForm("ownership.registrationCharges", e.target.value)}>
+                              {["Included in Price", "Excluded - Paid by Buyer", "To be Decided"].map((v) => <option key={v} value={v}>{v}</option>)}
+                            </SelectInput>
+                          </InputField>
+                          <InputField label="Property Tax/Year (₹)">
+                            <TextInput
+                              type="number"
+                              placeholder="e.g. 12000"
+                              value={form.ownership.propertyTaxPerYear}
+                              onChange={(e) => updateForm("ownership.propertyTaxPerYear", e.target.value)}
+                            />
+                          </InputField>
+                        </div>
+
+                        <div className="flex flex-wrap gap-4">
+                          {[["verified", "Ownership Verified"], ["occupancyCertificate", "Occupancy Certificate"], ["legalDocumentsAvailable", "Legal Documents Available"]].map(([k, l]) => (
+                            <label key={k} className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={form.ownership[k]}
+                                onChange={(e) => updateForm(`ownership.${k}`, e.target.checked)}
+                                className="accent-violet-600 w-4 h-4"
+                              />
+                              <span className="text-sm text-gray-700">{l}</span>
+                            </label>
+                          ))}
+                        </div>
+
+                        <div>
+                          <p className="text-sm font-semibold text-gray-700 mb-2">Approved By</p>
+                          <div className="flex flex-wrap gap-3">
+                            {["Municipality", "Development Authority", "Panchayat", "Other"].map((v) => (
+                              <Chip key={v} label={v} selected={form.ownership.approvedBy.includes(v)} onClick={() => toggleArray("ownership.approvedBy", v)} />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Builder Details */}
+                      <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
+                        <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                          <BiBuildingHouse size={16} className="text-violet-500" /> Builder / Project Details
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <InputField label="Builder Name">
+                            <TextInput value={form.builder.name} onChange={(e) => updateForm("builder.name", e.target.value)} placeholder="ABC Builders" />
+                          </InputField>
+                          <InputField label="RERA ID">
+                            <TextInput value={form.builder.reraId} onChange={(e) => updateForm("builder.reraId", e.target.value)} placeholder="RERA/MP/2023/XXXXX" />
+                          </InputField>
+                          <InputField label="Project Name">
+                            <TextInput value={form.builder.projectName} onChange={(e) => updateForm("builder.projectName", e.target.value)} placeholder="Green Valley Residency" />
+                          </InputField>
+                          <InputField label="Possession Date">
+                            <TextInput type="date" value={form.builder.possessionDate} onChange={(e) => updateForm("builder.possessionDate", e.target.value)} />
+                          </InputField>
+                          <InputField label="Total Units">
+                            <TextInput type="number" value={form.builder.totalUnits} onChange={(e) => updateForm("builder.totalUnits", e.target.value)} placeholder="150" />
+                          </InputField>
+                          <InputField label="Total Towers">
+                            <TextInput type="number" value={form.builder.totalTowers} onChange={(e) => updateForm("builder.totalTowers", e.target.value)} placeholder="3" />
+                          </InputField>
+                          <InputField label="Total Floors">
+                            <TextInput type="number" value={form.builder.totalFloors} onChange={(e) => updateForm("builder.totalFloors", e.target.value)} placeholder="15" />
+                          </InputField>
+                          <InputField label="Launch Date">
+                            <TextInput type="date" value={form.builder.launchDate} onChange={(e) => updateForm("builder.launchDate", e.target.value)} />
+                          </InputField>
+                          <InputField label="Token Amount (₹)">
+                            <TextInput type="number" value={form.builder.bookingProcess.tokenAmount} onChange={(e) => updateForm("builder.bookingProcess.tokenAmount", e.target.value)} placeholder="100000" />
+                          </InputField>
+                        </div>
+
+                        <div className="mt-3 flex items-center gap-3">
+                          <label className="toggle-switch">
+                            <input
+                              type="checkbox"
+                              checked={form.builder.loanFacility.available}
+                              onChange={(e) => updateForm("builder.loanFacility.available", e.target.checked)}
+                            />
+                            <span className="slider" />
+                          </label>
+                          <span className="text-sm text-gray-600">Loan Facility Available</span>
+                        </div>
+
+                        {form.builder.loanFacility.available && (
+                          <div className="mt-3">
+                            <p className="text-sm font-medium text-gray-700 mb-2">Approved Banks</p>
+                            <div className="flex flex-wrap gap-2">
+                              {["HDFC", "SBI", "ICICI", "Axis", "Kotak", "PNB", "BOB"].map((b) => (
+                                <Chip key={b} label={b} selected={form.builder.loanFacility.approvedBanks.includes(b)} onClick={() => toggleArray("builder.loanFacility.approvedBanks", b)} />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Inclusions & Additional Rooms - stacked on mobile */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-100">
+                          <h3 className="font-semibold text-gray-800 mb-3 text-sm">Inclusions in Price</h3>
+                          <div className="flex flex-wrap gap-2">
+                            {["Car Parking", "Club Membership", "Covered Parking", "Electricity & Water Connection", "Piped Gas Connection", "Registration Charges"].map((v) => (
+                              <Chip key={v} label={v} selected={form.inclusionsInPrice.includes(v)} onClick={() => toggleArray("inclusionsInPrice", v)} />
+                            ))}
+                          </div>
+                        </div>
+                        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-100">
+                          <h3 className="font-semibold text-gray-800 mb-3 text-sm">Additional Rooms</h3>
+                          <div className="flex flex-wrap gap-2">
+                            {["Servant Room", "Study Room", "Pooja Room", "Store Room", "Utility Room"].map((v) => (
+                              <Chip key={v} label={v} selected={form.additionalRooms.includes(v)} onClick={() => toggleArray("additionalRooms", v)} />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 5: Photos */}
+                {currentStep === 5 && (
+                  <div>
+                    <h1 className="heading text-xl sm:text-2xl text-gray-900 mb-1">Upload Photos</h1>
+                    <p className="text-gray-500 text-sm mb-6">Good photos attract 5x more inquiries</p>
+
+                    <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
+                      <label className="flex flex-col items-center justify-center w-full h-36 sm:h-40 border-2 border-dashed border-violet-300 rounded-2xl cursor-pointer hover:bg-violet-50 transition-colors">
+                        <div className="flex flex-col items-center gap-2 text-center">
+                          <div className="w-12 h-12 bg-violet-100 rounded-full flex items-center justify-center">
+                            <FiUpload size={20} className="text-violet-600" />
+                          </div>
+                          <p className="text-sm font-semibold text-gray-700">Click to upload photos</p>
+                          <p className="text-xs text-gray-400">PNG, JPG up to 10MB each</p>
+                        </div>
+                        <input
+                          type="file"
+                          className="hidden"
+                          multiple
+                          accept="image/*"
+                          onChange={(e) => {
+                            const files = Array.from(e.target.files);
+                            const previews = files.map((f) => URL.createObjectURL(f));
+                            updateForm("imageFiles", [...form.imageFiles, ...files]);
+                            updateForm("images", [...form.images, ...previews]);
+                          }}
+                        />
+                      </label>
+
+                      {form.images.length > 0 && (
+                        <div className="mt-4 grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3">
+                          {form.images.map((url, i) => (
+                            <div key={i} className="relative group aspect-square">
+                              <img src={url} alt="" className="w-full h-full object-cover rounded-xl" />
+                              {i === 0 && (
+                                <div className="absolute top-1 left-1 bg-violet-600 text-white text-xs px-1.5 py-0.5 rounded-lg">Primary</div>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  updateForm("images", form.images.filter((_, j) => j !== i));
+                                  updateForm("imageFiles", form.imageFiles.filter((_, j) => j !== i));
+                                }}
+                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <FiX size={10} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="mt-4 p-3 bg-blue-50 rounded-xl border border-blue-100">
+                        <p className="text-xs text-blue-700 flex items-center gap-1.5">
+                          <FiInfo size={12} /> First image will be set as the primary photo. Add at least 3-5 photos for best results.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 6: Contact */}
+                {currentStep === 6 && (
+                  <div>
+                    <h1 className="heading text-xl sm:text-2xl text-gray-900 mb-1">Contact Information</h1>
+                    <p className="text-gray-500 text-sm mb-6">How should interested buyers reach you?</p>
+
+                    <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100 space-y-4">
+                      <InputField label="Full Name" required error={errors["contactInfo.name"]}>
+                        <div className="relative">
+                          <FiUser size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                          <TextInput
+                            className="pl-9"
+                            placeholder="Your full name"
+                            value={form.contactInfo.name}
+                            onChange={(e) => updateForm("contactInfo.name", e.target.value)}
+                          />
+                        </div>
+                      </InputField>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <InputField label="Phone Number" required error={errors["contactInfo.phone"]}>
+                          <div className="relative">
+                            <FiPhone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <TextInput
+                              className="pl-9"
+                              placeholder="10-digit mobile number"
+                              value={form.contactInfo.phone}
+                              onChange={(e) => updateForm("contactInfo.phone", e.target.value)}
+                              maxLength={10}
+                            />
+                          </div>
+                        </InputField>
+
+                        <InputField label="Alternate Phone">
+                          <div className="relative">
+                            <FiPhone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <TextInput
+                              className="pl-9"
+                              placeholder="Alternate number"
+                              value={form.contactInfo.alternatePhone}
+                              onChange={(e) => updateForm("contactInfo.alternatePhone", e.target.value)}
+                              maxLength={10}
+                            />
+                          </div>
+                        </InputField>
+                      </div>
+
+                      <InputField label="Email Address" error={errors["contactInfo.email"]}>
+                        <div className="relative">
+                          <FiMail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                          <TextInput
+                            className="pl-9"
+                            placeholder="your@email.com"
+                            type="email"
+                            value={form.contactInfo.email}
+                            onChange={(e) => updateForm("contactInfo.email", e.target.value)}
+                          />
+                        </div>
+                      </InputField>
+
+                      <InputField label="Preferred Call Time">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {["Anytime", "Morning (9AM-12PM)", "Afternoon (12PM-5PM)", "Evening (5PM-9PM)"].map((t) => (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => updateForm("contactInfo.preferredCallTime", t)}
+                              className={`py-2 px-3 rounded-xl border-2 text-xs font-medium transition-all
+                                ${form.contactInfo.preferredCallTime === t
+                                  ? "border-violet-500 bg-violet-50 text-violet-700"
+                                  : "border-gray-200 text-gray-600 hover:border-violet-300"}`}
+                            >
+                              <FiClock size={12} className="inline mr-1" />{t}
+                            </button>
+                          ))}
+                        </div>
+                      </InputField>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 7: Preview */}
+                {currentStep === 7 && (
+                  <div>
+                    <h1 className="heading text-xl sm:text-2xl text-gray-900 mb-1">Review & Submit</h1>
+                    <p className="text-gray-500 text-sm mb-6">Review your property details before submitting</p>
+
+                    <div className="space-y-4">
+                      <PreviewSection title="Property Type" icon={FiHome}>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          <InfoItem label="Category" value={form.category} />
+                          <InfoItem label="Property Type" value={form.propertyType} />
+                          <InfoItem label="Listing Type" value={form.listingType} />
+                        </div>
+                      </PreviewSection>
+
+                      <PreviewSection title="Basic Details" icon={FiInfo}>
+                        <div className="grid grid-cols-2 gap-3">
+                          <InfoItem label="Title" value={form.title} />
+                          <InfoItem label="BHK" value={`${form.bhk} BHK`} />
+                          <InfoItem label="Bathrooms" value={form.bathrooms} />
+                          <InfoItem label="Carpet Area" value={`${form.area.carpet} ${form.area.unit}`} />
+                          <InfoItem label="Price" value={`₹${Number(form.price.amount || 0).toLocaleString("en-IN")}`} />
+                          <InfoItem label="Property Age" value={form.propertyAge} />
+                        </div>
+                      </PreviewSection>
+
+                      <PreviewSection title="Location" icon={FiMapPin}>
+                        <InfoItem label="Address" value={form.location.address} />
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">
+                          <InfoItem label="City" value={form.location.city} />
+                          <InfoItem label="Locality" value={form.location.locality} />
+                          <InfoItem label="Pincode" value={form.location.pincode} />
+                        </div>
+                      </PreviewSection>
+
+                      <PreviewSection title="Contact" icon={FiPhone}>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <InfoItem label="Name" value={form.contactInfo.name} />
+                          <InfoItem label="Phone" value={form.contactInfo.phone} />
+                          <InfoItem label="Email" value={form.contactInfo.email} />
+                          <InfoItem label="Best Time" value={form.contactInfo.preferredCallTime} />
+                        </div>
+                      </PreviewSection>
+
+                      {form.images.length > 0 && (
+                        <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
+                          <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                            <FiCamera size={16} className="text-violet-500" /> Photos ({form.images.length})
+                          </h3>
+                          <div className="flex gap-2 overflow-x-auto">
+                            {form.images.slice(0, 5).map((img, i) => (
+                              <img key={i} src={img} alt="" className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-xl flex-shrink-0" />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="bg-gradient-to-r from-violet-50 to-blue-50 rounded-2xl p-4 sm:p-5 border border-violet-100">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 bg-violet-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <FiCheckCircle size={18} className="text-violet-600" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-800">Ready to submit!</p>
+                            <p className="text-sm text-gray-500 mt-0.5">Your property will be reviewed within 24-48 hours after submission.</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            </div>
+
+            {/* Footer Navigation */}
+            <div className="border-t border-gray-100 bg-white px-4 sm:px-8 py-3 sm:py-4 flex items-center justify-between sticky bottom-0 z-20">
+              <button
+                type="button"
                 onClick={handleBack}
-                disabled={loading}
-                className="flex-1 py-4 bg-gray-200 text-gray-700 rounded-xl font-bold text-lg hover:bg-gray-300 transition-all disabled:opacity-50"
+                disabled={currentStep === 0}
+                className="flex items-center gap-1 sm:gap-2 px-3 sm:px-5 py-2.5 text-sm font-semibold text-gray-600 hover:text-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
-                Back
-              </motion.button>
-            )}
-            
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleNext}
-              disabled={loading}
-              className="flex-1 py-4 bg-gradient-to-r from-[#0b4f91] to-[#FF6B00] text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <Loader className="animate-spin" size={20} />
-                  Processing...
-                </>
-              ) : currentStep === 6 ? (
-                'Submit Property'
-              ) : (
-                'Next'
-              )}
-            </motion.button>
+                <FiChevronLeft size={18} /> <span className="hidden sm:inline">Back</span>
+              </button>
+
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                {Array.from({ length: 8 }, (_, i) => (
+                  <div
+                    key={i}
+                    className={`rounded-full transition-all ${i === currentStep ? "w-5 sm:w-6 h-2 bg-violet-600" : i < currentStep ? "w-2 h-2 bg-violet-400" : "w-2 h-2 bg-gray-200"}`}
+                  />
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleNext}
+                disabled={loading}
+                className="flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2.5 bg-gradient-to-r from-violet-600 to-violet-700 text-white text-xs sm:text-sm font-semibold rounded-xl hover:from-violet-700 hover:to-violet-800 disabled:opacity-70 disabled:cursor-not-allowed transition-all shadow-md shadow-violet-200"
+              >
+                {loading ? (
+                  <><FiLoader size={14} className="animate-spin" /> <span className="hidden sm:inline">Processing...</span></>
+                ) : currentStep === 7 ? (
+                  <><FiCheckCircle size={14} /> <span>Submit</span></>
+                ) : (
+                  <><span className="hidden sm:inline">Save & </span>Continue <FiChevronRight size={14} /></>
+                )}
+              </button>
+            </div>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function PreviewSection({ title, icon: Icon, children }) {
+  return (
+    <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
+      <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2 pb-3 border-b border-gray-100">
+        <Icon size={16} className="text-violet-500" /> {title}
+      </h3>
+      {children}
+    </div>
+  );
+}
+
+function InfoItem({ label, value }) {
+  if (!value) return null;
+  return (
+    <div>
+      <p className="text-xs text-gray-400">{label}</p>
+      <p className="text-sm font-medium text-gray-800">{value}</p>
+    </div>
+  );
+}
+
+function SuccessScreen() {
+  return (
+    <div className="flex items-center justify-center min-h-screen px-4">
+      <div className="text-center max-w-md w-full px-6">
+        <div className="w-24 h-24 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl shadow-emerald-200">
+          <FiCheckCircle size={40} className="text-white" />
+        </div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Property Submitted!</h1>
+        <p className="text-gray-500 text-sm">Your property has been submitted for approval. It will be reviewed within 24-48 hours.</p>
+        <div className="mt-6 p-4 bg-violet-50 rounded-2xl border border-violet-100">
+          <p className="text-sm text-violet-700 font-medium">🎉 Congratulations! Your listing is now under review.</p>
+        </div>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-6 px-8 py-3 bg-violet-600 text-white rounded-xl font-semibold hover:bg-violet-700 transition-colors"
+        >
+          Post Another Property
+        </button>
       </div>
     </div>
   );
-};
-
-export default AddListingForm;
+}

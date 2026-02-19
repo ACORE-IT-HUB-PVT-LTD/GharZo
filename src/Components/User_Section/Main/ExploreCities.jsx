@@ -11,7 +11,7 @@ function ExploreCities() {
   const [cities, setCities] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const MAPBOX_ACCESS_TOKEN = "pk.eyJ1IjoiZ2hhcnpvcmVhbGl0eSIsImEiOiJjbWxidHB3MnAwcWlkM2ZxdTAwbzA3dTNwIn0.c9lvlGEs7OJccySib0p44g";
+  const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 
   // ✅ Top 10 Areas of Indore with their coordinates
   const indoreAreas = [

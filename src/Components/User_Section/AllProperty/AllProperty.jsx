@@ -1,280 +1,554 @@
 import React, { useEffect, useState, useRef } from "react";
-import { BedDouble, MapPin, Home, Users, Search, RotateCcw, ArrowLeft } from "lucide-react";
+import { BedDouble, MapPin, Home, RotateCcw, ArrowLeft, ChevronDown, X, Search } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import gsap from "gsap";
 import { motion } from "framer-motion";
 import baseurl from "../../../../BaseUrl";
 
+// ─── FilterBar ────────────────────────────────────────────────────────────────
+function FilterBar({
+  searchTerm, setSearchTerm,
+  purpose, setPurpose,
+  propertyType, setPropertyType,
+  minBudget, setMinBudget,
+  maxBudget, setMaxBudget,
+  bhk, setBhk,
+  selectedCity, setSelectedCity,
+  availableCities,
+  availablePropertyTypes,
+  onReset,
+}) {
+  const [activeFilter, setActiveFilter] = useState(null);
+  const dropdownRef = useRef(null);
+
+  const bhkOptions = ["1", "2", "3", "4", "5+"];
+
+  const toggleFilter = (filter) => {
+    setActiveFilter((prev) => (prev === filter ? null : filter));
+  };
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setActiveFilter(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const toggleBhk = (val) => {
+    setBhk((prev) =>
+      prev.includes(val) ? prev.filter((b) => b !== val) : [...prev, val]
+    );
+  };
+
+  const budgetLabel =
+    minBudget || maxBudget
+      ? `₹${minBudget || "0"} – ₹${maxBudget || "∞"}`
+      : "Budget";
+
+  const moreCount = [propertyType !== "", bhk.length > 0].filter(Boolean).length;
+
+  return (
+    <div
+      ref={dropdownRef}
+      className="w-full bg-white shadow-md border-b sticky top-0 z-50 font-sans"
+    >
+      <div className="max-w-7xl mx-auto px-4 py-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+
+          {/* Buy / Rent Toggle — sends "Sale" / "Rent" to API */}
+          <div className="flex bg-slate-100 p-1 rounded-lg flex-shrink-0">
+            <button
+              onClick={() => setPurpose(purpose === "Sale" ? "" : "Sale")}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                purpose === "Sale"
+                  ? "bg-[#002f6c] text-white"
+                  : "text-slate-600 hover:text-slate-800"
+              }`}
+            >
+              Buy
+            </button>
+            <button
+              onClick={() => setPurpose(purpose === "Rent" ? "" : "Rent")}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                purpose === "Rent"
+                  ? "bg-[#002f6c] text-white"
+                  : "text-slate-600 hover:text-slate-800"
+              }`}
+            >
+              Rent
+            </button>
+          </div>
+
+          {/* Search Input */}
+          <div className="flex-1 min-w-[160px] relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input
+              type="text"
+              placeholder="Search by name, city or location..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#f15a24] border-slate-200 text-sm"
+            />
+          </div>
+
+          {/* Filters */}
+          <div className="flex flex-wrap gap-2 items-center">
+
+            {/* City — populated from API filters.availableCities */}
+            <div className="relative">
+              <button
+                onClick={() => toggleFilter("city")}
+                className={`flex items-center gap-1 px-3 sm:px-4 py-2 border rounded-full text-sm font-medium transition-all ${
+                  activeFilter === "city" || selectedCity
+                    ? "border-[#f15a24] text-[#f15a24] bg-orange-50"
+                    : "hover:border-slate-400"
+                }`}
+              >
+                {selectedCity || "City"}
+                {selectedCity && (
+                  <span
+                    onClick={(e) => { e.stopPropagation(); setSelectedCity(""); }}
+                    className="ml-0.5 hover:text-red-500"
+                  >
+                    <X size={12} />
+                  </span>
+                )}
+                <ChevronDown size={14} />
+              </button>
+              {activeFilter === "city" && (
+                <div className="absolute top-12 left-0 w-56 bg-white shadow-xl border rounded-lg p-3 z-50 max-h-60 overflow-y-auto">
+                  <p className="text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wide">Available Cities</p>
+                  {availableCities.length === 0 && (
+                    <p className="text-xs text-gray-400 py-2">Loading cities...</p>
+                  )}
+                  {availableCities.map((city) => (
+                    <button
+                      key={city}
+                      onClick={() => { setSelectedCity(city); setActiveFilter(null); }}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
+                        selectedCity === city
+                          ? "bg-orange-50 text-[#f15a24] font-semibold"
+                          : "text-slate-700 hover:bg-slate-50 hover:text-[#f15a24]"
+                      }`}
+                    >
+                      {city}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Budget */}
+            <div className="relative">
+              <button
+                onClick={() => toggleFilter("budget")}
+                className={`flex items-center gap-1 px-3 sm:px-4 py-2 border rounded-full text-sm font-medium transition-all ${
+                  activeFilter === "budget" || minBudget || maxBudget
+                    ? "border-[#f15a24] text-[#f15a24] bg-orange-50"
+                    : "hover:border-slate-400"
+                }`}
+              >
+                {budgetLabel}
+                <ChevronDown size={14} />
+              </button>
+              {activeFilter === "budget" && (
+                <div className="absolute top-12 left-0 w-72 bg-white shadow-xl border rounded-lg p-4 z-50">
+                  <p className="text-sm font-bold text-slate-800 mb-3">Budget Range (₹)</p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      placeholder="Min"
+                      value={minBudget}
+                      onChange={(e) => setMinBudget(e.target.value)}
+                      className="w-full border p-2 rounded text-sm focus:border-[#f15a24] outline-none"
+                    />
+                    <span className="text-slate-400 text-sm flex-shrink-0">to</span>
+                    <input
+                      type="number"
+                      placeholder="Max"
+                      value={maxBudget}
+                      onChange={(e) => setMaxBudget(e.target.value)}
+                      className="w-full border p-2 rounded text-sm focus:border-[#f15a24] outline-none"
+                    />
+                  </div>
+                  <div className="mt-4 flex justify-between">
+                    <button
+                      onClick={() => { setMinBudget(""); setMaxBudget(""); }}
+                      className="text-sm text-slate-500 underline"
+                    >
+                      Clear
+                    </button>
+                    <button
+                      onClick={() => setActiveFilter(null)}
+                      className="bg-[#f15a24] text-white px-4 py-1.5 rounded-md text-sm font-semibold"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* BHK */}
+            <div className="relative">
+              <button
+                onClick={() => toggleFilter("bhk")}
+                className={`flex items-center gap-1 px-3 sm:px-4 py-2 border rounded-full text-sm font-medium transition-all ${
+                  activeFilter === "bhk" || bhk.length > 0
+                    ? "border-[#f15a24] text-[#f15a24] bg-orange-50"
+                    : "hover:border-slate-400"
+                }`}
+              >
+                BHK
+                {bhk.length > 0 && (
+                  <span className="bg-[#f15a24] text-white text-[10px] px-1.5 rounded-full">
+                    {bhk.length}
+                  </span>
+                )}
+                <ChevronDown size={14} />
+              </button>
+              {activeFilter === "bhk" && (
+                <div className="absolute top-12 left-0 w-60 bg-white shadow-xl border rounded-lg p-4 z-50">
+                  <p className="text-sm font-bold text-slate-800 mb-3">Select BHK</p>
+                  <div className="flex flex-wrap gap-2">
+                    {bhkOptions.map((b) => (
+                      <button
+                        key={b}
+                        onClick={() => toggleBhk(b)}
+                        className={`px-3 py-1.5 border rounded-full text-sm font-medium transition-all ${
+                          bhk.includes(b)
+                            ? "border-[#f15a24] text-[#f15a24] bg-orange-50"
+                            : "hover:border-[#f15a24] hover:text-[#f15a24]"
+                        }`}
+                      >
+                        {b} BHK
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => setActiveFilter(null)}
+                    className="mt-4 w-full bg-[#f15a24] text-white py-1.5 rounded-md text-sm font-semibold"
+                  >
+                    Done
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* More Filters — Property Type from API */}
+            <div className="relative">
+              <button
+                onClick={() => toggleFilter("more")}
+                className={`flex items-center gap-1 px-3 sm:px-4 py-2 border rounded-full text-sm font-medium transition-all ${
+                  activeFilter === "more" || moreCount > 0
+                    ? "border-[#f15a24] text-[#f15a24] bg-orange-50"
+                    : "bg-slate-50 hover:bg-slate-100"
+                }`}
+              >
+                More Filters
+                {moreCount > 0 && (
+                  <span className="bg-[#f15a24] text-white text-[10px] px-1.5 rounded-full ml-1">
+                    {moreCount}
+                  </span>
+                )}
+              </button>
+              {activeFilter === "more" && (
+                <div className="absolute top-12 right-0 sm:left-0 w-72 bg-white shadow-xl border rounded-lg p-4 z-50">
+                  <p className="text-sm font-bold text-slate-800 mb-3">Property Type</p>
+                  {availablePropertyTypes.length === 0 && (
+                    <p className="text-xs text-gray-400 mb-3">Loading types...</p>
+                  )}
+                  <div className="grid grid-cols-2 gap-2">
+                    {availablePropertyTypes.map((type) => (
+                      <button
+                        key={type}
+                        onClick={() => setPropertyType((prev) => prev === type ? "" : type)}
+                        className={`px-3 py-2 border rounded-lg text-xs font-medium text-left transition-all ${
+                          propertyType === type
+                            ? "border-[#f15a24] text-[#f15a24] bg-orange-50"
+                            : "hover:border-[#f15a24] hover:text-[#f15a24]"
+                        }`}
+                      >
+                        {type}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => setActiveFilter(null)}
+                    className="mt-4 w-full bg-[#f15a24] text-white py-1.5 rounded-md text-sm font-semibold"
+                  >
+                    Done
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Reset */}
+            <button
+              onClick={onReset}
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-medium hover:bg-gray-200 transition-all"
+            >
+              <RotateCcw size={14} />
+              <span className="hidden sm:inline">Reset</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main AllProperty ─────────────────────────────────────────────────────────
 function AllProperty() {
   const navigate = useNavigate();
   const [properties, setProperties] = useState([]);
-  const [filteredProperties, setFilteredProperties] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
-  const [purpose, setPurpose] = useState("");          // Rent / Buy
-  const [propertyType, setPropertyType] = useState("");
-  const [priceRange, setPriceRange] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const propertiesPerPage = 9;
-  const [totalPagesServer, setTotalPagesServer] = useState(1);
 
-  const searchIconRef = useRef(null);
+  // Dynamic options from API response
+  const [availableCities, setAvailableCities] = useState([]);
+  const [availablePropertyTypes, setAvailablePropertyTypes] = useState([]);
 
-  // Fetch properties from server using filters/search/pagination
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [purpose, setPurpose] = useState("");        // "Sale" | "Rent" | "" — exact API value
+  const [propertyType, setPropertyType] = useState(""); // "Flat" | "Room" | "Villa" etc. — exact API value
+  const [minBudget, setMinBudget] = useState("");
+  const [maxBudget, setMaxBudget] = useState("");
+  const [bhk, setBhk] = useState([]);              // ["1","2","3"]
+  const [selectedCity, setSelectedCity] = useState(""); // exact city string from API
+
+  // Debounce search
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm), 500);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  // Reset page on filter change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, purpose, propertyType, minBudget, maxBudget, bhk, selectedCity]);
+
+  // Fetch
   useEffect(() => {
     const controller = new AbortController();
+
     const fetchProperties = async () => {
       setLoading(true);
       try {
         const params = new URLSearchParams();
         params.append("page", currentPage);
         params.append("limit", propertiesPerPage);
-        if (debouncedSearchTerm) params.append("search", debouncedSearchTerm);
+
+        if (debouncedSearch) params.append("search", debouncedSearch);
+
+        // ✅ Title Case — "Rent" / "Sale" (not "rent"/"buy")
         if (purpose) params.append("listingType", purpose);
+
+        // ✅ Exact property type from API — "Flat", "Room", "Villa" etc.
         if (propertyType) params.append("propertyType", propertyType);
-        if (priceRange) {
-          if (priceRange === "0-5000") {
-            params.append("maxPrice", "5000");
-          } else if (priceRange === "5000-10000") {
-            params.append("minPrice", "5000");
-            params.append("maxPrice", "10000");
-          } else if (priceRange === "10000-20000") {
-            params.append("minPrice", "10000");
-            params.append("maxPrice", "20000");
-          } else if (priceRange === "20000-50000") {
-            params.append("minPrice", "20000");
-            params.append("maxPrice", "50000");
-          } else if (priceRange === "50000+") {
-            params.append("minPrice", "50000");
-          }
+
+        if (minBudget) params.append("minPrice", minBudget);
+        if (maxBudget) params.append("maxPrice", maxBudget);
+
+        // ✅ BHK — comma separated, "5+" → "5"
+        if (bhk.length > 0) {
+          const bhkNums = bhk.map((b) => (b === "5+" ? "5" : b));
+          params.append("bhk", bhkNums.join(","));
         }
+
+        // ✅ City — exact string from API availableCities
+        if (selectedCity) params.append("city", selectedCity);
 
         const url = `${baseurl}api/public/properties?${params.toString()}`;
         const res = await fetch(url, { signal: controller.signal, cache: "no-cache" });
         const data = await res.json();
-        // console.log("API Response:", data);
 
-        if (data?.success && data?.data && Array.isArray(data.data)) {
+        if (data?.success && Array.isArray(data.data)) {
           const formatted = data.data.map((item) => ({
             id: item._id,
-            name: item.title,
-            image: item.images?.[0]?.url || "",
-            images: item.images || [],
+            name: item.title || "Untitled Property",
+            image:
+              item.images?.find((i) => i.isPrimary)?.url ||
+              item.images?.[0]?.url ||
+              "",
             address: item.location?.address || "",
             city: item.location?.city || "",
-            state: item.location?.city || "",
-            location: `${item.location?.city || ""}`,
+            locality: item.location?.locality || "",
+            state: item.location?.state || "",
             price: item.price?.amount || 0,
-            bedrooms: item.bhk || 0,
+            listingType: item.listingType || "",
+            bhk: item.bhk || 0,
             bathrooms: item.bathrooms || 0,
             area: item.area?.carpet || "",
-            description: item.description || "",
+            areaUnit: item.area?.unit || "sqft",
             propertyType: item.propertyType || "",
-            totalBeds: item.bhk || 0,
-            totalRooms: item.totalRooms || item.rooms?.length || "N/A",
-            createdAt: item.createdAt || new Date().toISOString(),
-            purpose: item.listingType?.toLowerCase() || "rent",
-            amenitiesList: item.amenitiesList || [],
-            furnishing: item.furnishing || "",
-            ownerName: item.ownerId?.name || "",
-            ownerPhone: item.ownerId?.phone || "",
+            furnishing: item.furnishing?.type || "",
           }));
 
           setProperties(formatted);
-          setFilteredProperties(formatted);
-          // Use server pagination info if available
-          if (data.totalPages) setTotalPagesServer(data.totalPages);
-          else setTotalPagesServer(Math.ceil((data.total || formatted.length) / propertiesPerPage));
+          setTotalCount(data.total || formatted.length);
+          setTotalPages(
+            data.totalPages ||
+              Math.ceil((data.total || formatted.length) / propertiesPerPage)
+          );
+
+          // ✅ Update filter options from API — so they always match what's in DB
+          if (data.filters?.availableCities) {
+            setAvailableCities(
+              data.filters.availableCities.filter(Boolean).sort()
+            );
+          }
+          if (data.filters?.availablePropertyTypes) {
+            setAvailablePropertyTypes(
+              data.filters.availablePropertyTypes.filter(Boolean).sort()
+            );
+          }
         } else {
-          console.error("Unexpected API response:", data);
           setProperties([]);
-          setFilteredProperties([]);
-          setTotalPagesServer(1);
+          setTotalPages(1);
+          setTotalCount(0);
         }
-      } catch (error) {
-        if (error.name === 'AbortError') return;
-        console.error("Error fetching properties:", error);
+      } catch (err) {
+        if (err.name === "AbortError") return;
+        console.error("Fetch error:", err);
         setProperties([]);
-        setFilteredProperties([]);
-        setTotalPagesServer(1);
+        setTotalPages(1);
       } finally {
         setLoading(false);
       }
     };
 
     fetchProperties();
-
     return () => controller.abort();
-  }, [debouncedSearchTerm, purpose, propertyType, priceRange, currentPage]);
+  }, [debouncedSearch, purpose, propertyType, minBudget, maxBudget, bhk, selectedCity, currentPage]);
 
-  // Debounce search term
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm);
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
-
-  // Reset to first page when filters/search change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedSearchTerm, purpose, propertyType, priceRange]);
-
-  // Animate search icon
-  useEffect(() => {
-    if (searchIconRef.current) {
-      gsap.to(searchIconRef.current, {
-        y: -2,
-        scale: 1.2,
-        duration: 0.6,
-        ease: "elastic.out(1,0.3)",
-        repeat: -1,
-        yoyo: true,
-      });
-    }
-  }, []);
-
-  // Note: filtering is now performed by the server. `filteredProperties` contains server results.
-
-  // Reset handler
   const handleReset = () => {
     setSearchTerm("");
     setPurpose("");
     setPropertyType("");
-    setPriceRange("");
+    setMinBudget("");
+    setMaxBudget("");
+    setBhk([]);
+    setSelectedCity("");
   };
 
-  // Pagination logic
-  // Server returns paginated results; `filteredProperties` already reflects current page
-  const currentProperties = filteredProperties;
-  const totalPages = totalPagesServer;
+  const hasActiveFilters =
+    purpose || propertyType || minBudget || maxBudget || bhk.length > 0 || selectedCity;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-orange-50">
-      {/* Back Button */}
-      <div className="max-w-full mx-auto px-4 pt-6 pb-2 bg-gradient-to-r from-[#002B5C] via-[#003A75] to-[#002B5C]">
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
-        >
-          <ArrowLeft size={20} />
-          <span>Back</span>
-        </button>
-      </div>
-      
-      {/* Hero Header Section */}
-      <div className="relative bg-gradient-to-r from-[#002B5C] via-[#003A75] to-[#002B5C] py-16 px-4 overflow-hidden">
-        <div className="absolute top-0 left-0 w-96 h-96 bg-[#FF6B00]/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#FF6B00]/10 rounded-full blur-3xl" />
-        
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="relative max-w-7xl mx-auto text-center"
-        >
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Discover Your Perfect Home
-          </h1>
-          <p className="text-blue-200 text-lg">
-            Browse through {filteredProperties.length} amazing properties
-          </p>
-        </motion.div>
-      </div>
 
-      {/* Search & Filter Section */}
-      <div className="max-w-7xl mx-auto px-4 -mt-8 relative z-10">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white rounded-2xl shadow-2xl p-6 border border-gray-100"
-        >
-          {/* Search Bar */}
-          <div className="mb-6">
-            <div className="relative">
-              <Search
-                ref={searchIconRef}
-                size={22}
-                className="absolute left-5 top-1/3 -translate-y-1/2 text-[#FF6B00]"
-              />
-              <input
-                type="text"
-                placeholder="Search by property name, city, or location..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-14 pr-6 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#FF6B00] focus:bg-white transition-all text-lg"
-              />
-            </div>
-          </div>
+      {/* Sticky FilterBar */}
+      <FilterBar
+        searchTerm={searchTerm} setSearchTerm={setSearchTerm}
+        purpose={purpose} setPurpose={setPurpose}
+        propertyType={propertyType} setPropertyType={setPropertyType}
+        minBudget={minBudget} setMinBudget={setMinBudget}
+        maxBudget={maxBudget} setMaxBudget={setMaxBudget}
+        bhk={bhk} setBhk={setBhk}
+        selectedCity={selectedCity} setSelectedCity={setSelectedCity}
+        availableCities={availableCities}
+        availablePropertyTypes={availablePropertyTypes}
+        onReset={handleReset}
+      />
 
-          {/* Filter Pills */}
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Looking For (Rent/Buy) */}
-            <select
-              value={purpose}
-              onChange={(e) => setPurpose(e.target.value)}
-              className="px-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-full text-gray-700 font-medium focus:outline-none focus:border-[#FF6B00] focus:bg-white transition-all cursor-pointer hover:border-gray-300"
-            >
-              <option value="">🔍 Looking for</option>
-              <option value="rent">Rent</option>
-              <option value="buy">Buy</option>
-            </select>
+      {/* Back + Hero */}
+      <div className="bg-gradient-to-r from-[#002B5C] via-[#003A75] to-[#002B5C]">
+        <div className="max-w-7xl mx-auto px-4 pt-5">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm text-sm"
+          >
+            <ArrowLeft size={18} /> Back
+          </button>
+        </div>
 
-            {/* Property Type */}
-            <select
-              value={propertyType}
-              onChange={(e) => setPropertyType(e.target.value)}
-              className="px-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-full text-gray-700 font-medium focus:outline-none focus:border-[#FF6B00] focus:bg-white transition-all cursor-pointer hover:border-gray-300"
-            >
-              <option value="">🏠 Property Type</option>
-              <option value="room">Room</option>
-              <option value="house">House</option>
-              <option value="villa">Villa</option>
-              <option value="flat/apartment">Flat/Apartment</option>
-              <option value="plot/land">Plot/Land</option>
-              <option value="commercial">Commercial</option>
-              <option value="office space">Office Space</option>
-              <option value="shop">Shop</option>
-              <option value="warehouse">Warehouse</option>
-              <option value="pg/hostel">PG/Hostel</option>
-            </select>
-
-            {/* Price Range */}
-            <select
-              value={priceRange}
-              onChange={(e) => setPriceRange(e.target.value)}
-              className="px-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-full text-gray-700 font-medium focus:outline-none focus:border-[#FF6B00] focus:bg-white transition-all cursor-pointer hover:border-gray-300"
-            >
-              <option value="">💰 Price Range</option>
-              <option value="0-5000">Up to ₹5,000</option>
-              <option value="5000-10000">₹5,000 - ₹10,000</option>
-              <option value="10000-20000">₹10,000 - ₹20,000</option>
-              <option value="20000-50000">₹20,000 - ₹50,000</option>
-              <option value="50000+">₹50,000+</option>
-            </select>
-
-            <button
-              onClick={handleReset}
-              className="ml-auto flex items-center gap-2 px-5 py-2.5 bg-gray-100 text-gray-700 rounded-full font-medium hover:bg-gray-200 transition-all"
-            >
-              <RotateCcw size={18} />
-              Reset
-            </button>
-          </div>
-        </motion.div>
+        <div className="relative py-12 px-4 overflow-hidden">
+          <div className="absolute top-0 left-0 w-96 h-96 bg-[#FF6B00]/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#FF6B00]/10 rounded-full blur-3xl" />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="relative max-w-7xl mx-auto text-center"
+          >
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-3">
+              Discover Your Perfect Home
+            </h1>
+            <p className="text-blue-200 text-base sm:text-lg">
+              {loading
+                ? "Loading..."
+                : `${totalCount} propert${totalCount === 1 ? "y" : "ies"} found`}
+              {(purpose || selectedCity || propertyType) && !loading && (
+                <span className="ml-2 text-orange-300 text-sm">
+                  · {[purpose === "Sale" ? "Buy" : purpose, selectedCity, propertyType]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
+              )}
+            </p>
+          </motion.div>
+        </div>
       </div>
 
-      {/* Properties Grid - remains exactly the same */}
-      <div className="max-w-7xl mx-auto px-4 py-12">
+      {/* Active Filter Tags */}
+      {hasActiveFilters && (
+        <div className="max-w-7xl mx-auto px-4 pt-4 flex flex-wrap gap-2">
+          {purpose && (
+            <span className="flex items-center gap-1.5 px-3 py-1 bg-[#002f6c] text-white rounded-full text-xs font-medium">
+              {purpose === "Sale" ? "Buy" : "Rent"}
+              <button onClick={() => setPurpose("")}><X size={11} /></button>
+            </span>
+          )}
+          {selectedCity && (
+            <span className="flex items-center gap-1.5 px-3 py-1 bg-[#002f6c] text-white rounded-full text-xs font-medium">
+              📍 {selectedCity}
+              <button onClick={() => setSelectedCity("")}><X size={11} /></button>
+            </span>
+          )}
+          {propertyType && (
+            <span className="flex items-center gap-1.5 px-3 py-1 bg-[#f15a24] text-white rounded-full text-xs font-medium">
+              🏠 {propertyType}
+              <button onClick={() => setPropertyType("")}><X size={11} /></button>
+            </span>
+          )}
+          {(minBudget || maxBudget) && (
+            <span className="flex items-center gap-1.5 px-3 py-1 bg-[#f15a24] text-white rounded-full text-xs font-medium">
+              💰 ₹{minBudget || "0"} – ₹{maxBudget || "∞"}
+              <button onClick={() => { setMinBudget(""); setMaxBudget(""); }}><X size={11} /></button>
+            </span>
+          )}
+          {bhk.map((b) => (
+            <span key={b} className="flex items-center gap-1.5 px-3 py-1 bg-[#f15a24] text-white rounded-full text-xs font-medium">
+              {b} BHK
+              <button onClick={() => setBhk((prev) => prev.filter((x) => x !== b))}><X size={11} /></button>
+            </span>
+          ))}
+          <button
+            onClick={handleReset}
+            className="flex items-center gap-1 px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-xs font-medium hover:bg-gray-300 transition-all"
+          >
+            <RotateCcw size={11} /> Clear All
+          </button>
+        </div>
+      )}
+
+      {/* Properties Grid */}
+      <div className="max-w-7xl mx-auto px-4 py-8 sm:py-10">
         {loading ? (
           <div className="flex flex-col items-center justify-center h-64">
-            <div className="w-16 h-16 border-4 border-[#FF6B00] border-t-transparent rounded-full animate-spin mb-4"></div>
+            <div className="w-14 h-14 border-4 border-[#FF6B00] border-t-transparent rounded-full animate-spin mb-4" />
             <p className="text-gray-500 font-medium">Loading properties...</p>
           </div>
-        ) : filteredProperties.length === 0 ? (
+        ) : properties.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -295,98 +569,147 @@ function AllProperty() {
         ) : (
           <>
             <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-              {currentProperties.map((property, index) => (
+              {properties.map((property, index) => (
                 <motion.div
                   key={property.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
+                  transition={{ delay: index * 0.06 }}
                 >
                   <Link to={`/property/${property.id}`}>
-                    <div className="group relative bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-500 cursor-pointer border border-gray-100">
-                      <div className="relative w-full h-56 overflow-hidden bg-gray-100">
+                    <div className="group relative bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-500 cursor-pointer border border-gray-100 h-full flex flex-col">
+
+                      {/* Image */}
+                      <div className="relative w-full h-52 overflow-hidden bg-gray-100 flex-shrink-0">
                         <img
                           src={
-                            property.image || property.images?.[0]?.url ||
+                            property.image ||
                             "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQCQILdjI6IvkmXukmIVc7iLEkoa_lt8vcUOyoE8SMWJebAiB_NUaWD_j-4m7Wls1v-fqk&usqp=CAU"
                           }
                           alt={property.name}
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                        <div className="absolute top-4 right-4 px-3 py-1.5 bg-white/95 backdrop-blur-sm rounded-full text-xs font-bold text-[#002B5C] shadow-lg">
-                          {property.propertyType}
-                        </div>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+
+                        {/* Property Type */}
+                        {property.propertyType && (
+                          <div className="absolute top-3 right-3 px-2.5 py-1 bg-white/95 backdrop-blur-sm rounded-full text-xs font-bold text-[#002B5C] shadow">
+                            {property.propertyType}
+                          </div>
+                        )}
+
+                        {/* Listing Type */}
+                        {property.listingType && (
+                          <div
+                            className={`absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-bold shadow ${
+                              property.listingType === "Rent"
+                                ? "bg-blue-600 text-white"
+                                : property.listingType === "Sale"
+                                ? "bg-[#f15a24] text-white"
+                                : "bg-purple-600 text-white"
+                            }`}
+                          >
+                            {property.listingType === "Sale" ? "Buy" : property.listingType}
+                          </div>
+                        )}
+
+                        {/* Price */}
+                        {property.price > 0 && (
+                          <div className="absolute bottom-3 left-3 px-3 py-1 bg-black/60 backdrop-blur-sm rounded-full">
+                            <span className="text-white font-bold text-sm">
+                              ₹{property.price.toLocaleString("en-IN")}
+                            </span>
+                            {property.listingType === "Rent" && (
+                              <span className="text-gray-300 text-xs ml-1">/mo</span>
+                            )}
+                          </div>
+                        )}
                       </div>
 
-                      <div className="p-5">
-                        <h2 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-[#FF6B00] transition-colors line-clamp-1">
+                      {/* Content */}
+                      <div className="p-4 flex flex-col flex-1">
+                        <h2 className="text-base font-bold text-gray-900 mb-1.5 group-hover:text-[#FF6B00] transition-colors line-clamp-1">
                           {property.name}
                         </h2>
-                        <div className="flex items-start gap-2 text-gray-600 mb-4">
-                          <MapPin size={16} className="mt-1 text-[#FF6B00] flex-shrink-0" />
-                          <p className="text-sm line-clamp-2">
-                            {property.address}, {property.city}, {property.state}
+
+                        <div className="flex items-start gap-1.5 text-gray-500 mb-3">
+                          <MapPin size={13} className="mt-0.5 text-[#FF6B00] flex-shrink-0" />
+                          <p className="text-xs line-clamp-1">
+                            {[property.locality, property.city, property.state]
+                              .filter(Boolean)
+                              .join(", ")}
                           </p>
                         </div>
 
-                        <div className="flex items-center gap-4 pt-4 border-t border-gray-100">
-                          <div className="flex items-center gap-2">
-                            <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center">
-                              <BedDouble size={18} className="text-blue-600" />
+                        {/* Stats */}
+                        <div className="flex items-center gap-3 pt-3 border-t border-gray-100 mt-auto flex-wrap">
+                          {property.bhk > 0 && (
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+                                <BedDouble size={15} className="text-blue-600" />
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-gray-400 leading-none">BHK</p>
+                                <p className="text-sm font-bold text-gray-900">{property.bhk}</p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="text-xs text-gray-500">Rooms</p>
-                              <p className="text-sm font-bold text-gray-900">{property.totalRooms || "N/A"}</p>
+                          )}
+                          {property.area && (
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
+                                <Home size={15} className="text-orange-600" />
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-gray-400 leading-none">Area</p>
+                                <p className="text-sm font-bold text-gray-900">
+                                  {property.area} {property.areaUnit}
+                                </p>
+                              </div>
                             </div>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <div className="w-9 h-9 bg-orange-50 rounded-lg flex items-center justify-center">
-                              <Home size={18} className="text-orange-600" />
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-500">Beds</p>
-                              <p className="text-sm font-bold text-gray-900">{property.totalBeds || "N/A"}</p>
-                            </div>
-                          </div>
+                          )}
+                          {property.furnishing && property.furnishing !== "Unfurnished" && (
+                            <span className="ml-auto text-[10px] px-2 py-1 bg-green-50 text-green-700 rounded-full font-medium border border-green-100">
+                              {property.furnishing}
+                            </span>
+                          )}
                         </div>
 
-                        <div className="mt-4">
-                          <div className="w-full py-2.5 bg-gradient-to-r from-[#FF6B00] to-[#FF8C3A] text-white text-center rounded-xl font-semibold">
+                        <div className="mt-3">
+                          <div className="w-full py-2 bg-gradient-to-r from-[#FF6B00] to-[#FF8C3A] text-white text-center rounded-xl font-semibold text-sm">
                             View Details
                           </div>
                         </div>
                       </div>
 
-                      <div className="absolute inset-0 border-2 border-[#FF6B00]/0 group-hover:border-[#FF6B00]/50 rounded-2xl transition-all duration-300 pointer-events-none" />
+                      <div className="absolute inset-0 border-2 border-[#FF6B00]/0 group-hover:border-[#FF6B00]/30 rounded-2xl transition-all duration-300 pointer-events-none" />
                     </div>
                   </Link>
                 </motion.div>
               ))}
             </div>
 
+            {/* Pagination */}
             {totalPages > 1 && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                className="flex justify-center items-center mt-12 gap-2"
+                transition={{ delay: 0.4 }}
+                className="flex justify-center items-center mt-10 gap-2 flex-wrap"
               >
                 <button
-                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
                   disabled={currentPage === 1}
-                  className="px-5 py-2.5 bg-white border-2 border-gray-200 text-gray-700 rounded-full font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:border-[#FF6B00] hover:text-[#FF6B00] transition-all"
+                  className="px-4 py-2 bg-white border-2 border-gray-200 text-gray-700 rounded-full font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:border-[#FF6B00] hover:text-[#FF6B00] transition-all text-sm"
                 >
                   Previous
                 </button>
 
-                <div className="flex gap-2">
+                <div className="flex gap-1.5 flex-wrap justify-center">
                   {Array.from({ length: totalPages }, (_, i) => (
                     <button
                       key={i}
                       onClick={() => setCurrentPage(i + 1)}
-                      className={`w-11 h-11 rounded-full font-semibold transition-all ${
+                      className={`w-10 h-10 rounded-full font-semibold transition-all text-sm ${
                         currentPage === i + 1
                           ? "bg-gradient-to-r from-[#FF6B00] to-[#FF8C3A] text-white shadow-lg scale-110"
                           : "bg-white border-2 border-gray-200 text-gray-700 hover:border-[#FF6B00] hover:text-[#FF6B00]"
@@ -398,9 +721,9 @@ function AllProperty() {
                 </div>
 
                 <button
-                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
                   disabled={currentPage === totalPages}
-                  className="px-5 py-2.5 bg-white border-2 border-gray-200 text-gray-700 rounded-full font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:border-[#FF6B00] hover:text-[#FF6B00] transition-all"
+                  className="px-4 py-2 bg-white border-2 border-gray-200 text-gray-700 rounded-full font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:border-[#FF6B00] hover:text-[#FF6B00] transition-all text-sm"
                 >
                   Next
                 </button>

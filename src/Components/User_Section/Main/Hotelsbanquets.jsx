@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -6,7 +6,6 @@ import {
   Search,
   Home,
   IndianRupee,
-  SlidersHorizontal,
   X,
   Building2,
   Users,
@@ -14,885 +13,964 @@ import {
   UtensilsCrossed,
   Star,
   Phone,
-  Mail,
-  Globe,
   ArrowLeft,
   ChevronDown,
+  RotateCcw,
+  ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 
+// ─── Inline FilterBar ──────────────────────────────────────────────────────────
+function FilterBar({
+  activeTab,
+  searchTerm, setSearchTerm,
+  selectedCity, setSelectedCity,
+  minBudget, setMinBudget,
+  maxBudget, setMaxBudget,
+  selectedType, setSelectedType,
+  selectedCategory, setSelectedCategory,
+  verifiedOnly, setVerifiedOnly,
+  featuredOnly, setFeaturedOnly,
+  availableCities,
+  availableTypes,
+  availableCategories,
+  onReset,
+}) {
+  const [activeFilter, setActiveFilter] = useState(null);
+  const dropdownRef = useRef(null);
+
+  const toggleFilter = (f) => setActiveFilter((p) => (p === f ? null : f));
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target))
+        setActiveFilter(null);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const accentColor = activeTab === "hotels" ? "orange" : "purple";
+
+  const budgetLabel =
+    minBudget || maxBudget
+      ? `₹${minBudget || "0"} – ₹${maxBudget || "∞"}`
+      : "Budget";
+
+  const hotelBudgetPresets = [
+    { label: "< 2K", max: "2000" },
+    { label: "2K–5K", min: "2000", max: "5000" },
+    { label: "5K–15K", min: "5000", max: "15000" },
+    { label: "15K+", min: "15000" },
+  ];
+
+  const banquetBudgetPresets = [
+    { label: "< 10K", max: "10000" },
+    { label: "10K–50K", min: "10000", max: "50000" },
+    { label: "50K–2L", min: "50000", max: "200000" },
+    { label: "2L+", min: "200000" },
+  ];
+
+  const budgetPresets = activeTab === "hotels" ? hotelBudgetPresets : banquetBudgetPresets;
+
+  const moreCount = [verifiedOnly, featuredOnly, selectedCategory !== ""].filter(Boolean).length;
+
+  const cls = {
+    active: `border-${accentColor}-500 text-${accentColor}-600 bg-${accentColor}-50`,
+    dot: `bg-${accentColor}-600`,
+    btn: `bg-${accentColor}-600 hover:bg-${accentColor}-700`,
+    ring: `focus:ring-${accentColor}-400`,
+    preset: `bg-${accentColor}-50 border-${accentColor}-200 text-${accentColor}-700 hover:bg-${accentColor}-100`,
+    badge: `bg-${accentColor}-600`,
+  };
+
+  return (
+    <div
+      ref={dropdownRef}
+      className="w-full bg-white shadow-md border-b sticky top-0 z-50 font-sans"
+    >
+      <div className="max-w-7xl mx-auto px-4 py-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+
+          {/* Search */}
+          <div className="flex-1 min-w-[160px] relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input
+              type="text"
+              placeholder={activeTab === "hotels" ? "Search hotel, city..." : "Search banquet, city..."}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={`w-full pl-9 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${accentColor === "orange" ? "focus:ring-orange-400" : "focus:ring-purple-400"} border-slate-200 text-sm`}
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-2 items-center">
+
+            {/* City */}
+            <div className="relative">
+              <button
+                onClick={() => toggleFilter("city")}
+                className={`flex items-center gap-1 px-3 sm:px-4 py-2 border rounded-full text-sm font-medium transition-all ${
+                  activeFilter === "city" || selectedCity
+                    ? accentColor === "orange"
+                      ? "border-orange-500 text-orange-600 bg-orange-50"
+                      : "border-purple-500 text-purple-600 bg-purple-50"
+                    : "hover:border-slate-400"
+                }`}
+              >
+                {selectedCity || "City"}
+                {selectedCity && (
+                  <span
+                    onClick={(e) => { e.stopPropagation(); setSelectedCity(""); }}
+                    className="ml-0.5 hover:text-red-500"
+                  >
+                    <X size={12} />
+                  </span>
+                )}
+                <ChevronDown size={14} />
+              </button>
+              {activeFilter === "city" && (
+                <div className="absolute top-12 left-0 w-56 bg-white shadow-xl border rounded-lg p-3 z-50 max-h-60 overflow-y-auto">
+                  <p className="text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wide">Cities</p>
+                  {availableCities.length === 0 && (
+                    <p className="text-xs text-gray-400 py-2">No cities found</p>
+                  )}
+                  {availableCities.map((city) => (
+                    <button
+                      key={city}
+                      onClick={() => { setSelectedCity(city); setActiveFilter(null); }}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
+                        selectedCity === city
+                          ? accentColor === "orange"
+                            ? "bg-orange-50 text-orange-600 font-semibold"
+                            : "bg-purple-50 text-purple-600 font-semibold"
+                          : "text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      {city}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Budget */}
+            <div className="relative">
+              <button
+                onClick={() => toggleFilter("budget")}
+                className={`flex items-center gap-1 px-3 sm:px-4 py-2 border rounded-full text-sm font-medium transition-all ${
+                  activeFilter === "budget" || minBudget || maxBudget
+                    ? accentColor === "orange"
+                      ? "border-orange-500 text-orange-600 bg-orange-50"
+                      : "border-purple-500 text-purple-600 bg-purple-50"
+                    : "hover:border-slate-400"
+                }`}
+              >
+                {budgetLabel}
+                <ChevronDown size={14} />
+              </button>
+              {activeFilter === "budget" && (
+                <div className="absolute top-12 left-0 w-72 bg-white shadow-xl border rounded-lg p-4 z-50">
+                  <p className="text-sm font-bold text-slate-800 mb-3">
+                    Budget Range (₹{activeTab === "hotels" ? "/night" : " onwards"})
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      placeholder="Min"
+                      value={minBudget}
+                      onChange={(e) => setMinBudget(e.target.value)}
+                      className={`w-full border p-2 rounded text-sm outline-none ${accentColor === "orange" ? "focus:border-orange-500" : "focus:border-purple-500"}`}
+                    />
+                    <span className="text-slate-400 text-sm flex-shrink-0">to</span>
+                    <input
+                      type="number"
+                      placeholder="Max"
+                      value={maxBudget}
+                      onChange={(e) => setMaxBudget(e.target.value)}
+                      className={`w-full border p-2 rounded text-sm outline-none ${accentColor === "orange" ? "focus:border-orange-500" : "focus:border-purple-500"}`}
+                    />
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {budgetPresets.map((p) => (
+                      <button
+                        key={p.label}
+                        onClick={() => { setMinBudget(p.min || ""); setMaxBudget(p.max || ""); }}
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
+                          accentColor === "orange"
+                            ? "bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"
+                            : "bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex justify-between">
+                    <button
+                      onClick={() => { setMinBudget(""); setMaxBudget(""); }}
+                      className="text-sm text-slate-500 underline"
+                    >
+                      Clear
+                    </button>
+                    <button
+                      onClick={() => setActiveFilter(null)}
+                      className={`text-white px-4 py-1.5 rounded-md text-sm font-semibold ${accentColor === "orange" ? "bg-orange-600" : "bg-purple-600"}`}
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Type Filter (Hotel Type / Venue Type) */}
+            <div className="relative">
+              <button
+                onClick={() => toggleFilter("type")}
+                className={`flex items-center gap-1 px-3 sm:px-4 py-2 border rounded-full text-sm font-medium transition-all ${
+                  activeFilter === "type" || selectedType
+                    ? accentColor === "orange"
+                      ? "border-orange-500 text-orange-600 bg-orange-50"
+                      : "border-purple-500 text-purple-600 bg-purple-50"
+                    : "hover:border-slate-400"
+                }`}
+              >
+                {selectedType || (activeTab === "hotels" ? "Hotel Type" : "Venue Type")}
+                {selectedType && (
+                  <span onClick={(e) => { e.stopPropagation(); setSelectedType(""); }} className="ml-0.5 hover:text-red-500">
+                    <X size={12} />
+                  </span>
+                )}
+                <ChevronDown size={14} />
+              </button>
+              {activeFilter === "type" && (
+                <div className="absolute top-12 left-0 w-64 bg-white shadow-xl border rounded-lg p-4 z-50">
+                  <p className="text-sm font-bold text-slate-800 mb-3">
+                    {activeTab === "hotels" ? "Hotel Type" : "Venue Type"}
+                  </p>
+                  <div className="grid grid-cols-1 gap-2">
+                    {availableTypes.map((type) => (
+                      <button
+                        key={type}
+                        onClick={() => { setSelectedType(selectedType === type ? "" : type); setActiveFilter(null); }}
+                        className={`px-3 py-2 border rounded-lg text-sm font-medium text-left transition-all ${
+                          selectedType === type
+                            ? accentColor === "orange"
+                              ? "border-orange-500 text-orange-600 bg-orange-50"
+                              : "border-purple-500 text-purple-600 bg-purple-50"
+                            : "hover:border-slate-300"
+                        }`}
+                      >
+                        {type}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => setActiveFilter(null)}
+                    className={`mt-4 w-full text-white py-1.5 rounded-md text-sm font-semibold ${accentColor === "orange" ? "bg-orange-600" : "bg-purple-600"}`}
+                  >
+                    Done
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* More Filters */}
+            <div className="relative">
+              <button
+                onClick={() => toggleFilter("more")}
+                className={`flex items-center gap-1 px-3 sm:px-4 py-2 border rounded-full text-sm font-medium transition-all ${
+                  activeFilter === "more" || moreCount > 0
+                    ? accentColor === "orange"
+                      ? "border-orange-500 text-orange-600 bg-orange-50"
+                      : "border-purple-500 text-purple-600 bg-purple-50"
+                    : "bg-slate-50 hover:bg-slate-100"
+                }`}
+              >
+                More Filters
+                {moreCount > 0 && (
+                  <span className={`text-white text-[10px] px-1.5 rounded-full ml-1 ${accentColor === "orange" ? "bg-orange-600" : "bg-purple-600"}`}>
+                    {moreCount}
+                  </span>
+                )}
+                <ChevronDown size={14} />
+              </button>
+              {activeFilter === "more" && (
+                <div className="absolute top-12 right-0 sm:left-0 w-72 bg-white shadow-xl border rounded-lg p-4 z-50">
+                  <p className="text-sm font-bold text-slate-800 mb-3">More Filters</p>
+
+                  {/* Category — hotels only */}
+                  {activeTab === "hotels" && availableCategories.length > 0 && (
+                    <>
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Category</p>
+                      <div className="grid grid-cols-2 gap-2 mb-4">
+                        {availableCategories.map((cat) => (
+                          <button
+                            key={cat}
+                            onClick={() => setSelectedCategory(selectedCategory === cat ? "" : cat)}
+                            className={`px-3 py-2 border rounded-lg text-xs font-medium text-left transition-all ${
+                              selectedCategory === cat
+                                ? "border-orange-500 text-orange-600 bg-orange-50"
+                                : "hover:border-orange-300"
+                            }`}
+                          >
+                            {cat}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Verified / Featured toggles */}
+                  <div className="space-y-2">
+                    <label className="flex items-center justify-between px-3 py-2 border rounded-lg cursor-pointer hover:border-slate-400">
+                      <span className="text-sm text-slate-700 flex items-center gap-2">
+                        <ShieldCheck size={14} className={accentColor === "orange" ? "text-orange-500" : "text-purple-500"} />
+                        Verified Only
+                      </span>
+                      <input
+                        type="checkbox"
+                        className={`w-4 h-4 ${accentColor === "orange" ? "accent-orange-600" : "accent-purple-600"}`}
+                        checked={verifiedOnly}
+                        onChange={(e) => setVerifiedOnly(e.target.checked)}
+                      />
+                    </label>
+                    <label className="flex items-center justify-between px-3 py-2 border rounded-lg cursor-pointer hover:border-slate-400">
+                      <span className="text-sm text-slate-700 flex items-center gap-2">
+                        <Sparkles size={14} className={accentColor === "orange" ? "text-orange-500" : "text-purple-500"} />
+                        Featured Only
+                      </span>
+                      <input
+                        type="checkbox"
+                        className={`w-4 h-4 ${accentColor === "orange" ? "accent-orange-600" : "accent-purple-600"}`}
+                        checked={featuredOnly}
+                        onChange={(e) => setFeaturedOnly(e.target.checked)}
+                      />
+                    </label>
+                  </div>
+
+                  <button
+                    onClick={() => setActiveFilter(null)}
+                    className={`mt-4 w-full text-white py-1.5 rounded-md text-sm font-semibold ${accentColor === "orange" ? "bg-orange-600" : "bg-purple-600"}`}
+                  >
+                    Done
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Reset */}
+            <button
+              onClick={onReset}
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-medium hover:bg-gray-200 transition-all"
+            >
+              <RotateCcw size={14} />
+              <span className="hidden sm:inline">Reset</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Component ────────────────────────────────────────────────────────────
 const HotelsBanquetsPage = () => {
   const navigate = useNavigate();
-  
-  // Tab state: 'hotels' or 'banquets'
+
   const [activeTab, setActiveTab] = useState("hotels");
-  
-  // Search and pagination
-  const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [noProperties, setNoProperties] = useState(false);
-  
-  // Data states
+
   const [hotels, setHotels] = useState([]);
   const [banquets, setBanquets] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
-  
-  // FilterBar States
-  const [activeFilter, setActiveFilter] = useState(null);
+
+  // FilterBar states
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [selectedCity, setSelectedCity] = useState("");
   const [minBudget, setMinBudget] = useState("");
   const [maxBudget, setMaxBudget] = useState("");
-  const [selectedLocalities, setSelectedLocalities] = useState([]);
-  const [selectedPropertyTypes, setSelectedPropertyTypes] = useState([]);
-  const [localities, setLocalities] = useState([]);
-
-  // Filter States
-  const [selectedCity, setSelectedCity] = useState("");
-  const [priceRange, setPriceRange] = useState([0, 500000]);
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [selectedVenueType, setSelectedVenueType] = useState("");
+  const [selectedType, setSelectedType] = useState("");       // propertyType / venueType
+  const [selectedCategory, setSelectedCategory] = useState(""); // hotel category
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [featuredOnly, setFeaturedOnly] = useState(false);
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
-  // Hotel specific property types
-  const hotelPropertyTypes = ['Hotel', 'Guest House', 'Resort', 'Lodge'];
-  
-  // Banquet specific property types
-  const banquetPropertyTypes = ['Banquet Hall', 'Party Hall', 'Lawn', 'Conference Hall', 'Event Venue'];
+  // Dynamic filter options
+  const [availableCities, setAvailableCities] = useState([]);
+  const [availableTypes, setAvailableTypes] = useState([]);
+  const [availableCategories, setAvailableCategories] = useState([]);
 
-  // Get property types based on active tab
-  const getPropertyTypes = () => {
-    return activeTab === 'hotels' ? hotelPropertyTypes : banquetPropertyTypes;
-  };
-  
   const itemsPerPage = 9;
 
-  const toggleFilter = (filter) => {
-    setActiveFilter(activeFilter === filter ? null : filter);
-  };
+  // Debounce search
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm), 400);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
 
-  const handleLocalityChange = (locality) => {
-    setSelectedLocalities(prev => 
-      prev.includes(locality) 
-        ? prev.filter(l => l !== locality) 
-        : [...prev, locality]
-    );
-  };
-
-  const handlePropertyTypeChange = (type) => {
-    setSelectedPropertyTypes(prev => 
-      prev.includes(type) 
-        ? prev.filter(t => t !== type) 
-        : [...prev, type]
-    );
-  };
-
-  const clearAllFilters = () => {
-    setMinBudget('');
-    setMaxBudget('');
-    setSelectedLocalities([]);
-    setSelectedPropertyTypes([]);
-    setSelectedCity('');
-    setSelectedCategory('');
-    setSelectedVenueType('');
-    setPriceRange([0, 500000]);
+  // Reset page & type on tab change
+  useEffect(() => {
     setCurrentPage(1);
-  };
-
-  // Fetch localities for filter
-  useEffect(() => {
-    const fetchLocalities = () => {
-      const sourceData = activeTab === 'hotels' ? hotels : banquets;
-      const uniqueLocalities = [...new Set(sourceData.map(item => item.location?.locality).filter(Boolean))];
-      setLocalities(uniqueLocalities.slice(0, 10));
-    };
-    fetchLocalities();
-  }, [activeTab, hotels, banquets]);
-
-  // Reset property types when tab changes
-  useEffect(() => {
-    setSelectedPropertyTypes([]);
+    setSelectedType("");
+    setSelectedCategory("");
   }, [activeTab]);
 
-  const handlePropertyClick = (id) => {
-    navigate(`/hotel-banquet/${id}?type=${activeTab}`);
-  };
-
-  const resetFilters = () => {
-    setSearchQuery("");
-    setSelectedCity("");
-    setPriceRange([0, 500000]);
-    setSelectedCategory("");
-    setSelectedVenueType("");
-    setVerifiedOnly(false);
-    setFeaturedOnly(false);
+  // Reset page on filter change
+  useEffect(() => {
     setCurrentPage(1);
-  };
+  }, [debouncedSearch, selectedCity, minBudget, maxBudget, selectedType, selectedCategory, verifiedOnly, featuredOnly]);
 
   // Fetch Hotels
   useEffect(() => {
     const controller = new AbortController();
-    const fetchHotels = async () => {
+    (async () => {
       try {
-        const res = await fetch(`https://api.gharzoreality.com/api/hotels`, { 
-          signal: controller.signal 
-        });
+        const res = await fetch("https://api.gharzoreality.com/api/hotels", { signal: controller.signal });
         const data = await res.json();
-        if (data?.success) {
-          setHotels(data?.data || []);
-        }
-      } catch (err) {
-        if (err.name === 'AbortError') return;
-        console.error('Error fetching hotels', err);
+        if (data?.success) setHotels(data?.data || []);
+      } catch (e) {
+        if (e.name !== "AbortError") console.error(e);
       }
-    };
-    fetchHotels();
+    })();
     return () => controller.abort();
   }, []);
 
   // Fetch Banquets
   useEffect(() => {
     const controller = new AbortController();
-    const fetchBanquets = async () => {
+    (async () => {
       try {
-        const res = await fetch(`https://api.gharzoreality.com/api/banquet-halls`, { 
-          signal: controller.signal 
-        });
+        const res = await fetch("https://api.gharzoreality.com/api/banquet-halls", { signal: controller.signal });
         const data = await res.json();
-        if (data?.success) {
-          setBanquets(data?.data || []);
-        }
-      } catch (err) {
-        if (err.name === 'AbortError') return;
-        console.error('Error fetching banquets', err);
+        if (data?.success) setBanquets(data?.data || []);
+      } catch (e) {
+        if (e.name !== "AbortError") console.error(e);
       }
-    };
-    fetchBanquets();
+    })();
     return () => controller.abort();
   }, []);
 
-  // Filter and process data
+  // Update dynamic filter options whenever source data changes
+  useEffect(() => {
+    const source = activeTab === "hotels" ? hotels : banquets;
+    const cities = [...new Set(source.map((i) => i.location?.city).filter(Boolean))].sort();
+    setAvailableCities(cities);
+
+    if (activeTab === "hotels") {
+      const types = [...new Set(hotels.map((i) => i.propertyType).filter(Boolean))].sort();
+      const cats = [...new Set(hotels.map((i) => i.category).filter(Boolean))].sort();
+      setAvailableTypes(types);
+      setAvailableCategories(cats);
+    } else {
+      const types = [...new Set(banquets.map((i) => i.venueType).filter(Boolean))].sort();
+      setAvailableTypes(types);
+      setAvailableCategories([]);
+    }
+  }, [activeTab, hotels, banquets]);
+
+  // Apply filters
   useEffect(() => {
     setLoading(true);
     setNoProperties(false);
-    
-    const sourceData = activeTab === 'hotels' ? hotels : banquets;
-    
-    let list = [...sourceData];
-    
-    // Apply search filter
-    if (searchQuery) {
-      list = list.filter(p => 
-        p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.location?.city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.location?.locality?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.location?.landmark?.toLowerCase().includes(searchQuery.toLowerCase())
+
+    const source = activeTab === "hotels" ? hotels : banquets;
+    let list = [...source];
+
+    // Search
+    if (debouncedSearch.trim()) {
+      const q = debouncedSearch.toLowerCase();
+      list = list.filter(
+        (p) =>
+          p.name?.toLowerCase().includes(q) ||
+          p.location?.city?.toLowerCase().includes(q) ||
+          p.location?.locality?.toLowerCase().includes(q)
       );
     }
-    
-    // Apply city filter
+
+    // City
     if (selectedCity) {
-      list = list.filter(p => p.location?.city === selectedCity);
-    }
-    
-    // Apply price range filter
-    list = list.filter(p => {
-      const minPrice = p.priceRange?.min || 0;
-      const maxPrice = p.priceRange?.max || 0;
-      return (minPrice >= priceRange[0] && minPrice <= priceRange[1]) || 
-             (maxPrice >= priceRange[0] && maxPrice <= priceRange[1]) ||
-             (minPrice <= priceRange[0] && maxPrice >= priceRange[1]);
-    });
-
-    // Apply FilterBar locality filter
-    if (selectedLocalities.length > 0) {
-      list = list.filter(p => 
-        selectedLocalities.includes(p.location?.locality)
-      );
+      list = list.filter((p) => p.location?.city === selectedCity);
     }
 
-    // Apply FilterBar budget filter
-    const minBudgetFilter = minBudget ? parseInt(minBudget) : 0;
-    const maxBudgetFilter = maxBudget ? parseInt(maxBudget) : 500000;
-    list = list.filter(p => {
-      const price = p.priceRange?.min || 0;
-      return price >= minBudgetFilter && price <= maxBudgetFilter;
-    });
+    // Budget
+    const minP = minBudget ? parseInt(minBudget) : 0;
+    const maxP = maxBudget ? parseInt(maxBudget) : Infinity;
+    if (minBudget || maxBudget) {
+      list = list.filter((p) => {
+        const price = p.priceRange?.min || 0;
+        return price >= minP && price <= maxP;
+      });
+    }
 
-    // Apply FilterBar property type filter (Hotel/Banquet specific)
-    if (selectedPropertyTypes.length > 0) {
-      if (activeTab === 'hotels') {
-        list = list.filter(p => 
-          selectedPropertyTypes.includes(p.propertyType)
-        );
+    // Type
+    if (selectedType) {
+      if (activeTab === "hotels") {
+        list = list.filter((p) => p.propertyType === selectedType);
       } else {
-        list = list.filter(p => 
-          selectedPropertyTypes.includes(p.venueType)
-        );
+        list = list.filter((p) => p.venueType === selectedType);
       }
     }
-    
-    // Apply category filter for hotels
-    if (activeTab === 'hotels' && selectedCategory) {
-      list = list.filter(p => p.category === selectedCategory);
+
+    // Category (hotels only)
+    if (activeTab === "hotels" && selectedCategory) {
+      list = list.filter((p) => p.category === selectedCategory);
     }
-    
-    // Apply venue type filter for banquets
-    if (activeTab === 'banquets' && selectedVenueType) {
-      list = list.filter(p => p.venueType === selectedVenueType);
-    }
-    
-    // Apply verified filter
-    if (verifiedOnly) {
-      list = list.filter(p => p.isVerified === true);
-    }
-    
-    // Apply featured filter
-    if (featuredOnly) {
-      list = list.filter(p => p.isFeatured === true);
-    }
-    
-    // Check if no properties found
+
+    // Verified
+    if (verifiedOnly) list = list.filter((p) => p.isVerified === true);
+
+    // Featured
+    if (featuredOnly) list = list.filter((p) => p.isFeatured === true);
+
     if (list.length === 0) {
       setNoProperties(true);
       setFilteredData([]);
       setTotalPages(1);
+      setTotalCount(0);
     } else {
-      // Map data to display format
-      const mapped = list.map((item) => {
-        if (activeTab === 'hotels') {
-          return {
-            id: item._id,
-            name: item.name,
-            description: item.description,
-            image: item.images?.[0]?.url || "",
-            images: item.images || [],
-            price: item.priceRange?.min || 0,
-            priceMax: item.priceRange?.max || 0,
-            location: item.location || { city: "", locality: "", landmark: "" },
-            category: item.category || "",
-            propertyType: item.propertyType || "",
-            totalRooms: item.totalRooms || 0,
-            roomTypes: item.roomTypes || [],
-            amenities: item.amenities || {},
-            policies: item.policies || {},
-            contactInfo: item.contactInfo || {},
-            nearbyPlaces: item.nearbyPlaces || [],
-            isVerified: item.isVerified || false,
-            isFeatured: item.isFeatured || false,
-            ratings: item.ratings || { average: 0, count: 0 },
-            type: 'hotel'
-          };
-        } else {
-          return {
-            id: item._id,
-            name: item.name,
-            description: item.description,
-            image: item.images?.[0]?.url || "",
-            images: item.images || [],
-            price: item.priceRange?.min || 0,
-            priceMax: item.priceRange?.max || 0,
-            location: item.location || { city: "", locality: "", landmark: "" },
-            venueType: item.venueType || "",
-            halls: item.halls || [],
-            totalCapacity: item.totalCapacity || { seating: 0, floating: 0 },
-            eventTypes: item.eventTypes || [],
-            amenities: item.amenities || {},
-            policies: item.policies || {},
-            contactInfo: item.contactInfo || {},
-            nearbyPlaces: item.nearbyPlaces || [],
-            isVerified: item.isVerified || false,
-            isFeatured: item.isFeatured || false,
-            ratings: item.ratings || { average: 0, count: 0 },
-            type: 'banquet'
-          };
-        }
-      });
-      
-      // Paginate
-      const startIndex = (currentPage - 1) * itemsPerPage;
-      const paginatedData = mapped.slice(startIndex, startIndex + itemsPerPage);
-      
-      setFilteredData(paginatedData);
-      setTotalPages(Math.ceil(list.length / itemsPerPage));
+      // Map to unified format
+      const mapped = list.map((item) => ({
+        id: item._id,
+        name: item.name,
+        description: item.description,
+        image: item.images?.[0]?.url || "",
+        price: item.priceRange?.min || 0,
+        priceMax: item.priceRange?.max || 0,
+        location: item.location || {},
+        // hotel fields
+        category: item.category || "",
+        propertyType: item.propertyType || "",
+        totalRooms: item.totalRooms || 0,
+        roomTypes: item.roomTypes || [],
+        amenities: item.amenities || {},
+        // banquet fields
+        venueType: item.venueType || "",
+        halls: item.halls || [],
+        totalCapacity: item.totalCapacity || {},
+        eventTypes: item.eventTypes || [],
+        // shared
+        contactInfo: item.contactInfo || {},
+        isVerified: item.isVerified || false,
+        isFeatured: item.isFeatured || false,
+        ratings: item.ratings || { average: 0, count: 0 },
+        policies: item.policies || {},
+        nearbyPlaces: item.nearbyPlaces || [],
+      }));
+
+      setTotalCount(mapped.length);
+      setTotalPages(Math.ceil(mapped.length / itemsPerPage));
+
+      const start = (currentPage - 1) * itemsPerPage;
+      setFilteredData(mapped.slice(start, start + itemsPerPage));
       setNoProperties(false);
     }
-    
-    setLoading(false);
-  }, [activeTab, hotels, banquets, currentPage, searchQuery, selectedCity, priceRange, selectedCategory, selectedVenueType, verifiedOnly, featuredOnly, minBudget, maxBudget, selectedLocalities, selectedPropertyTypes]);
 
-  // Get unique cities from data
-  const getUniqueCities = () => {
-    const sourceData = activeTab === 'hotels' ? hotels : banquets;
-    const cities = [...new Set(sourceData.map(item => item.location?.city).filter(Boolean))];
-    return cities;
+    setLoading(false);
+  }, [
+    activeTab, hotels, banquets, currentPage,
+    debouncedSearch, selectedCity, minBudget, maxBudget,
+    selectedType, selectedCategory, verifiedOnly, featuredOnly,
+  ]);
+
+  const handleReset = () => {
+    setSearchTerm("");
+    setSelectedCity("");
+    setMinBudget("");
+    setMaxBudget("");
+    setSelectedType("");
+    setSelectedCategory("");
+    setVerifiedOnly(false);
+    setFeaturedOnly(false);
   };
 
-  // Get categories for hotels
-  const getHotelCategories = () => {
-    const categories = [...new Set(hotels.map(item => item.category).filter(Boolean))];
-    return categories;
+  const hasActiveFilters =
+    selectedCity || minBudget || maxBudget || selectedType || selectedCategory || verifiedOnly || featuredOnly;
+
+  const formatPrice = (price) => {
+    if (!price) return "Price N/A";
+    if (price >= 100000) return `₹${(price / 100000).toFixed(1)}L`;
+    if (price >= 1000) return `₹${(price / 1000).toFixed(0)}K`;
+    return `₹${price.toLocaleString("en-IN")}`;
+  };
+
+  const accentColor = activeTab === "hotels" ? "orange" : "purple";
+
+  // All amenity lists flattened
+  const getAmenitiesList = (amenities) => {
+    if (!amenities) return [];
+    if (Array.isArray(amenities)) return amenities;
+    const lists = [];
+    Object.values(amenities).forEach((v) => {
+      if (Array.isArray(v)) lists.push(...v);
+    });
+    return lists.filter(Boolean);
   };
 
   return (
-    <section className="py-8 sm:py-12 px-4 sm:px-6 lg:px-10 bg-gradient-to-b from-blue-50/50 to-white min-h-screen">
-      {/* Back Button */}
-      <div className="mb-6 flex items-center gap-4">
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
-        >
-          <ArrowLeft size={20} />
-          <span>Back</span>
-        </button>
-      </div>
+    <div className="min-h-screen bg-gradient-to-b from-blue-50/50 to-white">
 
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="mb-8"
-      >
-        <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900">
-          <span className="bg-gradient-to-b from-[#0c2344] to-[#0b4f91] bg-clip-text text-transparent">
-            Hotels & Banquets
-          </span>
-        </h2>
-        <p className="mt-2 text-gray-600">Find the perfect venue for your stay or event</p>
-      </motion.div>
+      {/* Sticky FilterBar */}
+      <FilterBar
+        activeTab={activeTab}
+        searchTerm={searchTerm} setSearchTerm={setSearchTerm}
+        selectedCity={selectedCity} setSelectedCity={setSelectedCity}
+        minBudget={minBudget} setMinBudget={setMinBudget}
+        maxBudget={maxBudget} setMaxBudget={setMaxBudget}
+        selectedType={selectedType} setSelectedType={setSelectedType}
+        selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory}
+        verifiedOnly={verifiedOnly} setVerifiedOnly={setVerifiedOnly}
+        featuredOnly={featuredOnly} setFeaturedOnly={setFeaturedOnly}
+        availableCities={availableCities}
+        availableTypes={availableTypes}
+        availableCategories={availableCategories}
+        onReset={handleReset}
+      />
 
-      {/* Tabs */}
-      <div className="flex gap-4 mb-6">
-        <button
-          onClick={() => { setActiveTab('hotels'); setCurrentPage(1); resetFilters(); }}
-          className={`flex items-center gap-2 px-6 py-3 rounded-full font-semibold transition-all ${
-            activeTab === 'hotels'
-              ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg'
-              : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
-          }`}
-        >
-          <Building2 size={20} />
-          Hotels
-        </button>
-        <button
-          onClick={() => { setActiveTab('banquets'); setCurrentPage(1); resetFilters(); }}
-          className={`flex items-center gap-2 px-6 py-3 rounded-full font-semibold transition-all ${
-            activeTab === 'banquets'
-              ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg'
-              : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
-          }`}
-        >
-          <UtensilsCrossed size={20} />
-          Banquet Halls
-        </button>
-      </div>
+      <div className="py-8 sm:py-10 px-4 sm:px-6 lg:px-10">
 
-      {/* FilterBar for Hotels & Banquets */}
-      <div className="w-full bg-white shadow-md border-b sticky top-0 z-50 font-sans">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          {/* Primary Filters */}
-          <div className="flex flex-wrap items-center gap-3">
-            
-            {/* Search Input */}
-            <div className="flex-1 min-w-[200px] relative">
-              <Search className="absolute left-3 top-2.5 text-slate-400" size={18} />
-              <input 
-                type="text" 
-                placeholder="Search by name, city, locality..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 border-slate-200"
-              />
-            </div>
-
-            {/* Dropdown Filters */}
-            <div className="flex flex-wrap gap-2">
-              
-              {/* Locality Filter */}
-              <div className="relative">
-                <button 
-                  onClick={() => toggleFilter('locality')}
-                  className={`flex items-center gap-1 px-4 py-2 border rounded-full text-sm font-medium transition-all ${activeFilter === 'locality' ? 'border-orange-500 text-orange-600 bg-orange-50' : 'hover:border-slate-400'}`}
-                >
-                  Locality <ChevronDown size={16} />
-                </button>
-                {activeFilter === 'locality' && (
-                  <div className="absolute top-12 left-0 w-64 bg-white shadow-xl border rounded-lg p-4 z-50">
-                    <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto">
-                      {localities.length > 0 ? (
-                        localities.map(loc => (
-                          <label key={loc} className="flex items-center gap-2 text-slate-700 cursor-pointer hover:text-orange-600">
-                            <input 
-                              type="checkbox" 
-                              className="accent-orange-500"
-                              checked={selectedLocalities.includes(loc)}
-                              onChange={() => handleLocalityChange(loc)}
-                            /> {loc}
-                          </label>
-                        ))
-                      ) : (
-                        <p className="text-sm text-gray-400">No localities found</p>
-                      )}
-                    </div>
-                    <button onClick={() => setActiveFilter(null)} className="mt-4 w-full bg-orange-500 text-white py-1.5 rounded-md">Done</button>
-                  </div>
-                )}
-              </div>
-
-              {/* Budget Filter */}
-              <div className="relative">
-                <button 
-                  onClick={() => toggleFilter('budget')}
-                  className={`flex items-center gap-1 px-4 py-2 border rounded-full text-sm font-medium ${activeFilter === 'budget' ? 'border-orange-500 text-orange-600' : ''}`}
-                >
-                  Budget <ChevronDown size={16} />
-                </button>
-                {activeFilter === 'budget' && (
-                  <div className="absolute top-12 left-0 w-72 bg-white shadow-xl border rounded-lg p-4 z-50">
-                    <p className="text-sm font-bold text-slate-800 mb-3">Price Range</p>
-                    <div className="flex items-center gap-2">
-                      <input 
-                        type="number" 
-                        placeholder="Min" 
-                        value={minBudget}
-                        onChange={(e) => setMinBudget(e.target.value)}
-                        className="w-full border p-2 rounded text-sm focus:border-orange-500 outline-none"
-                      />
-                      <span className="text-slate-400">to</span>
-                      <input 
-                        type="number" 
-                        placeholder="Max" 
-                        value={maxBudget}
-                        onChange={(e) => setMaxBudget(e.target.value)}
-                        className="w-full border p-2 rounded text-sm focus:border-orange-500 outline-none"
-                      />
-                    </div>
-                    <div className="mt-4 flex justify-between items-center">
-                      <button onClick={() => {setMinBudget(''); setMaxBudget('')}} className="text-sm text-slate-500 underline">Clear</button>
-                      <button onClick={() => setActiveFilter(null)} className="bg-orange-500 text-white px-4 py-1.5 rounded-md text-sm">Apply</button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Property Type Filter (Hotel/Banquet Specific) */}
-              <div className="relative">
-                <button 
-                  onClick={() => toggleFilter('propertyType')}
-                  className={`flex items-center gap-1 px-4 py-2 border rounded-full text-sm font-medium ${activeFilter === 'propertyType' ? 'border-orange-500 text-orange-600' : ''}`}
-                >
-                  {activeTab === 'hotels' ? 'Hotel Type' : 'Venue Type'} <ChevronDown size={16} />
-                </button>
-                {activeFilter === 'propertyType' && (
-                  <div className="absolute top-12 left-0 w-64 bg-white shadow-xl border rounded-lg p-4 z-50">
-                    <div className="grid grid-cols-1 gap-2">
-                      {getPropertyTypes().map(type => (
-                        <label key={type} className="flex items-center gap-2 text-slate-700 cursor-pointer hover:text-orange-600">
-                          <input 
-                            type="checkbox" 
-                            className="accent-orange-500"
-                            checked={selectedPropertyTypes.includes(type)}
-                            onChange={() => handlePropertyTypeChange(type)}
-                          /> {type}
-                        </label>
-                      ))}
-                    </div>
-                    <button onClick={() => setActiveFilter(null)} className="mt-4 w-full bg-orange-500 text-white py-1.5 rounded-md">Done</button>
-                  </div>
-                )}
-              </div>
-
-              {/* More Filters Button */}
-              <button 
-                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                className="flex items-center gap-1 px-4 py-2 bg-slate-50 border rounded-full text-sm font-medium hover:bg-slate-100 transition-colors"
-              >
-                More Filters 
-              </button>
-              
-              {/* Clear All Button */}
-              {(selectedLocalities.length > 0 || minBudget || maxBudget || selectedPropertyTypes.length > 0) && (
-                <button 
-                  onClick={clearAllFilters}
-                  className="flex items-center gap-1 px-4 py-2 text-red-500 text-sm font-medium hover:underline"
-                >
-                  <X size={14} /> Clear
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Active Filter Tags */}
-          {(selectedLocalities.length > 0 || selectedPropertyTypes.length > 0 || minBudget || maxBudget) && (
-            <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t">
-              {selectedLocalities.map(loc => (
-                <span key={loc} className="inline-flex items-center gap-1 px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs">
-                  {loc}
-                  <X size={12} className="cursor-pointer" onClick={() => handleLocalityChange(loc)} />
-                </span>
-              ))}
-              {selectedPropertyTypes.map(type => (
-                <span key={type} className="inline-flex items-center gap-1 px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs">
-                  {type}
-                  <X size={12} className="cursor-pointer" onClick={() => handlePropertyTypeChange(type)} />
-                </span>
-              ))}
-              {(minBudget || maxBudget) && (
-                <span className="inline-flex items-center gap-1 px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs">
-                  ₹{minBudget || '0'} - ₹{maxBudget || '500000'}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Advanced Filters Panel */}
-      {showAdvancedFilters && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          exit={{ opacity: 0, height: 0 }}
-          className="max-w-5xl mx-auto mb-8"
-        >
-          <div className="bg-white p-6 shadow-xl rounded-2xl border border-gray-100">
-            {/* Quick Filter Chips */}
-            <div className="flex flex-wrap gap-3 mb-6 items-center">
-              <select 
-                className="border rounded-full px-4 py-2 text-sm bg-purple-50 text-purple-700 border-purple-200 focus:outline-none cursor-pointer"
-                value={selectedCity}
-                onChange={(e) => setSelectedCity(e.target.value)}
-              >
-                <option value="">All Cities</option>
-                {getUniqueCities().map(city => (
-                  <option key={city} value={city}>{city}</option>
-                ))}
-              </select>
-
-              {activeTab === 'hotels' && (
-                <select 
-                  className="border rounded-full px-4 py-2 text-sm bg-purple-50 text-purple-700 border-purple-200 focus:outline-none cursor-pointer"
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                >
-                  <option value="">All Categories</option>
-                  {getHotelCategories().map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              )}
-
-              <label className="flex items-center gap-2 border rounded-full px-4 py-2 text-sm hover:bg-gray-50 cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  className="accent-purple-600"
-                  checked={verifiedOnly}
-                  onChange={(e) => setVerifiedOnly(e.target.checked)}
-                />
-                <span className="text-purple-600 font-semibold">Verified ✅</span>
-              </label>
-
-              <label className="flex items-center gap-2 border rounded-full px-4 py-2 text-sm hover:bg-gray-50 cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  className="accent-purple-600"
-                  checked={featuredOnly}
-                  onChange={(e) => setFeaturedOnly(e.target.checked)}
-                />
-                <span className="text-purple-600 font-semibold">Featured ⭐</span>
-              </label>
-
-              <button 
-                className="text-sm text-blue-600 font-medium ml-auto hover:underline"
-                onClick={resetFilters}
-              >
-                Reset All Filters
-              </button>
-            </div>
-
-            <hr className="mb-6" />
-
-            {/* Price Range Slider */}
-            <div className="space-y-3">
-              <h3 className="font-semibold text-gray-700 flex items-center gap-2">
-                <IndianRupee size={18} className="text-purple-600" />
-                Budget Range
-              </h3>
-              <div className="space-y-2">
-                <div className="flex items-center gap-3">
-                  <input 
-                    type="number"
-                    placeholder="Min"
-                    value={priceRange[0]}
-                    onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])}
-                    className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-purple-500"
-                  />
-                  <span className="text-gray-400">-</span>
-                  <input 
-                    type="number"
-                    placeholder="Max"
-                    value={priceRange[1]}
-                    onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
-                    className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-purple-500"
-                  />
-                </div>
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="500000" 
-                  step="10000"
-                  value={priceRange[1]}
-                  onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
-                />
-                <div className="flex justify-between text-xs text-gray-500">
-                  <span>₹{priceRange[0].toLocaleString()}</span>
-                  <span>₹{priceRange[1].toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Active Filters Display */}
-      {(selectedCity || selectedCategory || selectedVenueType || verifiedOnly || featuredOnly || priceRange[0] > 0 || priceRange[1] < 500000) && (
-        <div className="max-w-5xl mx-auto mb-6">
-          <div className="flex flex-wrap gap-2 items-center">
-            <span className="text-sm font-semibold text-gray-600">Active Filters:</span>
-            
-            {selectedCity && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">
-                {selectedCity}
-                <X size={14} className="cursor-pointer" onClick={() => setSelectedCity("")} />
-              </span>
-            )}
-            
-            {selectedCategory && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">
-                {selectedCategory}
-                <X size={14} className="cursor-pointer" onClick={() => setSelectedCategory("")} />
-              </span>
-            )}
-            
-            {selectedVenueType && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">
-                {selectedVenueType}
-                <X size={14} className="cursor-pointer" onClick={() => setSelectedVenueType("")} />
-              </span>
-            )}
-            
-            {verifiedOnly && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">
-                Verified Only
-                <X size={14} className="cursor-pointer" onClick={() => setVerifiedOnly(false)} />
-              </span>
-            )}
-            
-            {featuredOnly && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">
-                Featured Only
-                <X size={14} className="cursor-pointer" onClick={() => setFeaturedOnly(false)} />
-              </span>
-            )}
-            
-            {(priceRange[0] > 0 || priceRange[1] < 500000) && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">
-                ₹{priceRange[0].toLocaleString()} - ₹{priceRange[1].toLocaleString()}
-                <X size={14} className="cursor-pointer" onClick={() => setPriceRange([0, 500000])} />
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* No Properties Message */}
-      {noProperties && !loading && (
-        <div className="flex flex-col items-center justify-center py-20">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center"
+        {/* Back */}
+        <div className="mb-6">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm text-sm"
           >
-            <Home size={64} className="mx-auto text-gray-300 mb-4" />
-            <h3 className="text-2xl font-bold text-gray-800 mb-2">
-              No {activeTab === 'hotels' ? 'Hotels' : 'Banquet Halls'} Found
-            </h3>
-            <p className="text-gray-600 mb-6">
-              No {activeTab === 'hotels' ? 'hotels' : 'banquet halls'} match your search criteria at the moment.
+            <ArrowLeft size={18} /> Back
+          </button>
+        </div>
+
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+          <div>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900">
+              <span className="bg-gradient-to-b from-[#0c2344] to-[#0b4f91] bg-clip-text text-transparent">
+                Hotels &amp; Banquets
+              </span>
+            </h2>
+            <p className="mt-1 text-gray-500 text-sm">
+              {loading
+                ? "Loading..."
+                : `${totalCount} ${activeTab === "hotels" ? "hotel" : "banquet"}${totalCount === 1 ? "" : "s"} found`}
+              {selectedCity && !loading && (
+                <span className="ml-2 text-orange-500 text-xs">· In {selectedCity}</span>
+              )}
             </p>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-3 mb-6 flex-wrap">
+          <button
+            onClick={() => { setActiveTab("hotels"); handleReset(); }}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold transition-all text-sm ${
+              activeTab === "hotels"
+                ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg"
+                : "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50"
+            }`}
+          >
+            <Building2 size={18} /> Hotels
+          </button>
+          <button
+            onClick={() => { setActiveTab("banquets"); handleReset(); }}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold transition-all text-sm ${
+              activeTab === "banquets"
+                ? "bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg"
+                : "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50"
+            }`}
+          >
+            <UtensilsCrossed size={18} /> Banquet Halls
+          </button>
+        </div>
+
+        {/* Active Filter Tags */}
+        {hasActiveFilters && (
+          <div className="mb-6 flex flex-wrap gap-2 items-center">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Active Filters:</span>
+            {selectedCity && (
+              <span className={`inline-flex items-center gap-1 px-3 py-1 text-white rounded-full text-xs font-medium ${accentColor === "orange" ? "bg-orange-600" : "bg-purple-600"}`}>
+                📍 {selectedCity}
+                <button onClick={() => setSelectedCity("")}><X size={11} /></button>
+              </span>
+            )}
+            {selectedType && (
+              <span className={`inline-flex items-center gap-1 px-3 py-1 text-white rounded-full text-xs font-medium ${accentColor === "orange" ? "bg-orange-500" : "bg-purple-500"}`}>
+                🏨 {selectedType}
+                <button onClick={() => setSelectedType("")}><X size={11} /></button>
+              </span>
+            )}
+            {selectedCategory && (
+              <span className={`inline-flex items-center gap-1 px-3 py-1 text-white rounded-full text-xs font-medium ${accentColor === "orange" ? "bg-orange-400" : "bg-purple-400"}`}>
+                ⭐ {selectedCategory}
+                <button onClick={() => setSelectedCategory("")}><X size={11} /></button>
+              </span>
+            )}
+            {(minBudget || maxBudget) && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-500 text-white rounded-full text-xs font-medium">
+                💰 ₹{minBudget || "0"} – {maxBudget ? `₹${maxBudget}` : "∞"}
+                <button onClick={() => { setMinBudget(""); setMaxBudget(""); }}><X size={11} /></button>
+              </span>
+            )}
+            {verifiedOnly && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-500 text-white rounded-full text-xs font-medium">
+                ✅ Verified
+                <button onClick={() => setVerifiedOnly(false)}><X size={11} /></button>
+              </span>
+            )}
+            {featuredOnly && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 bg-yellow-500 text-white rounded-full text-xs font-medium">
+                ⭐ Featured
+                <button onClick={() => setFeaturedOnly(false)}><X size={11} /></button>
+              </span>
+            )}
             <button
-              onClick={resetFilters}
-              className="px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-all"
+              onClick={handleReset}
+              className="flex items-center gap-1 px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-xs font-medium hover:bg-gray-300 transition-all"
+            >
+              <RotateCcw size={11} /> Clear All
+            </button>
+          </div>
+        )}
+
+        {/* Loading Skeleton */}
+        {loading && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+            {Array.from({ length: itemsPerPage }).map((_, i) => (
+              <div key={i} className="bg-white rounded-2xl shadow-lg overflow-hidden animate-pulse">
+                <div className="w-full h-60 bg-gray-200" />
+                <div className="p-6 space-y-3">
+                  <div className="h-5 bg-gray-200 rounded w-3/4" />
+                  <div className="h-4 bg-gray-100 rounded w-1/2" />
+                  <div className="grid grid-cols-3 gap-3 mt-4">
+                    {[1,2,3].map((j) => <div key={j} className="h-14 bg-gray-100 rounded-lg" />)}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* No Properties */}
+        {!loading && noProperties && (
+          <div className="flex flex-col items-center justify-center py-20">
+            <Home size={64} className="text-gray-300 mb-4" />
+            <h3 className="text-2xl font-bold text-gray-800 mb-2">
+              No {activeTab === "hotels" ? "Hotels" : "Banquet Halls"} Found
+            </h3>
+            <p className="text-gray-500 mb-6">Try adjusting your filters to see more results.</p>
+            <button
+              onClick={handleReset}
+              className={`px-6 py-3 text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-all ${accentColor === "orange" ? "bg-gradient-to-r from-orange-500 to-orange-600" : "bg-gradient-to-r from-purple-600 to-purple-700"}`}
             >
               Clear All Filters
             </button>
-          </motion.div>
-        </div>
-      )}
+          </div>
+        )}
 
-      {/* Property Cards */}
-      {!noProperties && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
-          {(loading ? Array.from({length: itemsPerPage}) : filteredData).map((property, index) => (
-            <motion.div
-              key={property?.id || `ph-${index}`}
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              whileHover={{ y: -8, scale: 1.03 }}
-              onClick={() => !loading && handlePropertyClick(property?.id)}
-              className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl overflow-hidden cursor-pointer transition-all duration-500"
+        {/* Cards */}
+        {!loading && !noProperties && filteredData.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+            {filteredData.map((item, index) => {
+              const amenitiesList = getAmenitiesList(item.amenities);
+              return (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, y: 40 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.07 }}
+                  whileHover={{ y: -6, scale: 1.02 }}
+                  onClick={() => navigate(`/hotel-banquet/${item.id}?type=${activeTab}`)}
+                  className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl overflow-hidden cursor-pointer transition-all duration-500"
+                >
+                  {/* Image */}
+                  <div className="relative h-60 overflow-hidden bg-gray-100">
+                    <img
+                      src={item.image || "https://via.placeholder.com/800x600?text=No+Image"}
+                      alt={item.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    />
+
+                    {/* Price */}
+                    <div className={`absolute top-4 left-4 text-white px-3 py-1.5 rounded-full font-bold text-sm shadow-lg ${accentColor === "orange" ? "bg-orange-600" : "bg-blue-600"}`}>
+                      {formatPrice(item.price)}
+                      {item.priceMax > item.price && ` – ${formatPrice(item.priceMax)}`}
+                      <span className="text-xs font-normal opacity-80 ml-1">
+                        {activeTab === "hotels" ? "/night" : " onwards"}
+                      </span>
+                    </div>
+
+                    {/* Type badge */}
+                    <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-full text-xs font-semibold text-gray-700">
+                      {activeTab === "hotels" ? (item.category || item.propertyType || "Hotel") : (item.venueType || "Banquet Hall")}
+                    </div>
+
+                    {item.isVerified && (
+                      <div className="absolute bottom-4 left-4 bg-green-500 text-white px-2.5 py-1 rounded-full text-xs font-bold shadow">
+                        ✓ Verified
+                      </div>
+                    )}
+                    {item.isFeatured && (
+                      <div className="absolute bottom-4 right-4 bg-yellow-500 text-white px-2.5 py-1 rounded-full text-xs font-bold shadow">
+                        ⭐ Featured
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-5">
+                    <h3 className={`text-lg font-bold text-gray-900 line-clamp-1 transition-colors group-hover:${accentColor === "orange" ? "text-orange-600" : "text-purple-600"}`}>
+                      {item.name}
+                    </h3>
+
+                    <div className="flex items-center text-gray-500 mt-1.5 mb-3">
+                      <MapPin size={14} className={`mr-1 flex-shrink-0 ${accentColor === "orange" ? "text-orange-500" : "text-purple-500"}`} />
+                      <span className="text-xs line-clamp-1">
+                        {[item.location.locality, item.location.city].filter(Boolean).join(", ")}
+                      </span>
+                    </div>
+
+                    {/* Description */}
+                    {item.description && (
+                      <p className="text-xs text-gray-500 line-clamp-2 mb-3">{item.description}</p>
+                    )}
+
+                    {/* Amenities chips */}
+                    {amenitiesList.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        {amenitiesList.slice(0, 3).map((a, i) => (
+                          <span key={i} className={`px-2 py-0.5 text-[10px] rounded-full font-medium border ${accentColor === "orange" ? "bg-orange-50 text-orange-700 border-orange-100" : "bg-purple-50 text-purple-700 border-purple-100"}`}>
+                            {a}
+                          </span>
+                        ))}
+                        {amenitiesList.length > 3 && (
+                          <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-[10px] rounded-full font-medium">
+                            +{amenitiesList.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Stats */}
+                    {activeTab === "hotels" ? (
+                      <div className="grid grid-cols-3 gap-2 mb-4 text-center">
+                        <div className={`flex flex-col items-center p-2 rounded-lg ${accentColor === "orange" ? "bg-orange-50" : "bg-purple-50"}`}>
+                          <BedDouble size={16} className={accentColor === "orange" ? "text-orange-500" : "text-purple-500"} />
+                          <p className="text-[10px] font-medium text-gray-600 mt-1">{item.totalRooms} Rooms</p>
+                        </div>
+                        <div className={`flex flex-col items-center p-2 rounded-lg ${accentColor === "orange" ? "bg-orange-50" : "bg-purple-50"}`}>
+                          <Star size={16} className={accentColor === "orange" ? "text-orange-500" : "text-purple-500"} />
+                          <p className="text-[10px] font-medium text-gray-600 mt-1">{item.roomTypes?.length || 0} Types</p>
+                        </div>
+                        <div className={`flex flex-col items-center p-2 rounded-lg ${accentColor === "orange" ? "bg-orange-50" : "bg-purple-50"}`}>
+                          <MapPin size={16} className={accentColor === "orange" ? "text-orange-500" : "text-purple-500"} />
+                          <p className="text-[10px] font-medium text-gray-600 mt-1">{item.nearbyPlaces?.length || 0} Nearby</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-2 mb-4 text-center">
+                        <div className="flex flex-col items-center p-2 bg-purple-50 rounded-lg">
+                          <Users size={16} className="text-purple-500" />
+                          <p className="text-[10px] font-medium text-gray-600 mt-1">{item.totalCapacity?.seating || 0} Seating</p>
+                        </div>
+                        <div className="flex flex-col items-center p-2 bg-purple-50 rounded-lg">
+                          <Users size={16} className="text-purple-500" />
+                          <p className="text-[10px] font-medium text-gray-600 mt-1">{item.totalCapacity?.floating || 0} Floating</p>
+                        </div>
+                        <div className="flex flex-col items-center p-2 bg-purple-50 rounded-lg">
+                          <Building2 size={16} className="text-purple-500" />
+                          <p className="text-[10px] font-medium text-gray-600 mt-1">{item.halls?.length || 0} Halls</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Banquet: Event types */}
+                    {activeTab === "banquets" && item.eventTypes?.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        {item.eventTypes.slice(0, 3).map((ev, i) => (
+                          <span key={i} className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] rounded-full font-medium">
+                            {ev}
+                          </span>
+                        ))}
+                        {item.eventTypes.length > 3 && (
+                          <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-[10px] rounded-full">+{item.eventTypes.length - 3}</span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Contact */}
+                    {item.contactInfo?.phone && (
+                      <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                        <Phone size={12} />
+                        <span>{item.contactInfo.phone}</span>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!loading && !noProperties && totalPages > 1 && (
+          <div className="flex justify-center mt-10 gap-2 flex-wrap">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+              disabled={currentPage === 1}
+              className={`px-5 py-2.5 bg-white border text-sm font-medium rounded-xl disabled:opacity-40 hover:opacity-80 transition-colors ${accentColor === "orange" ? "border-orange-400 text-orange-600" : "border-purple-400 text-purple-600"}`}
             >
-              <div className="relative">
-                <img
-                  src={property?.image || 'https://via.placeholder.com/800x600?text=Loading'}
-                  alt={property?.name || 'Loading'}
-                  className="w-full h-60 object-cover group-hover:scale-110 transition-transform duration-700"
-                />
-                <div className="absolute top-4 left-4 bg-blue-600 text-white px-4 py-2 rounded-full font-semibold text-sm shadow-lg">
-                  {activeTab === 'hotels' ? '₹' : '₹'}{(property?.price || 0).toLocaleString()}
-                  {property?.priceMax > property?.price && ` - ₹${property.priceMax.toLocaleString()}`}
-                  <span className="text-xs font-normal">
-                    {activeTab === 'hotels' ? '/night' : (property?.type === 'banquet' ? ' onwards' : '')}
-                  </span>
-                </div>
-                
-                {/* Property Type Badge */}
-                <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-semibold text-gray-700 shadow-lg">
-                  {activeTab === 'hotels' ? (property?.category || 'Hotel') : (property?.venueType || 'Banquet Hall')}
-                </div>
-                
-                {property?.isVerified && (
-                  <div className="absolute bottom-4 left-4 bg-green-500 text-white px-3 py-1 rounded-full font-semibold text-xs shadow-lg">
-                    ✓ Verified
-                  </div>
-                )}
-                
-                {property?.isFeatured && (
-                  <div className="absolute bottom-4 right-4 bg-yellow-500 text-white px-3 py-1 rounded-full font-semibold text-xs shadow-lg">
-                    ⭐ Featured
-                  </div>
-                )}
-              </div>
+              Previous
+            </button>
 
-              <div className="p-6">
-                <h3 className="text-xl font-bold text-gray-900 line-clamp-1">
-                  {property?.name || 'Loading...'}
-                </h3>
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+              let pageNum;
+              if (totalPages <= 5) pageNum = i + 1;
+              else if (currentPage <= 3) pageNum = i + 1;
+              else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
+              else pageNum = currentPage - 2 + i;
 
-                <div className="flex items-center text-gray-600 mt-2">
-                  <MapPin size={18} className="text-orange-500 mr-1" />
-                  <span className="text-sm">
-                    {property?.location?.city || 'City'}, {property?.location?.locality || 'Locality'}
-                  </span>
-                </div>
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => setCurrentPage(pageNum)}
+                  className={`w-10 h-10 rounded-xl text-sm font-semibold transition-colors ${
+                    currentPage === pageNum
+                      ? accentColor === "orange"
+                        ? "bg-orange-600 text-white shadow-lg"
+                        : "bg-purple-600 text-white shadow-lg"
+                      : `bg-white border text-sm ${accentColor === "orange" ? "border-orange-300 text-orange-600 hover:bg-orange-50" : "border-purple-300 text-purple-600 hover:bg-purple-50"}`
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
 
-                {/* Hotel specific info */}
-                {activeTab === 'hotels' && property?.totalRooms > 0 && (
-                  <div className="grid grid-cols-3 gap-4 mt-5 text-center text-gray-700">
-                    <div>
-                      <BedDouble size={20} className="mx-auto text-orange-500" />
-                      <p className="text-sm mt-1">{property?.totalRooms} Rooms</p>
-                    </div>
-                    <div>
-                      <Star size={20} className="mx-auto text-orange-500" />
-                      <p className="text-sm mt-1">{property?.roomTypes?.length || 0} Types</p>
-                    </div>
-                    <div>
-                      <MapPin size={20} className="mx-auto text-orange-500" />
-                      <p className="text-sm mt-1">Nearby</p>
-                    </div>
-                  </div>
-                )}
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className={`px-5 py-2.5 bg-white border text-sm font-medium rounded-xl disabled:opacity-40 hover:opacity-80 transition-colors ${accentColor === "orange" ? "border-orange-400 text-orange-600" : "border-purple-400 text-purple-600"}`}
+            >
+              Next
+            </button>
+          </div>
+        )}
 
-                {/* Banquet specific info */}
-                {activeTab === 'banquets' && property?.totalCapacity && (
-                  <div className="grid grid-cols-3 gap-4 mt-5 text-center text-gray-700">
-                    <div>
-                      <Users size={20} className="mx-auto text-orange-500" />
-                      <p className="text-sm mt-1">{property?.totalCapacity?.seating || 0} Seating</p>
-                    </div>
-                    <div>
-                      <Users size={20} className="mx-auto text-orange-500" />
-                      <p className="text-sm mt-1">{property?.totalCapacity?.floating || 0} Floating</p>
-                    </div>
-                    <div>
-                      <MapPin size={20} className="mx-auto text-orange-500" />
-                      <p className="text-sm mt-1">{property?.halls?.length || 0} Halls</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Description */}
-                <p className="mt-4 text-sm text-gray-600 line-clamp-2">
-                  {property?.description || 'No description available'}
-                </p>
-
-                {/* Contact Info Preview */}
-                <div className="mt-4 flex items-center gap-3 text-sm text-gray-500">
-                  {property?.contactInfo?.phone && (
-                    <div className="flex items-center gap-1">
-                      <Phone size={14} />
-                      <span>{property.contactInfo.phone}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      )}
-
-      {/* Pagination */}
-      {!noProperties && totalPages > 1 && (
-        <div className="flex justify-center mt-12 gap-3 flex-wrap">
-          <button
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className="px-6 py-3 bg-white border border-blue-500 text-blue-600 rounded-xl disabled:opacity-50 hover:bg-blue-50 transition-colors"
-          >
-            Previous
-          </button>
-
-          {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-            let pageNum;
-            if (totalPages <= 5) {
-              pageNum = i + 1;
-            } else if (currentPage <= 3) {
-              pageNum = i + 1;
-            } else if (currentPage >= totalPages - 2) {
-              pageNum = totalPages - 4 + i;
-            } else {
-              pageNum = currentPage - 2 + i;
-            }
-            
-            return (
-              <button
-                key={pageNum}
-                onClick={() => setCurrentPage(pageNum)}
-                className={`px-5 py-3 rounded-xl transition-colors ${
-                  currentPage === pageNum
-                    ? "bg-blue-600 text-white"
-                    : "bg-white border border-blue-300 text-blue-600 hover:bg-blue-50"
-                }`}
-              >
-                {pageNum}
-              </button>
-            );
-          })}
-
-          <button
-            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-            disabled={currentPage === totalPages}
-            className="px-6 py-3 bg-white border border-blue-500 text-blue-600 rounded-xl disabled:opacity-50 hover:bg-blue-50 transition-colors"
-          >
-            Next
-          </button>
-        </div>
-      )}
-    </section>
+        {/* Results count */}
+        {!loading && !noProperties && filteredData.length > 0 && (
+          <div className="text-center mt-6 text-gray-500 text-sm">
+            Showing <span className={`font-semibold ${accentColor === "orange" ? "text-orange-600" : "text-purple-600"}`}>{filteredData.length}</span>{" "}
+            of <span className={`font-semibold ${accentColor === "orange" ? "text-orange-600" : "text-purple-600"}`}>{totalCount}</span>{" "}
+            {activeTab === "hotels" ? "hotels" : "banquet halls"}
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 

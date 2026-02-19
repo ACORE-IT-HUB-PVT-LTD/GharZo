@@ -146,7 +146,7 @@ const RentalProperties = () => {
                           ?
                         </p>
 
-                        <button className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-4 py-2 md:px-5 md:py-3 rounded-xl shadow-lg flex items-center gap-2 transition-all hover:shadow-xl whitespace-nowrap">
+                        <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl shadow-lg flex items-center gap-3 transition-all hover:shadow-xl">
                           <svg
                             className="w-3 h-3 md:w-4 md:h-4"
                             fill="none"
