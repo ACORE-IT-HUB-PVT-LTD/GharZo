@@ -197,7 +197,13 @@ export const requestNotificationPermission = async () => {
 };
 
 // Alias for backward compatibility
-export const requestPermissionAndGetToken = requestNotificationPermission;
+export const requestPermissionAndGetToken = async () => {
+  const permissionResult = await requestNotificationPermission();
+  if (!permissionResult?.granted) {
+    return null;
+  }
+  return await getFCMToken();
+};
 
 /**
  * 🔥 Get FCM Token with diagnostics
@@ -557,7 +563,7 @@ export const sendFCMTokenToServer = async (authToken, fcmToken = null) => {
       fcmToken = await getFCMToken();
     }
 
-    if (!fcmToken) {
+    if (!fcmToken || typeof fcmToken !== "string") {
       console.error("❌ No FCM token available");
       console.groupEnd();
       return false;

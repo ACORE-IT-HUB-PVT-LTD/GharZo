@@ -186,7 +186,7 @@ function Login({ onClose }) {
         // First, request permission and get FCM token
         const fcmToken = await requestPermissionAndGetToken();
         
-        if (fcmToken) {
+        if (typeof fcmToken === "string" && fcmToken.length > 0) {
           // Send to backend with the auth token
           const fcmSaved = await sendFCMTokenToServer(token, fcmToken);
           if (fcmSaved) {
