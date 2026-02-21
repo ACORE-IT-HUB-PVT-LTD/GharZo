@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
@@ -12,6 +12,9 @@ import {
   FaCheckCircle,
   FaClock,
   FaTachometerAlt,
+  FaCamera,
+  FaTrash,
+  FaUpload,
 } from "react-icons/fa";
 import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
@@ -27,15 +30,30 @@ const ProfilePage = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [errors, setErrors] = useState({});
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageDeleting, setImageDeleting] = useState(false);
+  const [showImageMenu, setShowImageMenu] = useState(false);
+  const fileInputRef = useRef(null);
+  const imageMenuRef = useRef(null);
   const navigate = useNavigate();
 
   const token = localStorage.getItem("usertoken");
+
+  // Close image menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (imageMenuRef.current && !imageMenuRef.current.contains(e.target)) {
+        setShowImageMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Validate function
   const validate = (data) => {
     const newErrors = {};
 
-    // Name
     const name = String(data.name || '').trim();
     if (!name) {
       newErrors.name = "Name is required";
@@ -43,7 +61,6 @@ const ProfilePage = () => {
       newErrors.name = "Name must be at least 2 characters";
     }
 
-    // Phone (read-only but validate structure)
     const phone = String(data.phone || '').trim();
     if (!phone) {
       newErrors.phone = "Phone is required";
@@ -51,7 +68,6 @@ const ProfilePage = () => {
       newErrors.phone = "Phone must be exactly 10 digits";
     }
 
-    // Address fields (optional but validate if provided)
     if (data.address) {
       const city = String(data.address.city || '').trim();
       if (city && !/^[A-Za-z\s]+$/.test(city)) {
@@ -84,13 +100,10 @@ const ProfilePage = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const res = await axios.get(
-          `${API_BASE_URL}/api/auth/me`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        
+        const res = await axios.get(`${API_BASE_URL}/api/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
         if (res.data.success) {
           const userData = res.data.data.user;
           setProfile(userData);
@@ -163,6 +176,78 @@ const ProfilePage = () => {
     }
   };
 
+  // Upload Profile Image
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error("Please select a valid image file");
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image size must be less than 5MB");
+      return;
+    }
+
+    setImageUploading(true);
+    setShowImageMenu(false);
+
+    const formDataImg = new FormData();
+    formDataImg.append('profileImage', file);
+
+    try {
+      const res = await axios.put(
+        `${API_BASE_URL}/api/auth/update_profile`,
+        formDataImg,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
+
+      if (res.data.success) {
+        const updatedUser = res.data.data;
+        setProfile(prev => ({ ...prev, profileImage: updatedUser.profileImage }));
+        toast.success("Profile photo updated successfully!");
+      }
+    } catch (err) {
+      console.error("Error uploading image:", err);
+      toast.error(err.response?.data?.message || "Failed to upload image");
+    } finally {
+      setImageUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  // Delete Profile Image
+  const handleDeleteImage = async () => {
+    setImageDeleting(true);
+    setShowImageMenu(false);
+
+    try {
+      const res = await axios.delete(
+        `${API_BASE_URL}/api/auth/profile/image`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (res.data.success) {
+        setProfile(prev => ({ ...prev, profileImage: null }));
+        toast.success("Profile photo removed successfully!");
+      }
+    } catch (err) {
+      console.error("Error deleting image:", err);
+      toast.error(err.response?.data?.message || "Failed to remove profile photo");
+    } finally {
+      setImageDeleting(false);
+    }
+  };
+
   // Enter edit mode
   const handleEdit = () => {
     setEditMode(true);
@@ -205,7 +290,7 @@ const ProfilePage = () => {
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center p-4">
         <div className="w-full max-w-6xl">
           <SkeletonHeader />
-          <div className="mt-8 bg-white rounded-3xl shadow-2xl p-8">
+          <div className="mt-8 bg-white rounded-3xl shadow-2xl p-4 sm:p-8">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-1">
                 <div className="h-64 bg-gray-200 rounded-2xl animate-pulse" />
@@ -236,7 +321,6 @@ const ProfilePage = () => {
     );
   }
 
-  // Format date
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -246,8 +330,10 @@ const ProfilePage = () => {
     });
   };
 
+  const profileImageUrl = profile?.profileImage?.url;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-orange-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-orange-50 py-8 sm:py-12 px-3 sm:px-6 lg:px-8">
       <ToastContainer
         position="top-right"
         autoClose={3000}
@@ -260,31 +346,41 @@ const ProfilePage = () => {
         pauseOnHover
         theme="light"
       />
-      
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleImageUpload}
+      />
+
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="max-w-6xl mx-auto"
       >
-        {/* Header with Edit Toggle and Dashboard Button */}
-        <div className="flex justify-between items-center mb-8 mt-9 ml-4">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8 mt-6 sm:mt-9 px-1 sm:ml-4">
           <div>
-            <h1 className="text-4xl font-bold text-gray-800">My Profile</h1>
-            <p className="text-gray-500 mt-1">Manage your personal information</p>
+            <h1 className="text-2xl sm:text-4xl font-bold text-gray-800">My Profile</h1>
+            <p className="text-gray-500 mt-1 text-sm sm:text-base">Manage your personal information</p>
           </div>
-          
-          <div className="flex gap-3">
-            {/* View Dashboard Button - For Landlord, Tenant, Subowner, and Worker */}
+
+          <div className="flex flex-wrap gap-2 sm:gap-3">
+            {/* View Dashboard Button */}
             {(profile?.role === 'landlord' || profile?.role === 'tenant' || profile?.role === 'subowner' || profile?.role === 'worker' || profile?.role === 'dr_worker') && (
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={handleViewDashboard}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#002B5C] to-[#004080] text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-all"
+                className="flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-[#002B5C] to-[#004080] text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-all text-sm sm:text-base"
               >
                 <FaTachometerAlt />
-                View Dashboard
+                <span className="hidden xs:inline">View Dashboard</span>
+                <span className="xs:hidden">Dashboard</span>
               </motion.button>
             )}
 
@@ -294,7 +390,7 @@ const ProfilePage = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={handleEdit}
-                className="flex items-center gap-2 px-6 py-3 bg-[#3B9DF8] text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-all"
+                className="flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-[#3B9DF8] text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-all text-sm sm:text-base"
               >
                 <FaEdit />
                 Edit Profile
@@ -306,7 +402,7 @@ const ProfilePage = () => {
                   whileTap={{ scale: updating ? 1 : 0.95 }}
                   onClick={handleUpdate}
                   disabled={updating || Object.keys(errors).length > 0}
-                  className={`flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-all ${
+                  className={`flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-all text-sm sm:text-base ${
                     (updating || Object.keys(errors).length > 0) ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
                 >
@@ -330,7 +426,7 @@ const ProfilePage = () => {
                   whileTap={{ scale: 0.95 }}
                   onClick={handleCancel}
                   disabled={updating}
-                  className="flex items-center gap-2 px-6 py-3 bg-gray-200 text-gray-700 rounded-full font-semibold hover:bg-gray-300 transition-all"
+                  className="flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gray-200 text-gray-700 rounded-full font-semibold hover:bg-gray-300 transition-all text-sm sm:text-base"
                 >
                   <FaTimes />
                   Cancel
@@ -348,90 +444,137 @@ const ProfilePage = () => {
           className="bg-white rounded-3xl shadow-2xl overflow-hidden"
         >
           <div className="grid grid-cols-1 lg:grid-cols-3">
-            
+
             {/* Left Sidebar - Avatar & Basic Info */}
-            <div className="lg:col-span-1 bg-gradient-to-br from-[#002B5C] to-[#004080] p-8 text-white">
+            <div className="lg:col-span-1 bg-gradient-to-br from-[#002B5C] to-[#004080] p-6 sm:p-8 text-white">
               <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ delay: 0.3 }}
                 className="text-center"
               >
-                {/* Avatar */}
-                <div className="relative inline-block mb-6">
-                  <div className="w-40 h-40 rounded-full bg-gradient-to-br from-[#FF6B00] to-[#FF8C3A] p-1">
-                    <div className="w-full h-full rounded-full bg-[#002B5C] flex items-center justify-center">
-                      {profile.profileImage ? (
-                        <img 
-                          src={profile.profileImage} 
-                          alt="Profile" 
+                {/* Avatar with Camera Button */}
+                <div className="relative inline-block mb-6" ref={imageMenuRef}>
+                  <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full bg-gradient-to-br from-[#FF6B00] to-[#FF8C3A] p-1">
+                    <div className="w-full h-full rounded-full bg-[#002B5C] flex items-center justify-center overflow-hidden">
+                      {imageUploading || imageDeleting ? (
+                        <div className="flex flex-col items-center justify-center">
+                          <svg className="animate-spin h-8 w-8 text-[#FF6B00]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <p className="text-xs text-blue-200 mt-1">{imageUploading ? 'Uploading...' : 'Removing...'}</p>
+                        </div>
+                      ) : profileImageUrl ? (
+                        <img
+                          src={profileImageUrl}
+                          alt="Profile"
                           className="w-full h-full rounded-full object-cover"
                         />
                       ) : (
-                        <FaUser className="text-6xl text-[#FF6B00]" />
+                        <FaUser className="text-5xl sm:text-6xl text-[#FF6B00]" />
                       )}
                     </div>
                   </div>
+
                   {/* Status Indicator */}
                   {profile.isActive && (
-                    <div className="absolute bottom-2 right-2 w-6 h-6 bg-emerald-400 rounded-full border-4 border-[#002B5C]" />
+                    <div className="absolute bottom-2 right-2 w-5 h-5 sm:w-6 sm:h-6 bg-emerald-400 rounded-full border-4 border-[#002B5C]" />
+                  )}
+
+                  {/* Camera Button */}
+                  <button
+                    onClick={() => setShowImageMenu(!showImageMenu)}
+                    disabled={imageUploading || imageDeleting}
+                    className="absolute bottom-0 left-0 w-8 h-8 sm:w-9 sm:h-9 bg-[#FF6B00] hover:bg-[#FF8C3A] rounded-full flex items-center justify-center shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed border-2 border-[#002B5C]"
+                  >
+                    <FaCamera className="text-white text-xs sm:text-sm" />
+                  </button>
+
+                  {/* Image Action Menu */}
+                  {showImageMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9, y: -5 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      className="absolute left-0 top-full mt-2 bg-white rounded-xl shadow-2xl z-50 overflow-hidden min-w-[170px] border border-gray-100"
+                    >
+                      <button
+                        onClick={() => {
+                          setShowImageMenu(false);
+                          fileInputRef.current?.click();
+                        }}
+                        className="flex items-center gap-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors text-left"
+                      >
+                        <FaUpload className="text-blue-500 flex-shrink-0" />
+                        Upload Photo
+                      </button>
+                      {profileImageUrl && (
+                        <button
+                          onClick={handleDeleteImage}
+                          className="flex items-center gap-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors text-left border-t border-gray-100"
+                        >
+                          <FaTrash className="text-red-500 flex-shrink-0" />
+                          Remove Photo
+                        </button>
+                      )}
+                    </motion.div>
                   )}
                 </div>
 
                 {/* Name */}
-                <h2 className="text-2xl font-bold mb-2">{formData?.name || "User Name"}</h2>
+                <h2 className="text-xl sm:text-2xl font-bold mb-2">{formData?.name || "User Name"}</h2>
                 <p className="text-blue-200 text-sm mb-2 capitalize">
                   <FaIdBadge className="inline mr-2" />
                   {formData?.role || "User"}
                 </p>
-                
+
                 {/* Verification Status */}
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full mb-6">
+                <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full mb-6">
                   {profile.isVerified ? (
                     <>
-                      <FaCheckCircle className="text-emerald-400" />
+                      <FaCheckCircle className="text-emerald-400 flex-shrink-0" />
                       <span className="text-sm">Verified Account</span>
                     </>
                   ) : (
                     <>
-                      <FaClock className="text-yellow-400" />
+                      <FaClock className="text-yellow-400 flex-shrink-0" />
                       <span className="text-sm">Pending Verification</span>
                     </>
                   )}
                 </div>
 
                 {/* Stats Cards */}
-                <div className="space-y-4 mt-8">
-                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                <div className="space-y-3 sm:space-y-4 mt-4 sm:mt-8">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-white/20">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-[#FF6B00]/20 rounded-lg flex items-center justify-center">
-                        <FaPhone className="text-[#FF6B00] text-xl" />
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#FF6B00]/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <FaPhone className="text-[#FF6B00] text-lg sm:text-xl" />
                       </div>
-                      <div className="text-left flex-1">
+                      <div className="text-left flex-1 min-w-0">
                         <p className="text-xs text-blue-200">Phone</p>
-                        <p className="font-semibold">{formData?.phone || "Not provided"}</p>
+                        <p className="font-semibold text-sm sm:text-base truncate">{formData?.phone || "Not provided"}</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-white/20">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-[#FF6B00]/20 rounded-lg flex items-center justify-center">
-                        <FaClock className="text-[#FF6B00] text-xl" />
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#FF6B00]/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <FaClock className="text-[#FF6B00] text-lg sm:text-xl" />
                       </div>
-                      <div className="text-left flex-1">
+                      <div className="text-left flex-1 min-w-0">
                         <p className="text-xs text-blue-200">Member Since</p>
                         <p className="font-semibold text-xs">{formatDate(profile.createdAt)}</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-white/20">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-[#FF6B00]/20 rounded-lg flex items-center justify-center">
-                        <FaClock className="text-[#FF6B00] text-xl" />
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#FF6B00]/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <FaClock className="text-[#FF6B00] text-lg sm:text-xl" />
                       </div>
-                      <div className="text-left flex-1">
+                      <div className="text-left flex-1 min-w-0">
                         <p className="text-xs text-blue-200">Last Login</p>
                         <p className="font-semibold text-xs">{formatDate(profile.lastLogin)}</p>
                       </div>
@@ -442,21 +585,21 @@ const ProfilePage = () => {
             </div>
 
             {/* Right Content - Form Fields */}
-            <div className="lg:col-span-2 p-8">
+            <div className="lg:col-span-2 p-5 sm:p-8">
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4 }}
               >
                 {/* Personal Information Section */}
-                <div className="mb-8">
-                  <h3 className="text-xl font-bold text-gray-800 mb-1 flex items-center gap-2">
-                    <span className="w-1 h-6 bg-gradient-to-b from-[#FF6B00] to-[#FF8C3A] rounded-full" />
+                <div className="mb-6 sm:mb-8">
+                  <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-1 flex items-center gap-2">
+                    <span className="w-1 h-6 bg-gradient-to-b from-[#FF6B00] to-[#FF8C3A] rounded-full flex-shrink-0" />
                     Personal Information
                   </h3>
-                  <p className="text-gray-500 text-sm mb-6">Update your personal details</p>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <p className="text-gray-500 text-sm mb-5 sm:mb-6">Update your personal details</p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                     <Field
                       label="Name"
                       icon={<FaUser />}
@@ -468,7 +611,7 @@ const ProfilePage = () => {
                       editMode={editMode}
                       error={errors.name}
                     />
-                    
+
                     <Field
                       label="Phone Number"
                       icon={<FaPhone />}
@@ -477,17 +620,17 @@ const ProfilePage = () => {
                       onChange={(e) =>
                         setFormData({ ...formData, phone: e.target.value })
                       }
-                      editMode={false} // Phone is always read-only
+                      editMode={false}
                       type="tel"
                       readOnly
                     />
-                    
+
                     <Field
                       label="Role"
                       icon={<FaIdBadge />}
                       value={formData?.role}
                       name="role"
-                      editMode={false} // Role is always read-only
+                      editMode={false}
                       readOnly
                     />
                   </div>
@@ -495,13 +638,13 @@ const ProfilePage = () => {
 
                 {/* Address Section */}
                 <div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-1 flex items-center gap-2">
-                    <span className="w-1 h-6 bg-gradient-to-b from-[#FF6B00] to-[#FF8C3A] rounded-full" />
+                  <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-1 flex items-center gap-2">
+                    <span className="w-1 h-6 bg-gradient-to-b from-[#FF6B00] to-[#FF8C3A] rounded-full flex-shrink-0" />
                     Address Details
                   </h3>
-                  <p className="text-gray-500 text-sm mb-6">Manage your location information</p>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <p className="text-gray-500 text-sm mb-5 sm:mb-6">Manage your location information</p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                     <Field
                       label="City"
                       icon={<FaMapMarkerAlt />}
@@ -516,7 +659,7 @@ const ProfilePage = () => {
                       editMode={editMode}
                       error={errors.city}
                     />
-                    
+
                     <Field
                       label="State"
                       icon={<FaMapMarkerAlt />}
@@ -531,7 +674,7 @@ const ProfilePage = () => {
                       editMode={editMode}
                       error={errors.state}
                     />
-                    
+
                     <Field
                       label="Pincode"
                       icon={<FaMapMarkerAlt />}
@@ -558,13 +701,13 @@ const ProfilePage = () => {
           </div>
         </motion.div>
 
-        {/* ProfileTabs Component - hide tabs for tenant, subowner, and worker roles */}
+        {/* ProfileTabs Component */}
         {profile?.role !== 'tenant' && profile?.role !== 'subowner' && profile?.role !== 'worker' && profile?.role !== 'dr_worker' && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            className="mt-8"
+            className="mt-6 sm:mt-8"
           >
             <ProfileTabs role={profile?.role} />
           </motion.div>
@@ -593,7 +736,7 @@ function Field({
       <label className="block text-sm font-semibold text-gray-700 mb-2">
         {label} {readOnly && <span className="text-gray-400 text-xs">(Read-only)</span>}
       </label>
-      
+
       {editMode && !readOnly ? (
         <div className="space-y-1">
           <div className="relative">
@@ -607,7 +750,7 @@ function Field({
               onChange={onChange}
               maxLength={maxLength}
               placeholder={`Enter ${label.toLowerCase()}`}
-              className="w-full pl-12 pr-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:border-[#FF6B00] focus:bg-white focus:outline-none transition-all"
+              className="w-full pl-12 pr-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:border-[#FF6B00] focus:bg-white focus:outline-none transition-all text-sm sm:text-base"
             />
           </div>
           {error && (
@@ -621,13 +764,13 @@ function Field({
           )}
         </div>
       ) : (
-        <div className={`flex items-center gap-3 p-4 rounded-xl border ${
+        <div className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border ${
           readOnly ? 'bg-gray-100 border-gray-300' : 'bg-gray-50 border-gray-200'
         }`}>
-          <div className={`text-lg ${readOnly ? 'text-gray-400' : 'text-[#FF6B00]'}`}>
+          <div className={`text-base sm:text-lg flex-shrink-0 ${readOnly ? 'text-gray-400' : 'text-[#FF6B00]'}`}>
             {icon}
           </div>
-          <p className={`font-medium flex-1 ${readOnly ? 'text-gray-500' : 'text-gray-800'}`}>
+          <p className={`font-medium flex-1 text-sm sm:text-base truncate ${readOnly ? 'text-gray-500' : 'text-gray-800'}`}>
             {value || <span className="text-gray-400 italic">Not provided</span>}
           </p>
         </div>
@@ -639,10 +782,10 @@ function Field({
 // Loading Skeleton Components
 function SkeletonHeader() {
   return (
-    <div className="flex justify-between items-center mb-8 animate-pulse">
+    <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-8 animate-pulse px-1">
       <div>
-        <div className="h-10 w-48 bg-gray-300 rounded-lg mb-2" />
-        <div className="h-4 w-64 bg-gray-200 rounded" />
+        <div className="h-8 sm:h-10 w-40 sm:w-48 bg-gray-300 rounded-lg mb-2" />
+        <div className="h-4 w-52 sm:w-64 bg-gray-200 rounded" />
       </div>
       <div className="h-12 w-32 bg-gray-300 rounded-full" />
     </div>
