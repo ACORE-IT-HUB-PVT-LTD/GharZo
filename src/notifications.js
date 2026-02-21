@@ -4,6 +4,8 @@ import { messaging } from "./firebase";
 
 const API_BASE_URL = "https://api.gharzoreality.com";
 const FCM_VAPID_KEY = "BEwspx18TL6UIcFt9OU_Hr5wR8yASJo2vr8FeTe83qYc6OxpMiysEDekBuGF5EUWqKUWlLlO4G-o06ePqcI_hPA";
+const LAST_SYNCED_FCM_TOKEN_KEY = "last_synced_fcm_token";
+let saveTokenInFlight = null;
 
 /**
  * 🔍 Comprehensive Diagnostic System
