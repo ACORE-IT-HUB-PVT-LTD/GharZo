@@ -390,7 +390,8 @@ export default function PropertyListingForm() {
   const showBuilder = isUnderConstruction;
   const showInvestment = isSale && isResidential;
   const showPropertyFeatures = !isPlot;
-  const showRoomStats = isPG || isRent;
+  // Room Stats only for PG/Co-living (rental management)
+  const showRoomStats = isPG;
   const showPGSection = isPG;
 
   const pricePerSqft =
