@@ -28,16 +28,7 @@ const API_BASE = "https://api.gharzoreality.com/api/v2/properties";
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 const getAuthToken = () => localStorage.getItem("usertoken");
 
-const STEPS = [
-  { id: "property-type", label: "Property Details", icon: FiHome, score: null },
-  { id: "location-details", label: "Address", icon: FiMapPin, score: 15 },
-  { id: "upload-photos", label: "Photos", icon: FiCamera, score: 15 },
-  { id: "ownership-details", label: "Verify", icon: FiShield, score: 20 },
-  { id: "property-features", label: "Property Highlights", icon: FiStar, score: null },
-  { id: "preview-submit", label: "Review", icon: FiEye, score: null },
-];
-
-// Toast Component
+// ─── Toast Component ───────────────────────────────────────────────────────────
 function Toast({ toasts, removeToast }) {
   return (
     <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
@@ -58,7 +49,7 @@ function Toast({ toasts, removeToast }) {
   );
 }
 
-// Counter Box Component
+// ─── Counter Box ───────────────────────────────────────────────────────────────
 function CounterBox({ label, value, onChange, min = 0, max = 20, icon: Icon }) {
   return (
     <div className="flex flex-col items-center gap-2">
@@ -87,8 +78,8 @@ function CounterBox({ label, value, onChange, min = 0, max = 20, icon: Icon }) {
   );
 }
 
-// Selection Card
-function SelectCard({ label, icon: Icon, selected, onClick, className = "" }) {
+// ─── Select Card ───────────────────────────────────────────────────────────────
+function SelectCard({ label, icon: Icon, selected, onClick }) {
   return (
     <button
       type="button"
@@ -97,7 +88,7 @@ function SelectCard({ label, icon: Icon, selected, onClick, className = "" }) {
         ${selected
           ? "border-violet-500 bg-violet-50 text-violet-700"
           : "border-gray-200 bg-white text-gray-600 hover:border-violet-300 hover:bg-violet-50/50"
-        } ${className}`}
+        }`}
     >
       {Icon && <Icon size={22} />}
       <span className="text-xs font-medium leading-tight">{label}</span>
@@ -105,7 +96,7 @@ function SelectCard({ label, icon: Icon, selected, onClick, className = "" }) {
   );
 }
 
-// Chip Toggle
+// ─── Chip Toggle ───────────────────────────────────────────────────────────────
 function Chip({ label, selected, onClick }) {
   return (
     <button
@@ -121,7 +112,7 @@ function Chip({ label, selected, onClick }) {
   );
 }
 
-// Input Field with validation
+// ─── Input Field Wrapper ───────────────────────────────────────────────────────
 function InputField({ label, required, error, children, hint }) {
   return (
     <div className="flex flex-col gap-1">
@@ -166,7 +157,55 @@ function SelectInput({ className = "", children, ...props }) {
   );
 }
 
-// Main Component
+// ─── Preview Helpers ───────────────────────────────────────────────────────────
+function PreviewSection({ title, icon: Icon, children }) {
+  return (
+    <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
+      <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2 pb-3 border-b border-gray-100">
+        <Icon size={16} className="text-violet-500" /> {title}
+      </h3>
+      {children}
+    </div>
+  );
+}
+
+function InfoItem({ label, value }) {
+  if (!value) return null;
+  return (
+    <div>
+      <p className="text-xs text-gray-400">{label}</p>
+      <p className="text-sm font-medium text-gray-800">{value}</p>
+    </div>
+  );
+}
+
+// ─── Success Screen ────────────────────────────────────────────────────────────
+function SuccessScreen() {
+  return (
+    <div className="flex items-center justify-center min-h-screen px-4">
+      <div className="text-center max-w-md w-full px-6">
+        <div className="w-24 h-24 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl shadow-emerald-200">
+          <FiCheckCircle size={40} className="text-white" />
+        </div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Property Submitted!</h1>
+        <p className="text-gray-500 text-sm">
+          Your property has been submitted for approval. It will be reviewed within 24-48 hours.
+        </p>
+        <div className="mt-6 p-4 bg-violet-50 rounded-2xl border border-violet-100">
+          <p className="text-sm text-violet-700 font-medium">🎉 Congratulations! Your listing is now under review.</p>
+        </div>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-6 px-8 py-3 bg-violet-600 text-white rounded-xl font-semibold hover:bg-violet-700 transition-colors"
+        >
+          Post Another Property
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Component ────────────────────────────────────────────────────────────
 export default function PropertyListingForm() {
   const [currentStep, setCurrentStep] = useState(0);
   const [propertyId, setPropertyId] = useState(null);
@@ -183,13 +222,12 @@ export default function PropertyListingForm() {
   const mapInstanceRef = useRef(null);
   const markerRef = useRef(null);
 
-  // Form Data
   const [form, setForm] = useState({
-    // Step 1
+    // Step 0
     category: "Residential",
     propertyType: "",
     listingType: "Rent",
-    // Step 2 - Basic
+    // Step 1
     title: "",
     description: "",
     bhk: 2,
@@ -198,7 +236,7 @@ export default function PropertyListingForm() {
     propertyAge: "",
     availableFrom: "",
     floor: { current: 0, total: 1 },
-    area: { carpet: "", builtUp: "", unit: "sqft" },
+    area: { carpet: "", builtUp: "", superBuiltUp: "", plotArea: "", unit: "sqft" },
     price: {
       amount: "",
       negotiable: true,
@@ -207,8 +245,12 @@ export default function PropertyListingForm() {
       lockInPeriod: "",
       noticePeriod: "",
       per: "Property",
+      expectedRental: "",
+      currentlyLeasedOut: false,
+      leaseExpiryDate: "",
+      annualDuesPayable: "",
     },
-    // Step 3 - Features
+    // Step 2
     furnishing: { type: "Unfurnished", items: [] },
     parking: { covered: 0, open: 0 },
     facing: "",
@@ -228,7 +270,7 @@ export default function PropertyListingForm() {
       widthOfFacingRoad: "",
       boundaryWall: false,
       corners: 0,
-      fireSafety: { fireExtinguisher: false, fireSensor: false, sprinklers: false },
+      fireSafety: { fireExtinguisher: false, fireSensor: false, sprinklers: false, fireHoseReel: false },
       constructionQuality: "",
       rainwaterHarvesting: false,
       wasteDisposal: "",
@@ -237,7 +279,7 @@ export default function PropertyListingForm() {
       poojaRoom: false,
       storeRoom: false,
     },
-    // Step 4 - Location
+    // Step 3
     location: {
       address: "",
       city: "",
@@ -248,7 +290,7 @@ export default function PropertyListingForm() {
       state: "",
       coordinates: { latitude: null, longitude: null },
     },
-    // Step 5 - Ownership
+    // Step 4
     ownership: {
       type: "",
       verified: false,
@@ -274,10 +316,34 @@ export default function PropertyListingForm() {
     transactionType: "Resale",
     inclusionsInPrice: [],
     additionalRooms: [],
-    // Step 6 - Photos
+    // PG Details
+    pgDetails: {
+      roomType: "",
+      foodIncluded: false,
+      foodType: "",
+      foodTimings: { breakfast: "", lunch: "", dinner: "" },
+      genderPreference: "Any",
+      totalBeds: 1,
+      availableBeds: 1,
+      commonWashroom: false,
+      attachedWashroom: false,
+      rules: [],
+      commonAreas: [],
+      facilities: { laundry: false, wifi: false, tv: false, refrigerator: false, ro: false, geyser: false },
+      securityFeatures: { cctv: false, biometric: false, securityGuard: false, fireExtinguisher: false },
+    },
+    roomStats: { totalRooms: 0, occupiedRooms: 0, availableRooms: 0 },
+    landlordDetails: {
+      preferredPaymentMethod: "UPI",
+      gstNumber: "",
+      panNumber: "",
+      bankAccount: { accountHolderName: "", accountNumber: "", ifscCode: "", bankName: "", branchName: "" },
+      upiDetails: { upiId: "", qrCodeUrl: "" },
+    },
+    // Step 5
     images: [],
     imageFiles: [],
-    // Step 7 - Contact
+    // Step 6
     contactInfo: {
       name: "",
       phone: "",
@@ -287,6 +353,7 @@ export default function PropertyListingForm() {
     },
   });
 
+  // ─── Toast Helpers ─────────────────────────────────────────────────────────
   const addToast = useCallback((message, type = "success") => {
     const id = Date.now();
     setToasts((prev) => [...prev, { id, message, type }]);
@@ -302,7 +369,40 @@ export default function PropertyListingForm() {
     Authorization: `Bearer ${getAuthToken()}`,
   };
 
-  // Load cities
+  // ─── Conditional Flags ─────────────────────────────────────────────────────
+  const isPG = form.listingType === "PG/Co-living";
+  const isRent = form.listingType === "Rent";
+  const isSale = form.listingType === "Sale";
+  const isResidential = form.category === "Residential";
+  const isCommercial = form.category === "Commercial";
+  const isPlot = form.propertyType === "Plot";
+  const isUnderConstruction = form.propertyAge === "Under Construction";
+  const isStudio = form.propertyType === "Studio";
+  const isRoomOrPG = form.propertyType === "Room" || form.propertyType === "PG/Co-living";
+  const showBHK = isResidential && !isPlot && !isCommercial;
+  const showBalconies = isResidential && !isPlot && !isRoomOrPG;
+  const showFurnishing = isResidential && !isPlot && !isPG;
+  const showBathrooms = isResidential && !isPlot && !isStudio;
+  const showAdditionalRooms = isResidential && !isPlot && !isCommercial && !isPG;
+  const showFacing = !isPlot;
+  const showFloor = !isPlot;
+  const showOwnership = isSale || isUnderConstruction;
+  const showBuilder = isUnderConstruction;
+  const showInvestment = isSale && isResidential;
+  const showPropertyFeatures = !isPlot;
+  const showRoomStats = isPG || isRent;
+  const showPGSection = isPG;
+
+  const pricePerSqft =
+    form.price.amount && form.area.carpet
+      ? Math.round(Number(form.price.amount) / Number(form.area.carpet))
+      : 0;
+
+  const filteredNearbyAmenities = isCommercial
+    ? ["School", "Hospital", "Market", "ATM", "Bank", "Metro Station", "Bus Stop", "Railway Station", "Airport", "Mall", "Restaurant", "Pharmacy", "Park"]
+    : ["School", "Hospital", "Market", "ATM", "Bank", "Metro Station", "Bus Stop", "Railway Station", "Airport", "Mall", "Restaurant", "Pharmacy", "Park", "Temple", "Mosque", "Church", "Gurudwara"];
+
+  // ─── Load Cities ───────────────────────────────────────────────────────────
   useEffect(() => {
     fetch("https://api.gharzoreality.com/api/master-data/v2/cities")
       .then((r) => r.json())
@@ -310,7 +410,7 @@ export default function PropertyListingForm() {
       .catch(() => {});
   }, []);
 
-  // Load Mapbox
+  // ─── Load Mapbox (only when on step 3) ────────────────────────────────────
   useEffect(() => {
     if (currentStep === 3 && !mapLoaded) {
       const link = document.createElement("link");
@@ -323,7 +423,7 @@ export default function PropertyListingForm() {
       script.onload = () => setMapLoaded(true);
       document.head.appendChild(script);
     }
-  }, [currentStep]);
+  }, [currentStep, mapLoaded]);
 
   useEffect(() => {
     if (mapLoaded && currentStep === 3 && mapRef.current && !mapInstanceRef.current) {
@@ -347,10 +447,7 @@ export default function PropertyListingForm() {
         const lngLat = marker.getLngLat();
         setForm((prev) => ({
           ...prev,
-          location: {
-            ...prev.location,
-            coordinates: { latitude: lngLat.lat, longitude: lngLat.lng },
-          },
+          location: { ...prev.location, coordinates: { latitude: lngLat.lat, longitude: lngLat.lng } },
         }));
       });
 
@@ -358,10 +455,7 @@ export default function PropertyListingForm() {
         marker.setLngLat(e.lngLat);
         setForm((prev) => ({
           ...prev,
-          location: {
-            ...prev.location,
-            coordinates: { latitude: e.lngLat.lat, longitude: e.lngLat.lng },
-          },
+          location: { ...prev.location, coordinates: { latitude: e.lngLat.lat, longitude: e.lngLat.lng } },
         }));
       });
 
@@ -370,61 +464,7 @@ export default function PropertyListingForm() {
     }
   }, [mapLoaded, currentStep]);
 
-  const getCurrentLocation = () => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        setForm((prev) => ({
-          ...prev,
-          location: { ...prev.location, coordinates: { latitude, longitude } },
-        }));
-        if (mapInstanceRef.current && markerRef.current) {
-          mapInstanceRef.current.flyTo({ center: [longitude, latitude], zoom: 15 });
-          markerRef.current.setLngLat([longitude, latitude]);
-        }
-        fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${MAPBOX_TOKEN}`)
-          .then((r) => r.json())
-          .then((d) => {
-            if (d.features && d.features[0]) {
-              const place = d.features[0];
-              setForm((prev) => ({
-                ...prev,
-                location: { ...prev.location, address: place.place_name },
-              }));
-            }
-          });
-      },
-      () => addToast("Could not get location", "error")
-    );
-  };
-
-  const searchAddress = async (query) => {
-    if (!query || query.length < 3) return;
-    const res = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&country=in&limit=5`
-    );
-    const data = await res.json();
-    setLocationSuggestions(data.features || []);
-  };
-
-  const selectSuggestion = (feat) => {
-    const [lng, lat] = feat.center;
-    setForm((prev) => ({
-      ...prev,
-      location: {
-        ...prev.location,
-        address: feat.place_name,
-        coordinates: { latitude: lat, longitude: lng },
-      },
-    }));
-    if (mapInstanceRef.current && markerRef.current) {
-      mapInstanceRef.current.flyTo({ center: [lng, lat], zoom: 15 });
-      markerRef.current.setLngLat([lng, lat]);
-    }
-    setLocationSuggestions([]);
-  };
-
+  // ─── Form Helpers ──────────────────────────────────────────────────────────
   const updateForm = (path, value) => {
     setForm((prev) => {
       const keys = path.split(".");
@@ -450,53 +490,132 @@ export default function PropertyListingForm() {
     updateForm(path, newArr);
   };
 
-  const validateStep = () => {
-    const errs = {};
-    if (currentStep === 0) {
-      if (!form.category) errs.category = "Category is required";
-      if (!form.listingType) errs.listingType = "Listing type is required";
-      if (!form.propertyType) errs.propertyType = "Property type is required";
-    } else if (currentStep === 1) {
-      if (!form.title.trim()) errs.title = "Title is required";
-      if (!form.description.trim()) errs.description = "Description is required";
-      if (!form.price.amount) errs["price.amount"] = "Price is required";
-      if (!form.area.carpet) errs["area.carpet"] = "Carpet area is required";
-      if (!form.propertyAge) errs.propertyAge = "Property age is required";
-    } else if (currentStep === 3) {
-      if (!form.location.address.trim()) errs["location.address"] = "Address is required";
-      if (!form.location.city.trim()) errs["location.city"] = "City is required";
-      if (!form.location.locality.trim()) errs["location.locality"] = "Locality is required";
-      if (!form.location.pincode || !/^[0-9]{6}$/.test(form.location.pincode))
-        errs["location.pincode"] = "Valid 6-digit pincode required";
-    } else if (currentStep === 6) {
-      if (!form.contactInfo.name.trim()) errs["contactInfo.name"] = "Name is required";
-      if (!form.contactInfo.phone || !/^[0-9]{10}$/.test(form.contactInfo.phone))
-        errs["contactInfo.phone"] = "Valid 10-digit phone required";
-      if (form.contactInfo.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.contactInfo.email))
-        errs["contactInfo.email"] = "Invalid email format";
-    }
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
+  // ─── Geolocation ──────────────────────────────────────────────────────────
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setForm((prev) => ({
+          ...prev,
+          location: { ...prev.location, coordinates: { latitude, longitude } },
+        }));
+        if (mapInstanceRef.current && markerRef.current) {
+          mapInstanceRef.current.flyTo({ center: [longitude, latitude], zoom: 15 });
+          markerRef.current.setLngLat([longitude, latitude]);
+        }
+        if (MAPBOX_TOKEN) {
+          fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${MAPBOX_TOKEN}`)
+            .then((r) => r.json())
+            .then((d) => {
+              if (d.features?.[0]) {
+                setForm((prev) => ({
+                  ...prev,
+                  location: { ...prev.location, address: d.features[0].place_name },
+                }));
+              }
+            });
+        }
+      },
+      () => addToast("Could not get location", "error")
+    );
   };
 
+  const searchAddress = async (query) => {
+    if (!query || query.length < 3 || !MAPBOX_TOKEN) return;
+    const res = await fetch(
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&country=in&limit=5`
+    );
+    const data = await res.json();
+    setLocationSuggestions(data.features || []);
+  };
+
+  const selectSuggestion = (feat) => {
+    const [lng, lat] = feat.center;
+    setForm((prev) => ({
+      ...prev,
+      location: { ...prev.location, address: feat.place_name, coordinates: { latitude: lat, longitude: lng } },
+    }));
+    if (mapInstanceRef.current && markerRef.current) {
+      mapInstanceRef.current.flyTo({ center: [lng, lat], zoom: 15 });
+      markerRef.current.setLngLat([lng, lat]);
+    }
+    setLocationSuggestions([]);
+  };
+
+  // ─── Validation ────────────────────────────────────────────────────────────
+  const validateStep = () => {
+    const errs = {};
+    try {
+      const isPGSelected = form.listingType === "PG/Co-living";
+
+      if (currentStep === 0) {
+        if (!form.category) errs.category = "Category is required";
+        if (!form.listingType) errs.listingType = "Listing type is required";
+        if (!isPGSelected && !form.propertyType) errs.propertyType = "Property type is required";
+      } else if (currentStep === 1) {
+        // Basic validation - let backend handle specific field requirements
+        if (!form.title?.trim()) errs.title = "Title is required";
+        if (!form.description?.trim()) errs.description = "Description is required";
+        if (!form.price?.amount) errs["price.amount"] = "Price is required";
+        if (form.propertyType !== "Plot" && !isPGSelected && !form.propertyAge)
+          errs.propertyAge = "Property age is required";
+        if (form.propertyType === "Plot") {
+          if (!form.area?.plotArea) errs["area.plotArea"] = "Plot area is required";
+        } else {
+          if (!form.area?.carpet) errs["area.carpet"] = "Carpet area is required";
+        }
+        if (isPGSelected && !form.pgDetails?.roomType)
+          errs["pgDetails.roomType"] = "Room type is required";
+      } else if (currentStep === 3) {
+        if (!form.location?.address?.trim()) errs["location.address"] = "Address is required";
+        if (!form.location?.city?.trim()) errs["location.city"] = "City is required";
+        if (!form.location?.locality?.trim()) errs["location.locality"] = "Locality is required";
+        if (!form.location?.pincode || !/^[0-9]{6}$/.test(form.location.pincode))
+          errs["location.pincode"] = "Valid 6-digit pincode required";
+      } else if (currentStep === 6) {
+        if (!form.contactInfo?.name?.trim()) errs["contactInfo.name"] = "Name is required";
+        if (!form.contactInfo?.phone || !/^[0-9]{10}$/.test(form.contactInfo.phone))
+          errs["contactInfo.phone"] = "Valid 10-digit phone required";
+        if (form.contactInfo?.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.contactInfo.email))
+          errs["contactInfo.email"] = "Invalid email format";
+      }
+    } catch (e) {
+      console.error("Validation error:", e);
+    }
+    setErrors(errs);
+    return { isValid: Object.keys(errs).length === 0, errors: errs };
+  };
+
+  // ─── API Calls ─────────────────────────────────────────────────────────────
   const createDraft = async () => {
     setLoading(true);
     try {
+      // For PG/Co-living, don't send propertyType (it's a listing type, not property type)
+      const draftData = {
+        category: form.category,
+        listingType: form.listingType,
+      };
+      
+      // Only add propertyType if it's not PG/Co-living listing and has a value
+      if (form.listingType !== "PG/Co-living" && form.propertyType) {
+        draftData.propertyType = form.propertyType;
+      }
+
       const res = await fetch(`${API_BASE}/create-draft`, {
         method: "POST",
         headers: apiHeaders,
-        body: JSON.stringify({
-          category: form.category,
-          propertyType: form.propertyType,
-          listingType: form.listingType,
-        }),
+        body: JSON.stringify(draftData),
       });
       const data = await res.json();
       if (data.success) {
         setPropertyId(data.data.propertyId);
         addToast("Property draft created!");
         setCurrentStep(1);
-      } else throw new Error(data.message);
+      } else {
+        const errorMsg = data.error || data.message || "Operation failed";
+        throw new Error(errorMsg);
+      }
     } catch (e) {
       addToast(e.message || "Failed to create draft", "error");
     } finally {
@@ -513,16 +632,47 @@ export default function PropertyListingForm() {
         body: JSON.stringify({
           title: form.title,
           description: form.description,
-          bhk: form.bhk,
-          bathrooms: form.bathrooms,
-          balconies: form.balconies,
-          propertyAge: form.propertyAge,
+          // Don't send bhk, bathrooms, balconies for Plot
+          ...(isPlot ? {} : {
+            bhk: form.bhk,
+            bathrooms: form.bathrooms,
+            balconies: form.balconies,
+          }),
+          // Don't send propertyAge for PG and Plot listings
+          propertyAge: (isPG || isPlot) ? undefined : form.propertyAge,
           availableFrom: form.availableFrom,
-          floor: form.floor,
-          area: { carpet: Number(form.area.carpet), builtUp: Number(form.area.builtUp || 0), unit: form.area.unit },
+          // Don't send floor for Plot
+          ...(isPlot ? {} : { floor: form.floor }),
+          // Only send area fields that are applicable and have values
+          area: (() => {
+            const areaObj = { unit: form.area.unit };
+            
+            if (isPlot) {
+              // For Plot: only send plotArea
+              const plotArea = Number(form.area.plotArea);
+              if (plotArea > 0) areaObj.plotArea = plotArea;
+            } else {
+              // For non-Plot: send carpet (required), builtUp, superBuiltUp if available
+              const carpet = Number(form.area.carpet);
+              if (carpet > 0) areaObj.carpet = carpet;
+              
+              const builtUp = Number(form.area.builtUp);
+              if (builtUp > 0) areaObj.builtUp = builtUp;
+              
+              const superBuiltUp = Number(form.area.superBuiltUp);
+              if (superBuiltUp > 0) areaObj.superBuiltUp = superBuiltUp;
+            }
+            
+            return areaObj;
+          })(),
+          
+          // Availability status
+          availabilityStatus: "Available",
+          
           price: {
             amount: Number(form.price.amount),
             negotiable: form.price.negotiable,
+            per: form.price.per,
             securityDeposit: Number(form.price.securityDeposit) || 0,
             maintenanceCharges: {
               amount: Number(form.price.maintenanceCharges.amount) || 0,
@@ -530,12 +680,22 @@ export default function PropertyListingForm() {
             },
             lockInPeriod: Number(form.price.lockInPeriod) || 0,
             noticePeriod: Number(form.price.noticePeriod) || 0,
+            expectedRental: Number(form.price.expectedRental) || 0,
+            currentlyLeasedOut: form.price.currentlyLeasedOut,
+            leaseExpiryDate: form.price.leaseExpiryDate || null,
+            annualDuesPayable: Number(form.price.annualDuesPayable) || 0,
           },
+          pgDetails: isPG ? form.pgDetails : undefined,
+          roomStats: showRoomStats ? form.roomStats : undefined,
         }),
       });
       const data = await res.json();
       if (data.success) { addToast("Basic details saved!"); setCurrentStep(2); }
-      else throw new Error(data.message);
+      else {
+        // Show detailed error message from backend
+        const errorMsg = data.error || data.message || "Failed to save basic details";
+        throw new Error(errorMsg);
+      }
     } catch (e) {
       addToast(e.message || "Failed to save basic details", "error");
     } finally {
@@ -546,20 +706,34 @@ export default function PropertyListingForm() {
   const saveFeatures = async () => {
     setLoading(true);
     try {
+      // Build features data - exclude inapplicable fields for Plot
+      const featuresData = {
+        furnishing: isPlot ? undefined : form.furnishing,
+        parking: isPlot ? undefined : form.parking,
+        amenities: form.amenities,
+      };
+      
+      // Only add facing for non-Plot properties
+      if (!isPlot && form.facing) {
+        featuresData.facing = form.facing;
+      }
+      
+      // Only add propertyFeatures for non-Plot properties
+      if (!isPlot) {
+        featuresData.propertyFeatures = form.propertyFeatures;
+      }
+      
       const res = await fetch(`${API_BASE}/${propertyId}/features`, {
         method: "PUT",
         headers: apiHeaders,
-        body: JSON.stringify({
-          furnishing: form.furnishing,
-          parking: form.parking,
-          facing: form.facing,
-          amenities: form.amenities,
-          propertyFeatures: form.propertyFeatures,
-        }),
+        body: JSON.stringify(featuresData),
       });
       const data = await res.json();
       if (data.success) { addToast("Features saved!"); setCurrentStep(3); }
-      else throw new Error(data.message);
+      else {
+        const errorMsg = data.error || data.message || "Operation failed";
+        throw new Error(errorMsg);
+      }
     } catch (e) {
       addToast(e.message || "Failed to save features", "error");
     } finally {
@@ -570,10 +744,22 @@ export default function PropertyListingForm() {
   const saveLocation = async () => {
     setLoading(true);
     try {
+      // Build location data with geoLocation for spatial queries
+      const locationData = {
+        ...form.location,
+        // Add geoLocation for geospatial queries if coordinates exist
+        ...(form.location.coordinates.latitude && form.location.coordinates.longitude ? {
+          geoLocation: {
+            type: "Point",
+            coordinates: [form.location.coordinates.longitude, form.location.coordinates.latitude]
+          }
+        } : {})
+      };
+      
       const res = await fetch(`${API_BASE}/${propertyId}/location`, {
         method: "PUT",
         headers: apiHeaders,
-        body: JSON.stringify({ location: form.location }),
+        body: JSON.stringify({ location: locationData }),
       });
       const data = await res.json();
       if (data.success) { addToast("Location saved!"); setCurrentStep(4); }
@@ -674,13 +860,48 @@ export default function PropertyListingForm() {
     }
   };
 
+  // ─── Navigation ────────────────────────────────────────────────────────────
+  // FIX: propertyId check removed from step>0 navigation so Back button works freely
+  // FIX: If propertyId exists and we're on step 0 again, just go to step 1
   const handleNext = async () => {
-    if (!validateStep()) { addToast("Please fix the errors before proceeding", "error"); return; }
-    if (currentStep === 0 && !propertyId) { await createDraft(); return; }
+    const validationResult = validateStep();
+    const isValid = validationResult.isValid;
+    const validationErrors = validationResult.errors || {};
+    
+    if (!isValid) {
+      // Show detailed error message with all missing fields
+      const errorMessages = Object.values(validationErrors);
+      if (errorMessages.length > 0) {
+        const errorText = errorMessages.slice(0, 5).join(", ");
+        const moreText = errorMessages.length > 5 ? ` and ${errorMessages.length - 5} more` : "";
+        addToast(`Missing: ${errorText}${moreText}`, "error");
+      } else {
+        addToast("Please fill all required fields", "error");
+      }
+      return;
+    }
+    if (currentStep === 0) {
+      if (!propertyId) {
+        await createDraft();
+      } else {
+        // Draft already exists, just move forward
+        setCurrentStep(1);
+      }
+      return;
+    }
     if (currentStep === 1) { await saveBasicDetails(); return; }
     if (currentStep === 2) { await saveFeatures(); return; }
     if (currentStep === 3) { await saveLocation(); return; }
-    if (currentStep === 4) { await saveOwnership(); return; }
+    // Skip ownership step for PG and Rent (only show for Sale)
+    if (currentStep === 4) {
+      if (!isSale) {
+        // Skip ownership for PG and Rent (only needed for Sale)
+        setCurrentStep(5);
+        return;
+      }
+      await saveOwnership(); 
+      return;
+    }
     if (currentStep === 5) { await uploadPhotos(); return; }
     if (currentStep === 6) { await saveContact(); return; }
     if (currentStep === 7) { await submitProperty(); return; }
@@ -690,17 +911,20 @@ export default function PropertyListingForm() {
     if (currentStep > 0) setCurrentStep((p) => p - 1);
   };
 
+  // ─── Sidebar Steps (corrected order) ──────────────────────────────────────
   const sidebarSteps = [
     { label: "Property Details", icon: FiHome, step: 0 },
-    { label: "Address", icon: FiMapPin, step: 3, score: 15 },
-    { label: "Photos", icon: FiCamera, step: 5, score: 15 },
-    { label: "Verify", icon: FiShield, step: 4, score: 20 },
+    { label: "Basic Details", icon: FiInfo, step: 1 },
     { label: "Property Highlights", icon: FiStar, step: 2 },
+    { label: "Address", icon: FiMapPin, step: 3, score: 15 },
+    { label: "Verify", icon: FiShield, step: 4, score: 20 },
+    { label: "Photos", icon: FiCamera, step: 5, score: 15 },
+    { label: "Contact", icon: FiPhone, step: 6 },
     { label: "Review", icon: FiEye, step: 7 },
   ];
 
   const filteredCities = cities.filter((c) =>
-    c.name.toLowerCase().includes(citySearch.toLowerCase())
+    c.name?.toLowerCase().includes(citySearch.toLowerCase())
   );
 
   const residentialTypes = [
@@ -711,6 +935,7 @@ export default function PropertyListingForm() {
     { label: "Studio", icon: FiGrid },
     { label: "Independent House", icon: PiHouseLine },
     { label: "Builder Floor", icon: LuBuilding2 },
+    { label: "PG/Co-living", icon: FiGrid },
     { label: "Other", icon: FiBriefcase },
   ];
 
@@ -719,6 +944,8 @@ export default function PropertyListingForm() {
     { label: "Shop", icon: MdStorefront },
     { label: "Showroom", icon: MdDoorSliding },
     { label: "Warehouse", icon: MdOutlineWarehouse },
+    { label: "Plot", icon: BiArea },
+    { label: "Studio", icon: FiGrid },
     { label: "Other", icon: FiBriefcase },
   ];
 
@@ -727,9 +954,10 @@ export default function PropertyListingForm() {
   const furnishingItems = [
     "Sofa", "Center Table", "Dining Table", "TV Unit", "Curtains", "Carpet",
     "Bed", "Wardrobe", "Mattress", "Side Table", "Dressing Table",
-    "Modular Kitchen", "Chimney", "Stove", "Refrigerator", "Microwave",
-    "Water Purifier", "Air Conditioner", "Geyser", "Washing Machine",
-    "Fan", "Light Fittings", "Inverter",
+    "Modular Kitchen", "Kitchen Cabinets", "Chimney", "Stove", "Refrigerator", "Microwave",
+    "Water Purifier", "Exhaust Fan",
+    "Air Conditioner", "Geyser", "Washing Machine", "Dishwasher",
+    "Fan", "Light Fittings", "Lights", "Inverter",
   ];
 
   const societyAmenities = [
@@ -737,22 +965,16 @@ export default function PropertyListingForm() {
     "Community Hall", "Indoor Games Room", "Jogging Track", "Sports Court",
     "Meditation Area", "Amphitheatre", "Library", "Party Hall",
   ];
-
   const securityAmenities = [
     "CCTV", "24x7 Security", "Intercom", "Fire Alarm", "Fire Extinguisher",
     "Video Door Security", "Access Control", "Visitor Parking", "Security Cabin",
   ];
-
   const essentialAmenities = [
     "Lift", "Power Backup", "Piped Gas", "Water Storage", "Rainwater Harvesting",
     "Waste Disposal", "Sewage Treatment Plant", "DG Backup", "Solar Panels",
   ];
 
-  const nearbyAmenities = [
-    "School", "Hospital", "Market", "ATM", "Bank", "Metro Station",
-    "Bus Stop", "Railway Station", "Mall", "Restaurant", "Pharmacy", "Park",
-  ];
-
+  // ─── Sidebar Content ───────────────────────────────────────────────────────
   const SidebarContent = () => (
     <>
       <div className="px-6 py-5 border-b border-gray-100">
@@ -761,13 +983,11 @@ export default function PropertyListingForm() {
             <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-xs">G</span>
             </div>
-            <span className="text-gray-800 font-bold text-sm tracking-wide">GHARZO <span className="text-orange-500 font-normal text-xs">REALTY™</span></span>
+            <span className="text-gray-800 font-bold text-sm tracking-wide">
+              GHARZO <span className="text-orange-500 font-normal text-xs">REALTY™</span>
+            </span>
           </div>
-          {/* Close button only on mobile */}
-          <button
-            className="lg:hidden text-gray-400 hover:text-gray-600"
-            onClick={() => setSidebarOpen(false)}
-          >
+          <button className="lg:hidden text-gray-400 hover:text-gray-600" onClick={() => setSidebarOpen(false)}>
             <FiX size={20} />
           </button>
         </div>
@@ -793,12 +1013,14 @@ export default function PropertyListingForm() {
 
       <nav className="flex-1 px-4 py-4 flex flex-col gap-1 overflow-y-auto">
         {sidebarSteps.map(({ label, icon: Icon, step, score }) => {
-          const isActive = currentStep === step || (step === 0 && currentStep <= 1) ||
-            (step === 2 && currentStep === 2) || (step === 3 && currentStep === 3);
+          const isActive = currentStep === step;
           const isDone = currentStep > step;
           return (
-            <div key={label} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all
-              ${isActive ? "bg-violet-50" : "hover:bg-gray-50"}`}>
+            <div
+              key={label}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all
+                ${isActive ? "bg-violet-50" : "hover:bg-gray-50"}`}
+            >
               <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
                 ${isDone ? "bg-emerald-100 text-emerald-600" : isActive ? "bg-violet-600 text-white" : "bg-gray-100 text-gray-400"}`}>
                 {isDone ? <FiCheck size={14} /> : <Icon size={14} />}
@@ -807,9 +1029,7 @@ export default function PropertyListingForm() {
                 <p className={`text-xs font-semibold truncate ${isActive ? "text-violet-700" : isDone ? "text-gray-700" : "text-gray-500"}`}>
                   {label}
                 </p>
-                {isActive && (
-                  <p className="text-xs text-violet-500">In progress</p>
-                )}
+                {isActive && <p className="text-xs text-violet-500">In progress</p>}
                 {!isActive && !isDone && score && (
                   <p className="text-xs text-emerald-500">Score +{score}%</p>
                 )}
@@ -820,11 +1040,15 @@ export default function PropertyListingForm() {
       </nav>
 
       <div className="px-6 py-4 border-t border-gray-100">
-        <p className="text-xs text-gray-400">Need Help? <span className="text-violet-600 cursor-pointer font-medium">📞 Call 08048811281</span></p>
+        <p className="text-xs text-gray-400">
+          Need Help?{" "}
+          <span className="text-violet-600 cursor-pointer font-medium">📞 Call 08048811281</span>
+        </p>
       </div>
     </>
   );
 
+  // ─── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="bg-gradient-to-br from-slate-50 via-violet-50/30 to-blue-50/30 font-sans">
       <style>{`
@@ -835,8 +1059,8 @@ export default function PropertyListingForm() {
         .animate-slide-in { animation: slide-in 0.3s ease; }
         @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fade-in 0.4s ease; }
-        ::-webkit-scrollbar { width: 4px; } 
-        ::-webkit-scrollbar-track { background: transparent; } 
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #c4b5fd; border-radius: 2px; }
         .toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
         .toggle-switch input { opacity: 0; width: 0; height: 0; }
@@ -844,31 +1068,9 @@ export default function PropertyListingForm() {
         .slider:before { content: ''; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
         input:checked + .slider { background: #7c3aed; }
         input:checked + .slider:before { transform: translateX(20px); }
-        
-        /* Mobile sidebar overlay */
-        .sidebar-overlay {
-          position: fixed;
-          inset: 0;
-          background: rgba(0,0,0,0.5);
-          z-index: 40;
-        }
-        .sidebar-drawer {
-          position: fixed;
-          top: 0;
-          left: 0;
-          height: 100%;
-          width: 280px;
-          background: white;
-          z-index: 50;
-          display: flex;
-          flex-direction: column;
-          box-shadow: 4px 0 24px rgba(0,0,0,0.1);
-          transform: translateX(-100%);
-          transition: transform 0.3s ease;
-        }
-        .sidebar-drawer.open {
-          transform: translateX(0);
-        }
+        .sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 40; }
+        .sidebar-drawer { position: fixed; top: 0; left: 0; height: 100%; width: 280px; background: white; z-index: 50; display: flex; flex-direction: column; box-shadow: 4px 0 24px rgba(0,0,0,0.1); transform: translateX(-100%); transition: transform 0.3s ease; }
+        .sidebar-drawer.open { transform: translateX(0); }
       `}</style>
 
       <Toast toasts={toasts} removeToast={removeToast} />
@@ -878,25 +1080,24 @@ export default function PropertyListingForm() {
       ) : (
         <div className="flex min-h-screen">
 
-          {/* ===== DESKTOP SIDEBAR (lg+) ===== */}
+          {/* Desktop Sidebar */}
           <div className="hidden lg:flex w-64 bg-white border-r border-gray-100 flex-shrink-0 flex-col shadow-sm">
             <SidebarContent />
           </div>
 
-          {/* ===== MOBILE SIDEBAR DRAWER ===== */}
+          {/* Mobile Sidebar Drawer */}
           {sidebarOpen && (
             <div className="lg:hidden">
               <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
-              <div className={`sidebar-drawer open`}>
+              <div className="sidebar-drawer open">
                 <SidebarContent />
               </div>
             </div>
           )}
 
-          {/* Main Content */}
           <div className="flex-1 flex flex-col overflow-hidden min-w-0">
 
-            {/* ===== MOBILE TOP BAR ===== */}
+            {/* Mobile Top Bar */}
             <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100 sticky top-0 z-30">
               <div className="flex items-center gap-3">
                 <button
@@ -926,20 +1127,26 @@ export default function PropertyListingForm() {
             <div className="flex-1 overflow-y-auto">
               <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 animate-fade-in">
 
-                {/* Step 0: Property Type */}
+                {/* ── STEP 0: Property Type ────────────────────────────────── */}
                 {currentStep === 0 && (
                   <div>
                     <h1 className="heading text-xl sm:text-2xl text-gray-900 mb-1">Add Property Details</h1>
                     <p className="text-gray-500 text-sm mb-6">Tell us about your property</p>
 
                     <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100 space-y-6">
-                      <InputField label="Property Type" required error={errors.category}>
+                      <InputField label="Category" required error={errors.category}>
                         <div className="flex gap-3 mt-1">
                           {["Residential", "Commercial"].map((cat) => (
                             <button
                               key={cat}
                               type="button"
-                              onClick={() => { updateForm("category", cat); updateForm("propertyType", ""); if (cat === "Commercial" && form.listingType === "PG/Co-living") { updateForm("listingType", "Rent"); } }}
+                              onClick={() => {
+                                updateForm("category", cat);
+                                updateForm("propertyType", "");
+                                if (cat === "Commercial" && form.listingType === "PG/Co-living") {
+                                  updateForm("listingType", "Rent");
+                                }
+                              }}
                               className={`flex-1 py-2.5 px-4 rounded-xl border-2 text-sm font-semibold transition-all
                                 ${form.category === cat
                                   ? "border-violet-500 bg-violet-50 text-violet-700"
@@ -957,7 +1164,17 @@ export default function PropertyListingForm() {
                             <button
                               key={t}
                               type="button"
-                              onClick={() => updateForm("listingType", t)}
+                              onClick={() => {
+                                updateForm("listingType", t);
+                                if (t === "PG/Co-living") {
+                                  // For PG/Co-living, default to "Room" as property type and set price per to Bed
+                                  updateForm("propertyType", "Room");
+                                  updateForm("price.per", "Bed");
+                                } else if (form.propertyType === "Room" && form.listingType !== "PG/Co-living") {
+                                  updateForm("propertyType", "");
+                                  updateForm("price.per", "Property");
+                                }
+                              }}
                               className={`flex-1 py-2.5 px-2 sm:px-4 rounded-xl border-2 text-xs sm:text-sm font-semibold transition-all
                                 ${form.listingType === t
                                   ? "border-violet-500 bg-violet-50 text-violet-700"
@@ -969,24 +1186,31 @@ export default function PropertyListingForm() {
                         </div>
                       </InputField>
 
-                      <InputField label="Property Type" required error={errors.propertyType}>
-                        <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 sm:gap-2.5 mt-1">
-                          {propertyTypes.map(({ label, icon }) => (
-                            <SelectCard
-                              key={label}
-                              label={label}
-                              icon={icon}
-                              selected={form.propertyType === label}
-                              onClick={() => updateForm("propertyType", label)}
-                            />
-                          ))}
-                        </div>
+                      <InputField label="Property Type" required={!isPG} error={errors.propertyType}>
+                        {!isPG ? (
+                          <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 sm:gap-2.5 mt-1">
+                            {propertyTypes.map(({ label, icon }) => (
+                              <SelectCard
+                                key={label}
+                                label={label}
+                                icon={icon}
+                                selected={form.propertyType === label}
+                                onClick={() => updateForm("propertyType", label)}
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="mt-1 p-3 bg-violet-50 rounded-xl border border-violet-200">
+                            <p className="text-sm text-violet-700 font-medium">PG/Co-living Selected</p>
+                            <p className="text-xs text-violet-600">Property type is automatically set to PG/Co-living</p>
+                          </div>
+                        )}
                       </InputField>
                     </div>
                   </div>
                 )}
 
-                {/* Step 1: Basic Details */}
+                {/* ── STEP 1: Basic Details ────────────────────────────────── */}
                 {currentStep === 1 && (
                   <div>
                     <h1 className="heading text-xl sm:text-2xl text-gray-900 mb-1">Basic Details</h1>
@@ -1015,22 +1239,36 @@ export default function PropertyListingForm() {
                         </InputField>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <InputField label="Property Age" required error={errors.propertyAge}>
-                            <SelectInput value={form.propertyAge} onChange={(e) => updateForm("propertyAge", e.target.value)}>
-                              <option value="">Select age</option>
-                              {["Under Construction", "0-1 year", "1-5 years", "5-10 years", "10+ years"].map((a) => (
-                                <option key={a} value={a}>{a}</option>
-                              ))}
-                            </SelectInput>
-                          </InputField>
+                          {!isPlot && (
+                            <InputField label="Property Age" required={!isPG} error={errors.propertyAge}>
+                              <SelectInput value={form.propertyAge} onChange={(e) => updateForm("propertyAge", e.target.value)}>
+                                <option value="">Select age</option>
+                                {["Under Construction", "0-1 year", "1-5 years", "5-10 years", "10+ years"].map((a) => (
+                                  <option key={a} value={a}>{a}</option>
+                                ))}
+                              </SelectInput>
+                            </InputField>
+                          )}
 
-                          <InputField label="Available From">
-                            <TextInput
-                              type="date"
-                              value={form.availableFrom}
-                              onChange={(e) => updateForm("availableFrom", e.target.value)}
-                            />
-                          </InputField>
+                          {!isUnderConstruction && !isPG && (
+                            <InputField label="Available From">
+                              <TextInput
+                                type="date"
+                                value={form.availableFrom}
+                                onChange={(e) => updateForm("availableFrom", e.target.value)}
+                              />
+                            </InputField>
+                          )}
+
+                          {isUnderConstruction && !isPG && (
+                            <InputField label="Possession Date">
+                              <TextInput
+                                type="date"
+                                value={form.builder.possessionDate}
+                                onChange={(e) => updateForm("builder.possessionDate", e.target.value)}
+                              />
+                            </InputField>
+                          )}
                         </div>
                       </div>
 
@@ -1040,11 +1278,21 @@ export default function PropertyListingForm() {
                           <FiHome size={16} className="text-violet-500" /> Configuration
                         </h3>
                         <div className="flex flex-wrap gap-4 sm:gap-6">
-                          <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
-                          <CounterBox label="Bathrooms" value={form.bathrooms} onChange={(v) => updateForm("bathrooms", v)} icon={LuBath} min={1} max={10} />
-                          <CounterBox label="Balconies" value={form.balconies} onChange={(v) => updateForm("balconies", v)} icon={MdBalcony} min={0} max={10} />
-                          <CounterBox label="Current Floor" value={form.floor.current} onChange={(v) => updateForm("floor.current", v)} icon={FiLayers} min={0} max={100} />
-                          <CounterBox label="Total Floors" value={form.floor.total} onChange={(v) => updateForm("floor.total", v)} icon={LuBuilding2} min={1} max={100} />
+                          {showBHK && (
+                            <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                          )}
+                          {showBathrooms && (
+                            <CounterBox label="Bathrooms" value={form.bathrooms} onChange={(v) => updateForm("bathrooms", v)} icon={LuBath} min={1} max={10} />
+                          )}
+                          {showBalconies && (
+                            <CounterBox label="Balconies" value={form.balconies} onChange={(v) => updateForm("balconies", v)} icon={MdBalcony} min={0} max={10} />
+                          )}
+                          {showFloor && (
+                            <>
+                              <CounterBox label="Current Floor" value={form.floor.current} onChange={(v) => updateForm("floor.current", v)} icon={FiLayers} min={0} max={100} />
+                              <CounterBox label="Total Floors" value={form.floor.total} onChange={(v) => updateForm("floor.total", v)} icon={LuBuilding2} min={1} max={100} />
+                            </>
+                          )}
                         </div>
                       </div>
 
@@ -1054,28 +1302,51 @@ export default function PropertyListingForm() {
                           <BiArea size={16} className="text-violet-500" /> Area Details
                         </h3>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          <InputField label="Carpet Area" required error={errors["area.carpet"]}>
-                            <TextInput
-                              type="number"
-                              placeholder="e.g. 1200"
-                              value={form.area.carpet}
-                              onChange={(e) => updateForm("area.carpet", e.target.value)}
-                            />
-                          </InputField>
-                          <InputField label="Built-up Area">
-                            <TextInput
-                              type="number"
-                              placeholder="e.g. 1400"
-                              value={form.area.builtUp}
-                              onChange={(e) => updateForm("area.builtUp", e.target.value)}
-                            />
-                          </InputField>
+                          {isPlot ? (
+                            <InputField label="Plot Area" required error={errors["area.plotArea"]}>
+                              <TextInput
+                                type="number"
+                                placeholder="e.g. 2400"
+                                value={form.area.plotArea}
+                                onChange={(e) => updateForm("area.plotArea", e.target.value)}
+                              />
+                            </InputField>
+                          ) : (
+                            <InputField label="Carpet Area"  error={errors["area.carpet"]}>
+                              <TextInput
+                                type="number"
+                                placeholder="e.g. 1200"
+                                value={form.area.carpet}
+                                onChange={(e) => updateForm("area.carpet", e.target.value)}
+                              />
+                            </InputField>
+                          )}
+                          {!isPlot && (
+                            <InputField label="Built-up Area">
+                              <TextInput
+                                type="number"
+                                placeholder="e.g. 1400"
+                                value={form.area.builtUp}
+                                onChange={(e) => updateForm("area.builtUp", e.target.value)}
+                              />
+                            </InputField>
+                          )}
                           <InputField label="Unit">
                             <SelectInput value={form.area.unit} onChange={(e) => updateForm("area.unit", e.target.value)}>
-                              {["sqft", "sqm", "sqyd"].map((u) => <option key={u} value={u}>{u}</option>)}
+                              {["sqft", "sqm", "sqyd", ...(isPlot ? ["acre", "hectare"] : [])].map((u) => (
+                                <option key={u} value={u}>{u}</option>
+                              ))}
                             </SelectInput>
                           </InputField>
                         </div>
+                        {pricePerSqft > 0 && !isPlot && (
+                          <div className="mt-3 p-2 bg-violet-50 rounded-lg inline-flex items-center gap-2">
+                            <FiDollarSign size={14} className="text-violet-600" />
+                            <span className="text-sm text-violet-700 font-medium">
+                              ₹{pricePerSqft.toLocaleString("en-IN")}/sqft
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Pricing */}
@@ -1084,114 +1355,298 @@ export default function PropertyListingForm() {
                           <FiDollarSign size={16} className="text-violet-500" /> Pricing
                         </h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <InputField label={form.listingType === "Sale" ? "Sale Price (₹)" : "Monthly Rent (₹)"} required error={errors["price.amount"]}>
+                          <InputField
+                            label={isPG ? "Price per Bed (₹)" : isSale ? "Sale Price (₹)" : "Monthly Rent (₹)"}
+                            required
+                            error={errors["price.amount"]}
+                          >
                             <TextInput
                               type="number"
-                              placeholder="e.g. 25000"
+                              placeholder={isPG ? "e.g. 8000" : isSale ? "e.g. 5000000" : "e.g. 25000"}
                               value={form.price.amount}
                               onChange={(e) => updateForm("price.amount", e.target.value)}
                             />
                           </InputField>
-                          <InputField label="Security Deposit (₹)">
-                            <TextInput
-                              type="number"
-                              placeholder="e.g. 50000"
-                              value={form.price.securityDeposit}
-                              onChange={(e) => updateForm("price.securityDeposit", e.target.value)}
-                            />
-                          </InputField>
-                          <InputField label="Maintenance (₹/month)">
-                            <TextInput
-                              type="number"
-                              placeholder="e.g. 2500"
-                              value={form.price.maintenanceCharges.amount}
-                              onChange={(e) => updateForm("price.maintenanceCharges.amount", e.target.value)}
-                            />
-                          </InputField>
-                          <InputField label="Maintenance Frequency">
-                            <SelectInput
-                              value={form.price.maintenanceCharges.frequency}
-                              onChange={(e) => updateForm("price.maintenanceCharges.frequency", e.target.value)}
-                            >
-                              {["Monthly", "Quarterly", "Yearly"].map((f) => <option key={f} value={f}>{f}</option>)}
-                            </SelectInput>
-                          </InputField>
-                          <InputField label="Lock-in Period (months)">
-                            <TextInput
-                              type="number"
-                              placeholder="e.g. 11"
-                              value={form.price.lockInPeriod}
-                              onChange={(e) => updateForm("price.lockInPeriod", e.target.value)}
-                            />
-                          </InputField>
-                          <InputField label="Notice Period (months)">
-                            <TextInput
-                              type="number"
-                              placeholder="e.g. 2"
-                              value={form.price.noticePeriod}
-                              onChange={(e) => updateForm("price.noticePeriod", e.target.value)}
-                            />
-                          </InputField>
+
+                          {isPG && (
+                            <InputField label="Price Per">
+                              <SelectInput value={form.price.per} onChange={(e) => updateForm("price.per", e.target.value)}>
+                                {["Bed", "Room", "Property"].map((p) => <option key={p} value={p}>{p}</option>)}
+                              </SelectInput>
+                            </InputField>
+                          )}
+
+                          {!isPG && (
+                            <InputField label="Security Deposit (₹)">
+                              <TextInput
+                                type="number"
+                                placeholder="e.g. 50000"
+                                value={form.price.securityDeposit}
+                                onChange={(e) => updateForm("price.securityDeposit", e.target.value)}
+                              />
+                            </InputField>
+                          )}
+
+                          {!isPG && (
+                            <>
+                              <InputField label="Maintenance (₹)">
+                                <TextInput
+                                  type="number"
+                                  placeholder="e.g. 2500"
+                                  value={form.price.maintenanceCharges.amount}
+                                  onChange={(e) => updateForm("price.maintenanceCharges.amount", e.target.value)}
+                                />
+                              </InputField>
+                              <InputField label="Maintenance Frequency">
+                                <SelectInput
+                                  value={form.price.maintenanceCharges.frequency}
+                                  onChange={(e) => updateForm("price.maintenanceCharges.frequency", e.target.value)}
+                                >
+                                  {["Monthly", "Quarterly", "Yearly", "One-time"].map((f) => (
+                                    <option key={f} value={f}>{f}</option>
+                                  ))}
+                                </SelectInput>
+                              </InputField>
+                            </>
+                          )}
+
+                          {isRent && !isPG && (
+                            <>
+                              <InputField label="Lock-in Period (months)">
+                                <TextInput
+                                  type="number"
+                                  placeholder="e.g. 11"
+                                  value={form.price.lockInPeriod}
+                                  onChange={(e) => updateForm("price.lockInPeriod", e.target.value)}
+                                />
+                              </InputField>
+                              <InputField label="Notice Period (months)">
+                                <TextInput
+                                  type="number"
+                                  placeholder="e.g. 2"
+                                  value={form.price.noticePeriod}
+                                  onChange={(e) => updateForm("price.noticePeriod", e.target.value)}
+                                />
+                              </InputField>
+                            </>
+                          )}
+
+                          {showInvestment && (
+                            <>
+                              <InputField label="Expected Rental (₹/month)">
+                                <TextInput
+                                  type="number"
+                                  placeholder="e.g. 25000"
+                                  value={form.price.expectedRental}
+                                  onChange={(e) => updateForm("price.expectedRental", e.target.value)}
+                                />
+                              </InputField>
+                              <InputField label="Annual Dues (₹)">
+                                <TextInput
+                                  type="number"
+                                  placeholder="e.g. 50000"
+                                  value={form.price.annualDuesPayable}
+                                  onChange={(e) => updateForm("price.annualDuesPayable", e.target.value)}
+                                />
+                              </InputField>
+                            </>
+                          )}
                         </div>
-                        <div className="mt-3 flex items-center gap-3">
-                          <label className="toggle-switch">
-                            <input
-                              type="checkbox"
-                              checked={form.price.negotiable}
-                              onChange={(e) => updateForm("price.negotiable", e.target.checked)}
-                            />
-                            <span className="slider" />
-                          </label>
-                          <span className="text-sm text-gray-600">Price is negotiable</span>
-                        </div>
+
+                        {isSale && (
+                          <div className="mt-3 flex items-center gap-3">
+                            <label className="toggle-switch">
+                              <input
+                                type="checkbox"
+                                checked={form.price.currentlyLeasedOut}
+                                onChange={(e) => updateForm("price.currentlyLeasedOut", e.target.checked)}
+                              />
+                              <span className="slider" />
+                            </label>
+                            <span className="text-sm text-gray-600">Currently Leased Out</span>
+                          </div>
+                        )}
+
+                        {isSale && form.price.currentlyLeasedOut && (
+                          <div className="mt-3">
+                            <InputField label="Lease Expiry Date">
+                              <TextInput
+                                type="date"
+                                value={form.price.leaseExpiryDate}
+                                onChange={(e) => updateForm("price.leaseExpiryDate", e.target.value)}
+                              />
+                            </InputField>
+                          </div>
+                        )}
+
+                        {!isPG && (
+                          <div className="mt-3 flex items-center gap-3">
+                            <label className="toggle-switch">
+                              <input
+                                type="checkbox"
+                                checked={form.price.negotiable}
+                                onChange={(e) => updateForm("price.negotiable", e.target.checked)}
+                              />
+                              <span className="slider" />
+                            </label>
+                            <span className="text-sm text-gray-600">Price is negotiable</span>
+                          </div>
+                        )}
                       </div>
+
+                      {/* PG Section */}
+                      {showPGSection && (
+                        <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100 space-y-4">
+                          <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                            <FiHome size={16} className="text-violet-500" /> PG/Co-living Details
+                          </h3>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <InputField label="Room Type" required error={errors["pgDetails.roomType"]}>
+                              <SelectInput value={form.pgDetails.roomType} onChange={(e) => updateForm("pgDetails.roomType", e.target.value)}>
+                                <option value="">Select room type</option>
+                                {["Single", "Double Sharing", "Triple Sharing", "Dormitory"].map((r) => (
+                                  <option key={r} value={r}>{r}</option>
+                                ))}
+                              </SelectInput>
+                            </InputField>
+                            <InputField label="Gender Preference">
+                              <SelectInput value={form.pgDetails.genderPreference} onChange={(e) => updateForm("pgDetails.genderPreference", e.target.value)}>
+                                {["Male", "Female", "Any"].map((g) => <option key={g} value={g}>{g}</option>)}
+                              </SelectInput>
+                            </InputField>
+                          </div>
+
+                          <div className="flex flex-wrap gap-6">
+                            <CounterBox label="Total Beds" value={form.pgDetails.totalBeds} onChange={(v) => updateForm("pgDetails.totalBeds", v)} icon={MdBed} min={1} max={100} />
+                            <CounterBox label="Available Beds" value={form.pgDetails.availableBeds} onChange={(v) => updateForm("pgDetails.availableBeds", v)} icon={FiUser} min={0} max={100} />
+                          </div>
+
+                          <div className="flex items-center gap-3">
+                            <label className="toggle-switch">
+                              <input type="checkbox" checked={form.pgDetails.foodIncluded} onChange={(e) => updateForm("pgDetails.foodIncluded", e.target.checked)} />
+                              <span className="slider" />
+                            </label>
+                            <span className="text-sm text-gray-600">Food Included</span>
+                          </div>
+
+                          {form.pgDetails.foodIncluded && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <InputField label="Food Type">
+                                <SelectInput value={form.pgDetails.foodType} onChange={(e) => updateForm("pgDetails.foodType", e.target.value)}>
+                                  {["Veg", "Non-Veg", "Both"].map((f) => <option key={f} value={f}>{f}</option>)}
+                                </SelectInput>
+                              </InputField>
+                            </div>
+                          )}
+
+                          <div className="flex flex-wrap gap-4">
+                            {[["attachedWashroom", "Attached Washroom"], ["commonWashroom", "Common Washroom"]].map(([key, label]) => (
+                              <label key={key} className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={form.pgDetails[key]}
+                                  onChange={(e) => updateForm(`pgDetails.${key}`, e.target.checked)}
+                                  className="accent-violet-600 w-4 h-4"
+                                />
+                                <span className="text-sm text-gray-700">{label}</span>
+                              </label>
+                            ))}
+                          </div>
+
+                          <div>
+                            <p className="text-sm font-semibold text-gray-700 mb-2">Facilities</p>
+                            <div className="flex flex-wrap gap-2">
+                              {[["laundry", "Laundry"], ["wifi", "WiFi"], ["tv", "TV"], ["refrigerator", "Refrigerator"], ["ro", "RO Water"], ["geyser", "Geyser"]].map(([key, label]) => (
+                                <Chip key={key} label={label} selected={form.pgDetails.facilities[key]} onClick={() => updateForm(`pgDetails.facilities.${key}`, !form.pgDetails.facilities[key])} />
+                              ))}
+                            </div>
+                          </div>
+
+                          <div>
+                            <p className="text-sm font-semibold text-gray-700 mb-2">Security Features</p>
+                            <div className="flex flex-wrap gap-2">
+                              {[["cctv", "CCTV"], ["biometric", "Biometric"], ["securityGuard", "Security Guard"], ["fireExtinguisher", "Fire Extinguisher"]].map(([key, label]) => (
+                                <Chip key={key} label={label} selected={form.pgDetails.securityFeatures[key]} onClick={() => updateForm(`pgDetails.securityFeatures.${key}`, !form.pgDetails.securityFeatures[key])} />
+                              ))}
+                            </div>
+                          </div>
+
+                          <div>
+                            <p className="text-sm font-semibold text-gray-700 mb-2">Common Areas</p>
+                            <div className="flex flex-wrap gap-2">
+                              {["Living Room", "Kitchen", "Terrace", "Gym", "Study Room", "Parking"].map((area) => (
+                                <Chip key={area} label={area} selected={form.pgDetails.commonAreas.includes(area)} onClick={() => toggleArray("pgDetails.commonAreas", area)} />
+                              ))}
+                            </div>
+                          </div>
+
+                          <div>
+                            <p className="text-sm font-semibold text-gray-700 mb-2">PG Rules</p>
+                            <div className="flex flex-wrap gap-2">
+                              {["No Smoking", "No Alcohol", "No Pets", "No Non-Veg", "Guests Allowed", "Late Night Entry"].map((rule) => (
+                                <Chip key={rule} label={rule} selected={form.pgDetails.rules.includes(rule)} onClick={() => toggleArray("pgDetails.rules", rule)} />
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Room Stats */}
+                      {showRoomStats && (
+                        <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
+                          <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                            <FiGrid size={16} className="text-violet-500" /> Room Statistics
+                          </h3>
+                          <div className="grid grid-cols-3 gap-4">
+                            <CounterBox label="Total Rooms" value={form.roomStats.totalRooms} onChange={(v) => updateForm("roomStats.totalRooms", v)} icon={FiGrid} min={0} max={50} />
+                            <CounterBox label="Occupied" value={form.roomStats.occupiedRooms} onChange={(v) => updateForm("roomStats.occupiedRooms", v)} icon={FiUser} min={0} max={50} />
+                            <CounterBox label="Available" value={form.roomStats.availableRooms} onChange={(v) => updateForm("roomStats.availableRooms", v)} icon={FiCheck} min={0} max={50} />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
 
-                {/* Step 2: Property Features */}
+                {/* ── STEP 2: Property Highlights ──────────────────────────── */}
                 {currentStep === 2 && (
                   <div>
                     <h1 className="heading text-xl sm:text-2xl text-gray-900 mb-1">Property Highlights</h1>
                     <p className="text-gray-500 text-sm mb-6">Add features that make your property stand out</p>
 
                     <div className="space-y-4">
-                      {/* Furnishing */}
-                      <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
-                        <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                          <MdChair size={16} className="text-violet-500" /> Furnishing
-                        </h3>
-                        <div className="flex gap-2 sm:gap-3 mb-4">
-                          {["Unfurnished", "Semi-Furnished", "Fully-Furnished"].map((f) => (
-                            <button
-                              key={f}
-                              type="button"
-                              onClick={() => updateForm("furnishing.type", f)}
-                              className={`flex-1 py-2 px-2 sm:px-3 rounded-xl border-2 text-xs font-semibold transition-all
-                                ${form.furnishing.type === f ? "border-violet-500 bg-violet-50 text-violet-700" : "border-gray-200 text-gray-600"}`}
-                            >
-                              {f}
-                            </button>
-                          ))}
-                        </div>
-                        {form.furnishing.type !== "Unfurnished" && (
-                          <div>
-                            <p className="text-xs text-gray-500 mb-2 font-medium">Select furnished items:</p>
-                            <div className="flex flex-wrap gap-2">
-                              {furnishingItems.map((item) => (
-                                <Chip
-                                  key={item}
-                                  label={item}
-                                  selected={form.furnishing.items.includes(item)}
-                                  onClick={() => toggleArray("furnishing.items", item)}
-                                />
-                              ))}
-                            </div>
+                      {showFurnishing && (
+                        <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
+                          <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                            <MdChair size={16} className="text-violet-500" /> Furnishing
+                          </h3>
+                          <div className="flex gap-2 sm:gap-3 mb-4">
+                            {["Unfurnished", "Semi-Furnished", "Fully-Furnished"].map((f) => (
+                              <button
+                                key={f}
+                                type="button"
+                                onClick={() => updateForm("furnishing.type", f)}
+                                className={`flex-1 py-2 px-2 sm:px-3 rounded-xl border-2 text-xs font-semibold transition-all
+                                  ${form.furnishing.type === f ? "border-violet-500 bg-violet-50 text-violet-700" : "border-gray-200 text-gray-600"}`}
+                              >
+                                {f}
+                              </button>
+                            ))}
                           </div>
-                        )}
-                      </div>
+                          {form.furnishing.type !== "Unfurnished" && (
+                            <div>
+                              <p className="text-xs text-gray-500 mb-2 font-medium">Select furnished items:</p>
+                              <div className="flex flex-wrap gap-2">
+                                {furnishingItems.map((item) => (
+                                  <Chip key={item} label={item} selected={form.furnishing.items.includes(item)} onClick={() => toggleArray("furnishing.items", item)} />
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
-                      {/* Parking & Facing */}
                       <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
                         <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
                           <MdLocalParking size={16} className="text-violet-500" /> Parking & Facing
@@ -1200,25 +1655,26 @@ export default function PropertyListingForm() {
                           <CounterBox label="Covered Parking" value={form.parking.covered} onChange={(v) => updateForm("parking.covered", v)} icon={RiParkingBoxLine} min={0} max={10} />
                           <CounterBox label="Open Parking" value={form.parking.open} onChange={(v) => updateForm("parking.open", v)} icon={TbParking} min={0} max={10} />
                         </div>
-                        <div className="mt-4">
-                          <p className="text-sm font-semibold text-gray-700 mb-2">Facing Direction</p>
-                          <div className="grid grid-cols-4 gap-2">
-                            {["North", "South", "East", "West", "North-East", "North-West", "South-East", "South-West"].map((dir) => (
-                              <button
-                                key={dir}
-                                type="button"
-                                onClick={() => updateForm("facing", dir)}
-                                className={`py-2 rounded-xl border-2 text-xs font-medium transition-all
-                                  ${form.facing === dir ? "border-violet-500 bg-violet-50 text-violet-700" : "border-gray-200 text-gray-600 hover:border-violet-300"}`}
-                              >
-                                {dir}
-                              </button>
-                            ))}
+                        {showFacing && (
+                          <div className="mt-4">
+                            <p className="text-sm font-semibold text-gray-700 mb-2">Facing Direction</p>
+                            <div className="grid grid-cols-4 gap-2">
+                              {["North", "South", "East", "West", "North-East", "North-West", "South-East", "South-West"].map((dir) => (
+                                <button
+                                  key={dir}
+                                  type="button"
+                                  onClick={() => updateForm("facing", dir)}
+                                  className={`py-2 rounded-xl border-2 text-xs font-medium transition-all
+                                    ${form.facing === dir ? "border-violet-500 bg-violet-50 text-violet-700" : "border-gray-200 text-gray-600 hover:border-violet-300"}`}
+                                >
+                                  {dir}
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
 
-                      {/* Society Amenities */}
                       <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
                         <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
                           <TbBuildingCommunity size={16} className="text-violet-500" /> Society Amenities
@@ -1230,7 +1686,6 @@ export default function PropertyListingForm() {
                         </div>
                       </div>
 
-                      {/* Security */}
                       <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
                         <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
                           <MdSecurity size={16} className="text-violet-500" /> Security Features
@@ -1242,7 +1697,6 @@ export default function PropertyListingForm() {
                         </div>
                       </div>
 
-                      {/* Essential & Nearby - stacked on mobile, side-by-side on tablet+ */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
                           <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
@@ -1259,131 +1713,119 @@ export default function PropertyListingForm() {
                             <FiMapPin size={16} className="text-violet-500" /> Nearby Places
                           </h3>
                           <div className="flex flex-wrap gap-2">
-                            {nearbyAmenities.map((a) => (
+                            {filteredNearbyAmenities.map((a) => (
                               <Chip key={a} label={a} selected={form.amenities.nearby.includes(a)} onClick={() => toggleArray("amenities.nearby", a)} />
                             ))}
                           </div>
                         </div>
                       </div>
 
-                      {/* Property Features */}
-                      <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
-                        <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                          <FiTool size={16} className="text-violet-500" /> Property Features
-                        </h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <InputField label="Power Backup">
-                            <SelectInput value={form.propertyFeatures.powerBackup} onChange={(e) => updateForm("propertyFeatures.powerBackup", e.target.value)}>
-                              <option value="">Select</option>
-                              {["None", "Partial", "Full"].map((v) => <option key={v} value={v}>{v}</option>)}
-                            </SelectInput>
-                          </InputField>
-                          <InputField label="Water Supply">
-                            <SelectInput value={form.propertyFeatures.waterSupply} onChange={(e) => updateForm("propertyFeatures.waterSupply", e.target.value)}>
-                              <option value="">Select</option>
-                              {["Corporation", "Borewell", "Both"].map((v) => <option key={v} value={v}>{v}</option>)}
-                            </SelectInput>
-                          </InputField>
-                          <InputField label="Flooring">
-                            <SelectInput value={form.propertyFeatures.flooring} onChange={(e) => updateForm("propertyFeatures.flooring", e.target.value)}>
-                              <option value="">Select</option>
-                              {["Marble", "Vitrified Tiles", "Wooden", "Granite", "Ceramic", "Cement", "Other"].map((v) => <option key={v} value={v}>{v}</option>)}
-                            </SelectInput>
-                          </InputField>
-                          <InputField label="Construction Quality">
-                            <SelectInput value={form.propertyFeatures.constructionQuality} onChange={(e) => updateForm("propertyFeatures.constructionQuality", e.target.value)}>
-                              <option value="">Select</option>
-                              {["Standard", "Above Standard", "Premium", "Luxury"].map((v) => <option key={v} value={v}>{v}</option>)}
-                            </SelectInput>
-                          </InputField>
-                          <InputField label="Ceiling Height (ft)">
-                            <TextInput
-                              type="number"
-                              placeholder="e.g. 10"
-                              value={form.propertyFeatures.ceilingHeight}
-                              onChange={(e) => updateForm("propertyFeatures.ceilingHeight", e.target.value)}
-                            />
-                          </InputField>
-                          <InputField label="Road Width (ft)">
-                            <TextInput
-                              type="number"
-                              placeholder="e.g. 40"
-                              value={form.propertyFeatures.widthOfFacingRoad}
-                              onChange={(e) => updateForm("propertyFeatures.widthOfFacingRoad", e.target.value)}
-                            />
-                          </InputField>
-                          <InputField label="Waste Disposal">
-                            <SelectInput value={form.propertyFeatures.wasteDisposal} onChange={(e) => updateForm("propertyFeatures.wasteDisposal", e.target.value)}>
-                              <option value="">Select</option>
-                              {["Municipal", "Private", "Biogas Plant", "None"].map((v) => <option key={v} value={v}>{v}</option>)}
-                            </SelectInput>
-                          </InputField>
-                        </div>
+                      {showPropertyFeatures && (
+                        <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
+                          <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                            <FiTool size={16} className="text-violet-500" /> Property Features
+                          </h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <InputField label="Power Backup">
+                              <SelectInput value={form.propertyFeatures.powerBackup} onChange={(e) => updateForm("propertyFeatures.powerBackup", e.target.value)}>
+                                <option value="">Select</option>
+                                {["None", "Partial", "Full"].map((v) => <option key={v} value={v}>{v}</option>)}
+                              </SelectInput>
+                            </InputField>
+                            <InputField label="Water Supply">
+                              <SelectInput value={form.propertyFeatures.waterSupply} onChange={(e) => updateForm("propertyFeatures.waterSupply", e.target.value)}>
+                                <option value="">Select</option>
+                                {["Corporation", "Borewell", "Both"].map((v) => <option key={v} value={v}>{v}</option>)}
+                              </SelectInput>
+                            </InputField>
+                            <InputField label="Flooring">
+                              <SelectInput value={form.propertyFeatures.flooring} onChange={(e) => updateForm("propertyFeatures.flooring", e.target.value)}>
+                                <option value="">Select</option>
+                                {["Marble", "Vitrified Tiles", "Wooden", "Granite", "Ceramic", "Cement", "Other"].map((v) => <option key={v} value={v}>{v}</option>)}
+                              </SelectInput>
+                            </InputField>
+                            <InputField label="Construction Quality">
+                              <SelectInput value={form.propertyFeatures.constructionQuality} onChange={(e) => updateForm("propertyFeatures.constructionQuality", e.target.value)}>
+                                <option value="">Select</option>
+                                {["Standard", "Above Standard", "Premium", "Luxury"].map((v) => <option key={v} value={v}>{v}</option>)}
+                              </SelectInput>
+                            </InputField>
+                            <InputField label="Ceiling Height (ft)">
+                              <TextInput type="number" placeholder="e.g. 10" value={form.propertyFeatures.ceilingHeight} onChange={(e) => updateForm("propertyFeatures.ceilingHeight", e.target.value)} />
+                            </InputField>
+                            <InputField label="Road Width (ft)">
+                              <TextInput type="number" placeholder="e.g. 40" value={form.propertyFeatures.widthOfFacingRoad} onChange={(e) => updateForm("propertyFeatures.widthOfFacingRoad", e.target.value)} />
+                            </InputField>
+                            <InputField label="Waste Disposal">
+                              <SelectInput value={form.propertyFeatures.wasteDisposal} onChange={(e) => updateForm("propertyFeatures.wasteDisposal", e.target.value)}>
+                                <option value="">Select</option>
+                                {["Municipal", "Private", "Biogas Plant", "None"].map((v) => <option key={v} value={v}>{v}</option>)}
+                              </SelectInput>
+                            </InputField>
+                          </div>
 
-                        {/* Toggles */}
-                        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {[
-                            ["gatedSecurity", "Gated Security"],
-                            ["liftAvailable", "Lift Available"],
-                            ["petFriendly", "Pet Friendly"],
-                            ["bachelorsAllowed", "Bachelors Allowed"],
-                            ["nonVegAllowed", "Non-Veg Allowed"],
-                            ["boundaryWall", "Boundary Wall"],
-                            ["rainwaterHarvesting", "Rainwater Harvesting"],
-                            ["servantsRoom", "Servants Room"],
-                            ["studyRoom", "Study Room"],
-                            ["poojaRoom", "Pooja Room"],
-                            ["storeRoom", "Store Room"],
-                          ].map(([key, label]) => (
-                            <div key={key} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-xl">
-                              <span className="text-sm text-gray-700">{label}</span>
-                              <label className="toggle-switch">
-                                <input
-                                  type="checkbox"
-                                  checked={form.propertyFeatures[key]}
-                                  onChange={(e) => updateForm(`propertyFeatures.${key}`, e.target.checked)}
-                                />
-                                <span className="slider" />
-                              </label>
+                          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {[
+                              ["gatedSecurity", "Gated Security"],
+                              ["liftAvailable", "Lift Available"],
+                              ["petFriendly", "Pet Friendly"],
+                              ["bachelorsAllowed", "Bachelors Allowed"],
+                              ["nonVegAllowed", "Non-Veg Allowed"],
+                              ["boundaryWall", "Boundary Wall"],
+                              ["rainwaterHarvesting", "Rainwater Harvesting"],
+                              ["servantsRoom", "Servants Room"],
+                              ["studyRoom", "Study Room"],
+                              ["poojaRoom", "Pooja Room"],
+                              ["storeRoom", "Store Room"],
+                            ].map(([key, label]) => (
+                              <div key={key} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-xl">
+                                <span className="text-sm text-gray-700">{label}</span>
+                                <label className="toggle-switch">
+                                  <input
+                                    type="checkbox"
+                                    checked={form.propertyFeatures[key]}
+                                    onChange={(e) => updateForm(`propertyFeatures.${key}`, e.target.checked)}
+                                  />
+                                  <span className="slider" />
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="mt-4 p-3 bg-red-50 rounded-xl border border-red-100">
+                            <p className="text-xs font-semibold text-red-700 mb-2 flex items-center gap-1.5">
+                              <MdFireExtinguisher size={14} /> Fire Safety
+                            </p>
+                            <div className="flex flex-wrap gap-4">
+                              {[["fireExtinguisher", "Fire Extinguisher"], ["fireSensor", "Fire Sensor"], ["sprinklers", "Sprinklers"]].map(([k, l]) => (
+                                <label key={k} className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={form.propertyFeatures.fireSafety[k]}
+                                    onChange={(e) => updateForm(`propertyFeatures.fireSafety.${k}`, e.target.checked)}
+                                    className="accent-red-500"
+                                  />
+                                  <span className="text-xs text-gray-700">{l}</span>
+                                </label>
+                              ))}
                             </div>
-                          ))}
-                        </div>
+                          </div>
 
-                        {/* Fire Safety */}
-                        <div className="mt-4 p-3 bg-red-50 rounded-xl border border-red-100">
-                          <p className="text-xs font-semibold text-red-700 mb-2 flex items-center gap-1.5">
-                            <MdFireExtinguisher size={14} /> Fire Safety
-                          </p>
-                          <div className="flex flex-wrap gap-4">
-                            {[["fireExtinguisher", "Fire Extinguisher"], ["fireSensor", "Fire Sensor"], ["sprinklers", "Sprinklers"]].map(([k, l]) => (
-                              <label key={k} className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={form.propertyFeatures.fireSafety[k]}
-                                  onChange={(e) => updateForm(`propertyFeatures.fireSafety.${k}`, e.target.checked)}
-                                  className="accent-red-500"
-                                />
-                                <span className="text-xs text-gray-700">{l}</span>
-                              </label>
-                            ))}
+                          <div className="mt-4">
+                            <p className="text-sm font-semibold text-gray-700 mb-2">Overlooking</p>
+                            <div className="flex flex-wrap gap-2">
+                              {["Park/Garden", "Pool", "Main Road", "Club", "Not Overlooking"].map((v) => (
+                                <Chip key={v} label={v} selected={form.propertyFeatures.overlooking.includes(v)} onClick={() => toggleArray("propertyFeatures.overlooking", v)} />
+                              ))}
+                            </div>
                           </div>
                         </div>
-
-                        {/* Overlooking */}
-                        <div className="mt-4">
-                          <p className="text-sm font-semibold text-gray-700 mb-2">Overlooking</p>
-                          <div className="flex flex-wrap gap-2">
-                            {["Park/Garden", "Pool", "Main Road", "Club", "Not Overlooking"].map((v) => (
-                              <Chip key={v} label={v} selected={form.propertyFeatures.overlooking.includes(v)} onClick={() => toggleArray("propertyFeatures.overlooking", v)} />
-                            ))}
-                          </div>
-                        </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 )}
 
-                {/* Step 3: Location */}
+                {/* ── STEP 3: Location ─────────────────────────────────────── */}
                 {currentStep === 3 && (
                   <div>
                     <h1 className="heading text-xl sm:text-2xl text-gray-900 mb-1">Address Details</h1>
@@ -1391,7 +1833,6 @@ export default function PropertyListingForm() {
 
                     <div className="space-y-4">
                       <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100 space-y-4">
-                        {/* City Search */}
                         <InputField label="City" required error={errors["location.city"]}>
                           <div className="relative">
                             <FiSearch size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -1433,18 +1874,10 @@ export default function PropertyListingForm() {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <InputField label="Locality" required error={errors["location.locality"]}>
-                            <TextInput
-                              placeholder="e.g. Vijay Nagar"
-                              value={form.location.locality}
-                              onChange={(e) => updateForm("location.locality", e.target.value)}
-                            />
+                            <TextInput placeholder="e.g. Vijay Nagar" value={form.location.locality} onChange={(e) => updateForm("location.locality", e.target.value)} />
                           </InputField>
                           <InputField label="Sub Locality">
-                            <TextInput
-                              placeholder="e.g. Scheme 54"
-                              value={form.location.subLocality}
-                              onChange={(e) => updateForm("location.subLocality", e.target.value)}
-                            />
+                            <TextInput placeholder="e.g. Scheme 54" value={form.location.subLocality} onChange={(e) => updateForm("location.subLocality", e.target.value)} />
                           </InputField>
                         </div>
 
@@ -1477,31 +1910,17 @@ export default function PropertyListingForm() {
 
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                           <InputField label="Landmark">
-                            <TextInput
-                              placeholder="Near C21 Mall"
-                              value={form.location.landmark}
-                              onChange={(e) => updateForm("location.landmark", e.target.value)}
-                            />
+                            <TextInput placeholder="Near C21 Mall" value={form.location.landmark} onChange={(e) => updateForm("location.landmark", e.target.value)} />
                           </InputField>
                           <InputField label="Pincode" required error={errors["location.pincode"]}>
-                            <TextInput
-                              placeholder="452010"
-                              value={form.location.pincode}
-                              onChange={(e) => updateForm("location.pincode", e.target.value)}
-                              maxLength={6}
-                            />
+                            <TextInput placeholder="452010" value={form.location.pincode} onChange={(e) => updateForm("location.pincode", e.target.value)} maxLength={6} />
                           </InputField>
                           <InputField label="State">
-                            <TextInput
-                              placeholder="Madhya Pradesh"
-                              value={form.location.state}
-                              onChange={(e) => updateForm("location.state", e.target.value)}
-                            />
+                            <TextInput placeholder="Madhya Pradesh" value={form.location.state} onChange={(e) => updateForm("location.state", e.target.value)} />
                           </InputField>
                         </div>
                       </div>
 
-                      {/* Map */}
                       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                           <h3 className="font-semibold text-gray-800 flex items-center gap-2">
@@ -1532,130 +1951,113 @@ export default function PropertyListingForm() {
                   </div>
                 )}
 
-                {/* Step 4: Ownership */}
+                {/* ── STEP 4: Ownership ────────────────────────────────────── */}
                 {currentStep === 4 && (
                   <div>
                     <h1 className="heading text-xl sm:text-2xl text-gray-900 mb-1">Ownership & Legal</h1>
                     <p className="text-gray-500 text-sm mb-6">Verify your ownership details</p>
 
                     <div className="space-y-4">
-                      <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100 space-y-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <InputField label="Ownership Type">
-                            <SelectInput value={form.ownership.type} onChange={(e) => updateForm("ownership.type", e.target.value)}>
-                              <option value="">Select</option>
-                              {["Freehold", "Leasehold", "Co-operative Society", "Power of Attorney"].map((v) => <option key={v} value={v}>{v}</option>)}
-                            </SelectInput>
-                          </InputField>
-                          <InputField label="Transaction Type">
-                            <SelectInput value={form.transactionType} onChange={(e) => updateForm("transactionType", e.target.value)}>
-                              {["Resale", "New Booking"].map((v) => <option key={v} value={v}>{v}</option>)}
-                            </SelectInput>
-                          </InputField>
-                          <InputField label="Stamp Duty">
-                            <SelectInput value={form.ownership.stampDutyCharges} onChange={(e) => updateForm("ownership.stampDutyCharges", e.target.value)}>
-                              {["Included in Price", "Excluded - Paid by Buyer", "To be Decided"].map((v) => <option key={v} value={v}>{v}</option>)}
-                            </SelectInput>
-                          </InputField>
-                          <InputField label="Registration Charges">
-                            <SelectInput value={form.ownership.registrationCharges} onChange={(e) => updateForm("ownership.registrationCharges", e.target.value)}>
-                              {["Included in Price", "Excluded - Paid by Buyer", "To be Decided"].map((v) => <option key={v} value={v}>{v}</option>)}
-                            </SelectInput>
-                          </InputField>
-                          <InputField label="Property Tax/Year (₹)">
-                            <TextInput
-                              type="number"
-                              placeholder="e.g. 12000"
-                              value={form.ownership.propertyTaxPerYear}
-                              onChange={(e) => updateForm("ownership.propertyTaxPerYear", e.target.value)}
-                            />
-                          </InputField>
-                        </div>
+                      {showOwnership && (
+                        <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100 space-y-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <InputField label="Ownership Type" required={isSale} error={errors["ownership.type"]}>
+                              <SelectInput value={form.ownership.type} onChange={(e) => updateForm("ownership.type", e.target.value)}>
+                                <option value="">Select</option>
+                                {["Freehold", "Leasehold", "Co-operative Society", "Power of Attorney"].map((v) => <option key={v} value={v}>{v}</option>)}
+                              </SelectInput>
+                            </InputField>
+                            <InputField label="Transaction Type">
+                              <SelectInput value={form.transactionType} onChange={(e) => updateForm("transactionType", e.target.value)}>
+                                {["Resale", "New Booking"].map((v) => <option key={v} value={v}>{v}</option>)}
+                              </SelectInput>
+                            </InputField>
+                            <InputField label="Stamp Duty">
+                              <SelectInput value={form.ownership.stampDutyCharges} onChange={(e) => updateForm("ownership.stampDutyCharges", e.target.value)}>
+                                {["Included in Price", "Excluded - Paid by Buyer", "To be Decided"].map((v) => <option key={v} value={v}>{v}</option>)}
+                              </SelectInput>
+                            </InputField>
+                            <InputField label="Registration Charges">
+                              <SelectInput value={form.ownership.registrationCharges} onChange={(e) => updateForm("ownership.registrationCharges", e.target.value)}>
+                                {["Included in Price", "Excluded - Paid by Buyer", "To be Decided"].map((v) => <option key={v} value={v}>{v}</option>)}
+                              </SelectInput>
+                            </InputField>
+                            <InputField label="Property Tax/Year (₹)">
+                              <TextInput type="number" placeholder="e.g. 12000" value={form.ownership.propertyTaxPerYear} onChange={(e) => updateForm("ownership.propertyTaxPerYear", e.target.value)} />
+                            </InputField>
+                          </div>
 
-                        <div className="flex flex-wrap gap-4">
-                          {[["verified", "Ownership Verified"], ["occupancyCertificate", "Occupancy Certificate"], ["legalDocumentsAvailable", "Legal Documents Available"]].map(([k, l]) => (
-                            <label key={k} className="flex items-center gap-2 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={form.ownership[k]}
-                                onChange={(e) => updateForm(`ownership.${k}`, e.target.checked)}
-                                className="accent-violet-600 w-4 h-4"
-                              />
-                              <span className="text-sm text-gray-700">{l}</span>
-                            </label>
-                          ))}
-                        </div>
-
-                        <div>
-                          <p className="text-sm font-semibold text-gray-700 mb-2">Approved By</p>
-                          <div className="flex flex-wrap gap-3">
-                            {["Municipality", "Development Authority", "Panchayat", "Other"].map((v) => (
-                              <Chip key={v} label={v} selected={form.ownership.approvedBy.includes(v)} onClick={() => toggleArray("ownership.approvedBy", v)} />
+                          <div className="flex flex-wrap gap-4">
+                            {[["verified", "Ownership Verified"], ["occupancyCertificate", "Occupancy Certificate"], ["legalDocumentsAvailable", "Legal Documents Available"]].map(([k, l]) => (
+                              <label key={k} className="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" checked={form.ownership[k]} onChange={(e) => updateForm(`ownership.${k}`, e.target.checked)} className="accent-violet-600 w-4 h-4" />
+                                <span className="text-sm text-gray-700">{l}</span>
+                              </label>
                             ))}
                           </div>
-                        </div>
-                      </div>
 
-                      {/* Builder Details */}
-                      <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
-                        <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                          <BiBuildingHouse size={16} className="text-violet-500" /> Builder / Project Details
-                        </h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <InputField label="Builder Name">
-                            <TextInput value={form.builder.name} onChange={(e) => updateForm("builder.name", e.target.value)} placeholder="ABC Builders" />
-                          </InputField>
-                          <InputField label="RERA ID">
-                            <TextInput value={form.builder.reraId} onChange={(e) => updateForm("builder.reraId", e.target.value)} placeholder="RERA/MP/2023/XXXXX" />
-                          </InputField>
-                          <InputField label="Project Name">
-                            <TextInput value={form.builder.projectName} onChange={(e) => updateForm("builder.projectName", e.target.value)} placeholder="Green Valley Residency" />
-                          </InputField>
-                          <InputField label="Possession Date">
-                            <TextInput type="date" value={form.builder.possessionDate} onChange={(e) => updateForm("builder.possessionDate", e.target.value)} />
-                          </InputField>
-                          <InputField label="Total Units">
-                            <TextInput type="number" value={form.builder.totalUnits} onChange={(e) => updateForm("builder.totalUnits", e.target.value)} placeholder="150" />
-                          </InputField>
-                          <InputField label="Total Towers">
-                            <TextInput type="number" value={form.builder.totalTowers} onChange={(e) => updateForm("builder.totalTowers", e.target.value)} placeholder="3" />
-                          </InputField>
-                          <InputField label="Total Floors">
-                            <TextInput type="number" value={form.builder.totalFloors} onChange={(e) => updateForm("builder.totalFloors", e.target.value)} placeholder="15" />
-                          </InputField>
-                          <InputField label="Launch Date">
-                            <TextInput type="date" value={form.builder.launchDate} onChange={(e) => updateForm("builder.launchDate", e.target.value)} />
-                          </InputField>
-                          <InputField label="Token Amount (₹)">
-                            <TextInput type="number" value={form.builder.bookingProcess.tokenAmount} onChange={(e) => updateForm("builder.bookingProcess.tokenAmount", e.target.value)} placeholder="100000" />
-                          </InputField>
-                        </div>
-
-                        <div className="mt-3 flex items-center gap-3">
-                          <label className="toggle-switch">
-                            <input
-                              type="checkbox"
-                              checked={form.builder.loanFacility.available}
-                              onChange={(e) => updateForm("builder.loanFacility.available", e.target.checked)}
-                            />
-                            <span className="slider" />
-                          </label>
-                          <span className="text-sm text-gray-600">Loan Facility Available</span>
-                        </div>
-
-                        {form.builder.loanFacility.available && (
-                          <div className="mt-3">
-                            <p className="text-sm font-medium text-gray-700 mb-2">Approved Banks</p>
-                            <div className="flex flex-wrap gap-2">
-                              {["HDFC", "SBI", "ICICI", "Axis", "Kotak", "PNB", "BOB"].map((b) => (
-                                <Chip key={b} label={b} selected={form.builder.loanFacility.approvedBanks.includes(b)} onClick={() => toggleArray("builder.loanFacility.approvedBanks", b)} />
+                          <div>
+                            <p className="text-sm font-semibold text-gray-700 mb-2">Approved By</p>
+                            <div className="flex flex-wrap gap-3">
+                              {["Municipality", "Development Authority", "Panchayat", "Other"].map((v) => (
+                                <Chip key={v} label={v} selected={form.ownership.approvedBy.includes(v)} onClick={() => toggleArray("ownership.approvedBy", v)} />
                               ))}
                             </div>
                           </div>
-                        )}
-                      </div>
+                        </div>
+                      )}
 
-                      {/* Inclusions & Additional Rooms - stacked on mobile */}
+                      {/* If Rent/PG and no ownership section, show a simple info card */}
+                      {!showOwnership && (
+                        <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 bg-violet-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                              <FiShield size={18} className="text-violet-600" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-gray-800">Ownership Details</p>
+                              <p className="text-sm text-gray-500 mt-1">Ownership verification is required for Sale properties. For Rent/PG, this step is optional.</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {showBuilder && (
+                        <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
+                          <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                            <BiBuildingHouse size={16} className="text-violet-500" /> Builder / Project Details
+                          </h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <InputField label="Builder Name"><TextInput value={form.builder.name} onChange={(e) => updateForm("builder.name", e.target.value)} placeholder="ABC Builders" /></InputField>
+                            <InputField label="RERA ID"><TextInput value={form.builder.reraId} onChange={(e) => updateForm("builder.reraId", e.target.value)} placeholder="RERA/MP/2023/XXXXX" /></InputField>
+                            <InputField label="Project Name"><TextInput value={form.builder.projectName} onChange={(e) => updateForm("builder.projectName", e.target.value)} placeholder="Green Valley Residency" /></InputField>
+                            <InputField label="Possession Date"><TextInput type="date" value={form.builder.possessionDate} onChange={(e) => updateForm("builder.possessionDate", e.target.value)} /></InputField>
+                            <InputField label="Total Units"><TextInput type="number" value={form.builder.totalUnits} onChange={(e) => updateForm("builder.totalUnits", e.target.value)} placeholder="150" /></InputField>
+                            <InputField label="Total Towers"><TextInput type="number" value={form.builder.totalTowers} onChange={(e) => updateForm("builder.totalTowers", e.target.value)} placeholder="3" /></InputField>
+                            <InputField label="Total Floors"><TextInput type="number" value={form.builder.totalFloors} onChange={(e) => updateForm("builder.totalFloors", e.target.value)} placeholder="15" /></InputField>
+                            <InputField label="Launch Date"><TextInput type="date" value={form.builder.launchDate} onChange={(e) => updateForm("builder.launchDate", e.target.value)} /></InputField>
+                            <InputField label="Token Amount (₹)"><TextInput type="number" value={form.builder.bookingProcess.tokenAmount} onChange={(e) => updateForm("builder.bookingProcess.tokenAmount", e.target.value)} placeholder="100000" /></InputField>
+                          </div>
+                          <div className="mt-3 flex items-center gap-3">
+                            <label className="toggle-switch">
+                              <input type="checkbox" checked={form.builder.loanFacility.available} onChange={(e) => updateForm("builder.loanFacility.available", e.target.checked)} />
+                              <span className="slider" />
+                            </label>
+                            <span className="text-sm text-gray-600">Loan Facility Available</span>
+                          </div>
+                          {form.builder.loanFacility.available && (
+                            <div className="mt-3">
+                              <p className="text-sm font-medium text-gray-700 mb-2">Approved Banks</p>
+                              <div className="flex flex-wrap gap-2">
+                                {["HDFC", "SBI", "ICICI", "Axis", "Kotak", "PNB", "BOB"].map((b) => (
+                                  <Chip key={b} label={b} selected={form.builder.loanFacility.approvedBanks.includes(b)} onClick={() => toggleArray("builder.loanFacility.approvedBanks", b)} />
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-100">
                           <h3 className="font-semibold text-gray-800 mb-3 text-sm">Inclusions in Price</h3>
@@ -1665,20 +2067,22 @@ export default function PropertyListingForm() {
                             ))}
                           </div>
                         </div>
-                        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-100">
-                          <h3 className="font-semibold text-gray-800 mb-3 text-sm">Additional Rooms</h3>
-                          <div className="flex flex-wrap gap-2">
-                            {["Servant Room", "Study Room", "Pooja Room", "Store Room", "Utility Room"].map((v) => (
-                              <Chip key={v} label={v} selected={form.additionalRooms.includes(v)} onClick={() => toggleArray("additionalRooms", v)} />
-                            ))}
+                        {showAdditionalRooms && (
+                          <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-100">
+                            <h3 className="font-semibold text-gray-800 mb-3 text-sm">Additional Rooms</h3>
+                            <div className="flex flex-wrap gap-2">
+                              {["Servant Room", "Study Room", "Pooja Room", "Store Room", "Utility Room"].map((v) => (
+                                <Chip key={v} label={v} selected={form.additionalRooms.includes(v)} onClick={() => toggleArray("additionalRooms", v)} />
+                              ))}
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* Step 5: Photos */}
+                {/* ── STEP 5: Photos ───────────────────────────────────────── */}
                 {currentStep === 5 && (
                   <div>
                     <h1 className="heading text-xl sm:text-2xl text-gray-900 mb-1">Upload Photos</h1>
@@ -1739,7 +2143,7 @@ export default function PropertyListingForm() {
                   </div>
                 )}
 
-                {/* Step 6: Contact */}
+                {/* ── STEP 6: Contact ──────────────────────────────────────── */}
                 {currentStep === 6 && (
                   <div>
                     <h1 className="heading text-xl sm:text-2xl text-gray-900 mb-1">Contact Information</h1>
@@ -1749,12 +2153,7 @@ export default function PropertyListingForm() {
                       <InputField label="Full Name" required error={errors["contactInfo.name"]}>
                         <div className="relative">
                           <FiUser size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                          <TextInput
-                            className="pl-9"
-                            placeholder="Your full name"
-                            value={form.contactInfo.name}
-                            onChange={(e) => updateForm("contactInfo.name", e.target.value)}
-                          />
+                          <TextInput className="pl-9" placeholder="Your full name" value={form.contactInfo.name} onChange={(e) => updateForm("contactInfo.name", e.target.value)} />
                         </div>
                       </InputField>
 
@@ -1762,26 +2161,13 @@ export default function PropertyListingForm() {
                         <InputField label="Phone Number" required error={errors["contactInfo.phone"]}>
                           <div className="relative">
                             <FiPhone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                            <TextInput
-                              className="pl-9"
-                              placeholder="10-digit mobile number"
-                              value={form.contactInfo.phone}
-                              onChange={(e) => updateForm("contactInfo.phone", e.target.value)}
-                              maxLength={10}
-                            />
+                            <TextInput className="pl-9" placeholder="10-digit mobile number" value={form.contactInfo.phone} onChange={(e) => updateForm("contactInfo.phone", e.target.value)} maxLength={10} />
                           </div>
                         </InputField>
-
                         <InputField label="Alternate Phone">
                           <div className="relative">
                             <FiPhone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                            <TextInput
-                              className="pl-9"
-                              placeholder="Alternate number"
-                              value={form.contactInfo.alternatePhone}
-                              onChange={(e) => updateForm("contactInfo.alternatePhone", e.target.value)}
-                              maxLength={10}
-                            />
+                            <TextInput className="pl-9" placeholder="Alternate number" value={form.contactInfo.alternatePhone} onChange={(e) => updateForm("contactInfo.alternatePhone", e.target.value)} maxLength={10} />
                           </div>
                         </InputField>
                       </div>
@@ -1789,13 +2175,7 @@ export default function PropertyListingForm() {
                       <InputField label="Email Address" error={errors["contactInfo.email"]}>
                         <div className="relative">
                           <FiMail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                          <TextInput
-                            className="pl-9"
-                            placeholder="your@email.com"
-                            type="email"
-                            value={form.contactInfo.email}
-                            onChange={(e) => updateForm("contactInfo.email", e.target.value)}
-                          />
+                          <TextInput className="pl-9" placeholder="your@email.com" type="email" value={form.contactInfo.email} onChange={(e) => updateForm("contactInfo.email", e.target.value)} />
                         </div>
                       </InputField>
 
@@ -1820,7 +2200,7 @@ export default function PropertyListingForm() {
                   </div>
                 )}
 
-                {/* Step 7: Preview */}
+                {/* ── STEP 7: Preview & Submit ─────────────────────────────── */}
                 {currentStep === 7 && (
                   <div>
                     <h1 className="heading text-xl sm:text-2xl text-gray-900 mb-1">Review & Submit</h1>
@@ -1838,11 +2218,11 @@ export default function PropertyListingForm() {
                       <PreviewSection title="Basic Details" icon={FiInfo}>
                         <div className="grid grid-cols-2 gap-3">
                           <InfoItem label="Title" value={form.title} />
-                          <InfoItem label="BHK" value={`${form.bhk} BHK`} />
-                          <InfoItem label="Bathrooms" value={form.bathrooms} />
-                          <InfoItem label="Carpet Area" value={`${form.area.carpet} ${form.area.unit}`} />
+                          {showBHK && <InfoItem label="BHK" value={`${form.bhk} BHK`} />}
+                          {showBathrooms && <InfoItem label="Bathrooms" value={form.bathrooms} />}
+                          <InfoItem label={isPlot ? "Plot Area" : "Carpet Area"} value={`${isPlot ? form.area.plotArea : form.area.carpet} ${form.area.unit}`} />
                           <InfoItem label="Price" value={`₹${Number(form.price.amount || 0).toLocaleString("en-IN")}`} />
-                          <InfoItem label="Property Age" value={form.propertyAge} />
+                          {form.propertyAge && <InfoItem label="Property Age" value={form.propertyAge} />}
                         </div>
                       </PreviewSection>
 
@@ -1884,7 +2264,9 @@ export default function PropertyListingForm() {
                           </div>
                           <div>
                             <p className="font-semibold text-gray-800">Ready to submit!</p>
-                            <p className="text-sm text-gray-500 mt-0.5">Your property will be reviewed within 24-48 hours after submission.</p>
+                            <p className="text-sm text-gray-500 mt-0.5">
+                              Your property will be reviewed within 24-48 hours after submission.
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -1895,7 +2277,7 @@ export default function PropertyListingForm() {
               </div>
             </div>
 
-            {/* Footer Navigation */}
+            {/* ── Footer Navigation ──────────────────────────────────────── */}
             <div className="border-t border-gray-100 bg-white px-4 sm:px-8 py-3 sm:py-4 flex items-center justify-between sticky bottom-0 z-20">
               <button
                 type="button"
@@ -1933,50 +2315,6 @@ export default function PropertyListingForm() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function PreviewSection({ title, icon: Icon, children }) {
-  return (
-    <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
-      <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2 pb-3 border-b border-gray-100">
-        <Icon size={16} className="text-violet-500" /> {title}
-      </h3>
-      {children}
-    </div>
-  );
-}
-
-function InfoItem({ label, value }) {
-  if (!value) return null;
-  return (
-    <div>
-      <p className="text-xs text-gray-400">{label}</p>
-      <p className="text-sm font-medium text-gray-800">{value}</p>
-    </div>
-  );
-}
-
-function SuccessScreen() {
-  return (
-    <div className="flex items-center justify-center min-h-screen px-4">
-      <div className="text-center max-w-md w-full px-6">
-        <div className="w-24 h-24 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl shadow-emerald-200">
-          <FiCheckCircle size={40} className="text-white" />
-        </div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Property Submitted!</h1>
-        <p className="text-gray-500 text-sm">Your property has been submitted for approval. It will be reviewed within 24-48 hours.</p>
-        <div className="mt-6 p-4 bg-violet-50 rounded-2xl border border-violet-100">
-          <p className="text-sm text-violet-700 font-medium">🎉 Congratulations! Your listing is now under review.</p>
-        </div>
-        <button
-          onClick={() => window.location.reload()}
-          className="mt-6 px-8 py-3 bg-violet-600 text-white rounded-xl font-semibold hover:bg-violet-700 transition-colors"
-        >
-          Post Another Property
-        </button>
-      </div>
     </div>
   );
 }
