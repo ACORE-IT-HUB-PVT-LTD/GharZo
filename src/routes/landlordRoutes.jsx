@@ -1,7 +1,6 @@
 import { Route } from "react-router-dom";
 import Layout from "../Components/LandLoard/Layout/Layout";
 import Dashboard from "../Components/LandLoard/Dashboard/Dashboard";
-import LandlordProfile from "../Components/LandLoard/Profile/LandlordProfile";
 import LandlordReels from "../Components/LandLoard/Reels/LandlordReels";
 import LandlordSubAdmin from "../Components/LandLoard/SubAdmin/SubAdminDashboard.jsx";
 import LandLoardplan from "../Components/LandLoard/Subscription/MySubscriptions.jsx";
@@ -39,8 +38,8 @@ const landlordMainRoutes = (
     <Route key="landlord-main" path="/landlord" element={<Layout />}>
     <Route index element={<Dashboard />} />
     <Route path="room-switch" element={<LandlordRoomSwitch />} />
-    <Route path="landlord-profile" element={<LandlordProfile />} />
     <Route path="landlord_reels" element={<LandlordReels />} />
+    <Route path="complaints" element={<AllComplaints />} />
     <Route path="landlord_subadmin" element={<LandlordSubAdmin />} />
     <Route path="my-subscriptions/:id" element={<LandLoardplan />} />
     <Route path="my-reel-subscriptions" element={<LandLoardreelsub />} />

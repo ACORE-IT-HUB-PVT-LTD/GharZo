@@ -155,6 +155,14 @@ const TenantSidebar = ({ setSidebarWidth, tenantId }) => {
       gradient: "from-emerald-400 to-green-500",
     },
     {
+      name: "Payment",
+      path: tenantId
+        ? `/tenant/payment/${tenantId}`
+        : "/tenant/payment",
+      icon: CreditCard,
+      gradient: "from-amber-400 to-orange-500",
+    },
+    {
       name: "Documents",
       path: "/tenant/documents",
       icon: Receipt,

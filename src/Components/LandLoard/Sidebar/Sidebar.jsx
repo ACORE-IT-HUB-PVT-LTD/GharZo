@@ -162,9 +162,9 @@ const Sidebar = ({ propertyId, setSidebarWidth }) => {
     //   gradient: "from-blue-600 to-orange-500",
     // },
     { 
-      to: "/landlord/landlord-profile", 
+      to: "/landlord/allComplaints", 
       icon: FaUser, 
-      label: "Profile",
+      label: "All Complaints",
       gradient: "from-blue-600 to-orange-500",
     },
     { 

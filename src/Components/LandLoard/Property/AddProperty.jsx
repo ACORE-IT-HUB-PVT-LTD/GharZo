@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
 import {
   FiHome, FiMapPin, FiCamera, FiCheckCircle, FiEye, FiChevronRight,
   FiChevronLeft, FiPlus, FiMinus, FiX, FiUpload, FiPhone, FiMail,
@@ -207,9 +208,16 @@ function SuccessScreen() {
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 export default function PropertyListingForm() {
+  const { propertyId: editPropertyId, id: editIdFromRoute } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isEditMode = !!(editPropertyId || editIdFromRoute);
+  const editId = editPropertyId || editIdFromRoute;
+
   const [currentStep, setCurrentStep] = useState(0);
-  const [propertyId, setPropertyId] = useState(null);
+  const [propertyId, setPropertyId] = useState(isEditMode ? editId : null);
   const [loading, setLoading] = useState(false);
+  const [fetchingProperty, setFetchingProperty] = useState(isEditMode);
   const [toasts, setToasts] = useState([]);
   const [errors, setErrors] = useState({});
   const [cities, setCities] = useState([]);
@@ -411,6 +419,115 @@ export default function PropertyListingForm() {
       .catch(() => {});
   }, []);
 
+  // ─── Fetch Property Data for Edit Mode ───────────────────────────────────────
+  const fetchPropertyForEdit = async () => {
+    if (!editId) return;
+    setFetchingProperty(true);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`${API_BASE}/${editId}/details`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        const p = data.data;
+        // Map API response to form state
+        setForm((prev) => ({
+          ...prev,
+          category: p.category || "Residential",
+          propertyType: p.propertyType || "",
+          listingType: p.listingType || "Rent",
+          title: p.title || "",
+          description: p.description || "",
+          bhk: p.bhk || 2,
+          bathrooms: p.bathrooms || 1,
+          balconies: p.balconies || 1,
+          propertyAge: p.propertyAge || "",
+          availableFrom: p.availableFrom || "",
+          floor: p.floor || { current: 0, total: 1 },
+          area: p.area || { carpet: "", builtUp: "", superBuiltUp: "", plotArea: "", unit: "sqft" },
+          price: p.price || {
+            amount: "",
+            negotiable: true,
+            securityDeposit: "",
+            maintenanceCharges: { amount: "", frequency: "Monthly" },
+            lockInPeriod: "",
+            noticePeriod: "",
+            per: "Property",
+            expectedRental: "",
+            currentlyLeasedOut: false,
+            leaseExpiryDate: "",
+            annualDuesPayable: "",
+          },
+          furnishing: p.furnishing || { type: "Unfurnished", items: [] },
+          parking: p.parking || { covered: 0, open: 0 },
+          facing: p.facing || "",
+          amenities: p.amenities || { society: [], security: [], essential: [], nearby: [] },
+          propertyFeatures: {
+            powerBackup: p.propertyFeatures?.powerBackup || "",
+            waterSupply: p.propertyFeatures?.waterSupply || "",
+            gatedSecurity: p.propertyFeatures?.gatedSecurity || false,
+            liftAvailable: p.propertyFeatures?.liftAvailable || false,
+            petFriendly: p.propertyFeatures?.petFriendly || false,
+            bachelorsAllowed: p.propertyFeatures?.bachelorsAllowed || false,
+            nonVegAllowed: p.propertyFeatures?.nonVegAllowed || false,
+            electricityStatus: p.propertyFeatures?.electricityStatus || "Available",
+            flooring: p.propertyFeatures?.flooring || "",
+            ceilingHeight: p.propertyFeatures?.ceilingHeight || "",
+            overlooking: p.propertyFeatures?.overlooking || [],
+            widthOfFacingRoad: p.propertyFeatures?.widthOfFacingRoad || "",
+            boundaryWall: p.propertyFeatures?.boundaryWall || false,
+            corners: p.propertyFeatures?.corners || 0,
+            fireSafety: {
+              fireExtinguisher: p.propertyFeatures?.fireSafety?.fireExtinguisher || false,
+              fireSensor: p.propertyFeatures?.fireSafety?.fireSensor || false,
+              sprinklers: p.propertyFeatures?.fireSafety?.sprinklers || false,
+              fireHoseReel: p.propertyFeatures?.fireSafety?.fireHoseReel || false,
+            },
+            constructionQuality: p.propertyFeatures?.constructionQuality || "",
+            rainwaterHarvesting: p.propertyFeatures?.rainwaterHarvesting || false,
+            wasteDisposal: p.propertyFeatures?.wasteDisposal || "",
+            servantsRoom: p.propertyFeatures?.servantsRoom || false,
+            studyRoom: p.propertyFeatures?.studyRoom || false,
+            poojaRoom: p.propertyFeatures?.poojaRoom || false,
+            storeRoom: p.propertyFeatures?.storeRoom || false,
+          },
+          location: p.location || prev.location,
+          ownership: p.ownership || prev.ownership,
+          builder: p.builder || prev.builder,
+          transactionType: p.transactionType || "Resale",
+          inclusionsInPrice: p.inclusionsInPrice || [],
+          additionalRooms: p.additionalRooms || [],
+          pgDetails: p.pgDetails || prev.pgDetails,
+          roomStats: p.roomStats || { totalRooms: 0, occupiedRooms: 0, availableRooms: 0 },
+          landlordDetails: p.landlordDetails || prev.landlordDetails,
+          // Keep existing images and add new ones
+          images: p.images || [],
+          contactInfo: p.contactInfo || prev.contactInfo,
+        }));
+        // Move to the first step with data
+        setCurrentStep(0);
+      } else {
+        addToast("Failed to load property data", "error");
+      }
+    } catch (e) {
+      console.error("Error fetching property for edit:", e);
+      addToast(e.message || "Failed to load property data", "error");
+    } finally {
+      setFetchingProperty(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isEditMode && editId) {
+      fetchPropertyForEdit();
+    }
+  }, [editId]);
+
   // ─── Load Mapbox (only when on step 3) ────────────────────────────────────
   useEffect(() => {
     if (currentStep === 3 && !mapLoaded) {
@@ -589,6 +706,116 @@ export default function PropertyListingForm() {
   };
 
   // ─── API Calls ─────────────────────────────────────────────────────────────
+  // For Edit Mode - Update Property Details
+  const updatePropertyDetails = async () => {
+    setLoading(true);
+    try {
+      const payload = {
+        category: form.category,
+        propertyType: form.propertyType,
+        listingType: form.listingType,
+        title: form.title,
+        description: form.description,
+        bhk: form.bhk,
+        bathrooms: form.bathrooms,
+        balconies: form.balconies,
+        propertyAge: form.propertyAge,
+        availableFrom: form.availableFrom,
+        floor: form.floor,
+        area: form.area,
+        price: form.price,
+        furnishing: form.furnishing,
+        parking: form.parking,
+        facing: form.facing,
+        amenities: form.amenities,
+        propertyFeatures: form.propertyFeatures,
+        location: form.location,
+        ownership: form.ownership,
+        builder: form.builder,
+        transactionType: form.transactionType,
+        inclusionsInPrice: form.inclusionsInPrice,
+        additionalRooms: form.additionalRooms,
+        pgDetails: form.pgDetails,
+        roomStats: form.roomStats,
+        landlordDetails: form.landlordDetails,
+        contactInfo: form.contactInfo,
+      };
+
+      const res = await fetch(`${API_BASE}/${propertyId}`, {
+        method: "PUT",
+        headers: apiHeaders,
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.success) {
+        addToast("Property updated successfully!");
+        return true;
+      } else {
+        throw new Error(data.message || "Failed to update property");
+      }
+    } catch (e) {
+      addToast(e.message || "Failed to update property", "error");
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // For Edit Mode - Update Images
+  const updatePropertyImages = async () => {
+    setLoading(true);
+    try {
+      // If there are new image files to upload
+      if (form.imageFiles && form.imageFiles.length > 0) {
+        const fd = new FormData();
+        form.imageFiles.forEach((f) => fd.append("images", f));
+        
+        const res = await fetch(`${API_BASE}/${propertyId}/images`, {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${getAuthToken()}` },
+          body: fd,
+        });
+        const data = await res.json();
+        if (data.success) {
+          addToast("Images updated successfully!");
+          return true;
+        } else {
+          throw new Error(data.message || "Failed to update images");
+        }
+      } else {
+        // No new images, just return success
+        return true;
+      }
+    } catch (e) {
+      addToast(e.message || "Failed to update images", "error");
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Combined save for edit mode
+  const saveAllChanges = async () => {
+    setLoading(true);
+    try {
+      // First update property details
+      const detailsSuccess = await updatePropertyDetails();
+      if (!detailsSuccess) return;
+
+      // Then update images
+      const imagesSuccess = await updatePropertyImages();
+      if (!imagesSuccess) return;
+
+      addToast("All changes saved successfully!");
+      // Navigate to property detail page
+      navigate(`/landlord/property/${propertyId}`);
+    } catch (e) {
+      addToast(e.message || "Failed to save changes", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const createDraft = async () => {
     setLoading(true);
     try {
@@ -881,6 +1108,22 @@ export default function PropertyListingForm() {
       }
       return;
     }
+
+    // In edit mode, save current step using PUT and then move to next step
+    if (isEditMode && propertyId) {
+      const success = await updatePropertyDetails();
+      if (success) {
+        if (currentStep < 7) {
+          setCurrentStep(currentStep + 1);
+        } else {
+          addToast("Property updated successfully!");
+          navigate(`/landlord/property/${propertyId}`);
+        }
+      }
+      return;
+    }
+    
+    // Original step-by-step flow for create mode
     if (currentStep === 0) {
       if (!propertyId) {
         await createDraft();
@@ -909,6 +1152,7 @@ export default function PropertyListingForm() {
   };
 
   const handleBack = () => {
+    // In both create and edit mode, just go back to previous step
     if (currentStep > 0) setCurrentStep((p) => p - 1);
   };
 
@@ -1050,6 +1294,18 @@ export default function PropertyListingForm() {
   );
 
   // ─── Render ────────────────────────────────────────────────────────────────
+  // Show loading when fetching property data for edit mode
+  if (fetchingProperty) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-violet-50/30 to-blue-50/30">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-violet-700 font-medium">Loading property data...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-gradient-to-br from-slate-50 via-violet-50/30 to-blue-50/30 font-sans">
       <style>{`
@@ -2306,6 +2562,10 @@ export default function PropertyListingForm() {
               >
                 {loading ? (
                   <><FiLoader size={14} className="animate-spin" /> <span className="hidden sm:inline">Processing...</span></>
+                ) : isEditMode && currentStep === 7 ? (
+                  <><FiCheckCircle size={14} /> <span>Update</span></>
+                ) : isEditMode ? (
+                  <><span className="hidden sm:inline">Save & </span>Continue <FiChevronRight size={14} /></>
                 ) : currentStep === 7 ? (
                   <><FiCheckCircle size={14} /> <span>Submit</span></>
                 ) : (
