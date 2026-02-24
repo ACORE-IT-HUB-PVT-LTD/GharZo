@@ -19,6 +19,8 @@ import {
   FaFileInvoice,
   FaShoppingBasket,
   FaDiagnoses,
+  FaComments,
+  FaMoneyBill,
 } from "react-icons/fa";
 import { Home, BadgeCheck } from "lucide-react";
 import logo from "../../../assets/logo/logo.png";
@@ -163,8 +165,14 @@ const Sidebar = ({ propertyId, setSidebarWidth }) => {
     // },
     { 
       to: "/landlord/allComplaints", 
-      icon: FaUser, 
+      icon: FaComments, 
       label: "All Complaints",
+      gradient: "from-blue-600 to-orange-500",
+    },
+    { 
+      to: "/landlord/payments", 
+      icon: FaMoneyBill, 
+      label: "Payments",
       gradient: "from-blue-600 to-orange-500",
     },
     { 

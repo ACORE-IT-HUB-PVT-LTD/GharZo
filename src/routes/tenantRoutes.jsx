@@ -26,6 +26,7 @@ import Announcements from "../Components/TenantSection/Announcements";
 import Support from "../Components/TenantSection/Support/Support";
 import Documents from "../Components/TenantSection/Docqments/Documents";
 import Facilities from "../Components/TenantSection/Facilities/Facilities.jsx";
+import Payment from "../Components/TenantSection/Payment/Payment";
 
 export const tenantRoutes = (
   <Route key="tenant" path="/tenant" element={<TenantLayout />}>
@@ -58,5 +59,7 @@ export const tenantRoutes = (
     <Route path="support" element={<Support />} />
     <Route path="documents" element={<Documents />} />
     <Route path="facilities" element={<Facilities />} />
+    <Route path="payment" element={<Payment />} />
+    <Route path="payment/:tenantId" element={<Payment />} />
   </Route>
 );

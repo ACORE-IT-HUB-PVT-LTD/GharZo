@@ -33,6 +33,7 @@ import SubAdminDashboard from "../Components/LandLoard/SubAdmin/SubAdminDashboar
 // import AddSubAdmin from "../Components/LandLoard/SubAdmin/AddSubAdmin";
 import SubscriptionPlans from "../Components/LandLoard/Subscription/SubscriptionPlans.jsx";
 import LandlordRoomSwitch from "../Components/LandLoard/Property/LandlordRoomSwitch.jsx";
+import Payments from "../Components/LandLoard/Dashboard/Payments.jsx";
 
 const landlordMainRoutes = (
     <Route key="landlord-main" path="/landlord" element={<Layout />}>
@@ -61,6 +62,7 @@ const landlordMainRoutes = (
     <Route path="collections" element={<Collections />} />
     <Route path="workers" element={<Workers />} />
     <Route path="allComplaints" element={<AllComplaints />} />
+    <Route path="payments" element={<Payments />} />
     <Route path="duespackages" element={<DuePackages />} />
     <Route path="property/:propertyId/add-room" element={<RoomAdd />} />
     <Route path="roomform" element={<PropertyDetail />} />
