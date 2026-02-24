@@ -3,6 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination } from "swiper/modules";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import {
   FaBed,
   FaBath,
@@ -125,6 +127,7 @@ function PropertyDetails() {
   const [loading, setLoading] = useState(true);
   const [reelsLoading, setReelsLoading] = useState(true);
   const [liked, setLiked] = useState(false);
+  const [savingProperty, setSavingProperty] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [expandedRooms, setExpandedRooms] = useState({});
   const [showModal, setShowModal] = useState(false);
@@ -318,6 +321,42 @@ function PropertyDetails() {
     }
   }, [property, id]);
 
+  // Handle save/unsave property - Toggle API
+  const handleSaveProperty = async () => {
+    const token = localStorage.getItem("usertoken");
+    
+    if (!token) {
+      toast.error("Please login to save properties");
+      navigate("/user/login");
+      return;
+    }
+
+    setSavingProperty(true);
+    try {
+      const response = await axios.post(
+        `https://api.gharzoreality.com/api/saved-properties/${id}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      
+      if (response.data?.success) {
+        setLiked(response.data.isSaved);
+        toast.success(response.data.message || (response.data.isSaved ? "Property saved to wishlist" : "Property removed from wishlist"));
+      }
+    } catch (error) {
+      console.error("Error saving property:", error);
+      const errorMessage = error.response?.data?.message || "Failed to update wishlist";
+      toast.error(errorMessage);
+    } finally {
+      setSavingProperty(false);
+    }
+  };
+
   const openImageModal = (images, index = 0) => {
     setSelectedImages(images);
     setInitialSlide(index);
@@ -493,8 +532,9 @@ function PropertyDetails() {
 
             <div className="absolute top-3 right-3 flex gap-2">
               <button
-                onClick={() => setLiked(!liked)}
-                className="bg-white rounded-full p-2 shadow hover:scale-105 transition"
+                onClick={handleSaveProperty}
+                disabled={savingProperty}
+                className="bg-white rounded-full p-2 shadow hover:scale-105 transition disabled:opacity-50"
               >
                 <Heart
                   size={18}
@@ -986,6 +1026,20 @@ function PropertyDetails() {
           </div>
         </div>
       )}
+
+      {/* Toast Notifications */}
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
     </div>
   );
 }

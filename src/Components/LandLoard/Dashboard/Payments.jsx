@@ -192,7 +192,7 @@ function GeneratePaymentModal({ open, onClose, tenancies, onSuccess, toast }) {
 
   return (
     <Modal open={open} onClose={onClose} title="Generate Rent Payment">
-      <div className="space-y-4">
+      <div className="space-y-4 ">
         <LabeledSelect
           label="Select Tenancy" value={form.tenancyId} onChange={f("tenancyId")} required
           options={[
@@ -282,7 +282,7 @@ function RecordPaymentModal({ open, onClose, payment, onSuccess, toast }) {
   return (
     <Modal open={open} onClose={onClose} title="Record Payment">
       {payment && (
-        <div className="space-y-4">
+        <div className="space-y-4 ">
           <div className="bg-gradient-to-r from-orange-50 to-blue-50 border border-orange-100 rounded-xl p-4 mb-2">
             <div className="flex justify-between text-sm">
               <span className="text-slate-500">Total Amount</span>
@@ -712,7 +712,7 @@ function PaymentCard({ payment, onSelect, onRecord, onWaive, onDiscount, onCance
   const canCancel = !["Cancelled", "Paid"].includes(payment.status);
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer group overflow-hidden"
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer group overflow-visible"
       onClick={() => onSelect(payment)}>
       {/* Top bar */}
       <div className="h-1 bg-gradient-to-r from-orange-400 to-blue-500 opacity-40 group-hover:opacity-100 transition-opacity" />
@@ -734,7 +734,7 @@ function PaymentCard({ payment, onSelect, onRecord, onWaive, onDiscount, onCance
                 ⋮
               </button>
               {menuOpen && (
-                <div className="absolute right-0 top-9 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 min-w-[180px] z-20 animate-fade-in">
+                <div className="absolute right-0 top-9 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 min-w-[180px] z-50 animate-fade-in max-h-[300px] overflow-y-auto">
                   {canRecord && (
                     <button onClick={() => { setMenuOpen(false); onRecord(payment); }}
                       className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-orange-50 hover:text-orange-600 transition-colors flex items-center gap-2">
@@ -882,7 +882,7 @@ export default function Payments() {
   const STATUSES = ["All", "Pending", "Partial", "Paid", "Overdue", "Waived", "Cancelled"];
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans">
+    <div className="min-h-screen bg-slate-50 font-sans lg:ml-20">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
         * { font-family: 'Plus Jakarta Sans', sans-serif; }

@@ -236,36 +236,22 @@ function PropertyDetails() {
 
     setSavingProperty(true);
     try {
-      if (liked) {
-        // Unsave - DELETE request
-        await axios.delete(
-          `https://api.gharzoreality.com/api/saved-properties/${id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        setLiked(false);
-        toast.success("Property removed from wishlist");
-      } else {
-        // Save - POST request
-        const response = await axios.post(
-          `https://api.gharzoreality.com/api/saved-properties/${id}`,
-          {},
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        
-        if (response.data?.success) {
-          setLiked(true);
-          toast.success(response.data.message || "Property saved to wishlist");
+      // Toggle API - single POST request that automatically toggles save/unsave
+      const response = await axios.post(
+        `https://api.gharzoreality.com/api/saved-properties/${id}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         }
+      );
+      
+      if (response.data?.success) {
+        // API automatically toggles - update state based on response
+        setLiked(response.data.isSaved);
+        toast.success(response.data.message || (response.data.isSaved ? "Property saved to wishlist" : "Property removed from wishlist"));
       }
     } catch (error) {
       console.error("Error saving property:", error);

@@ -199,11 +199,12 @@ const SubOwnerManagement = () => {
     }
   };
 
-  const toggleStatus = async (id) => {
+  const toggleStatus = async (id, currentStatus) => {
     try {
       setLoading(true);
-      await api.patch(`/subowners/${id}/toggle-status`);
-      setSuccess('Status updated successfully!');
+      const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
+      await api.patch(`/subowners/${id}/toggle-status`, { status: newStatus });
+      setSuccess(`Status updated to ${newStatus} successfully!`);
       fetchSubOwners();
       setLoading(false);
     } catch (err) {
@@ -369,7 +370,7 @@ const SubOwnerManagement = () => {
                 Sub-Owner Management
               </h1>
               <p className="mt-2 text-sm text-gray-600">
-                Manage your property sub-owners and their permissions
+                Manage your property sub-owners and their permissions 
               </p>
             </div>
             <button
@@ -637,11 +638,10 @@ const SubOwnerManagement = () => {
                     Edit
                   </button>
                   <button
-                    onClick={() => toggleStatus(subOwner._id)}
-                    className="flex-1 min-w-[120px] inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-yellow-500 text-white font-medium rounded-xl hover:bg-yellow-600 transition-colors shadow-sm"
+                    onClick={() => toggleStatus(subOwner._id, subOwner.status)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 ${subOwner.status === 'Active' ? 'bg-green-500' : 'bg-gray-300'}`}
                   >
-                    <Power className="w-4 h-4" />
-                    Toggle
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${subOwner.status === 'Active' ? 'translate-x-6' : 'translate-x-1'}`} />
                   </button>
                   <button
                     onClick={() => deleteSubOwner(subOwner._id)}
