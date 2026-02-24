@@ -351,6 +351,12 @@ export default function PropertyListingForm() {
       email: "",
       preferredCallTime: "Anytime",
     },
+    // Brokerage (only for Rent listings by agents)
+    postedBy: "owner",
+    brokerage: {
+      chargeType: "None",
+      customValue: "",
+    },
   });
 
   // ─── Toast Helpers ─────────────────────────────────────────────────────────
@@ -393,6 +399,8 @@ export default function PropertyListingForm() {
   // Room Stats only for PG/Co-living (rental management)
   const showRoomStats = isPG;
   const showPGSection = isPG;
+  // Brokerage - show only for Rent listings posted by agent
+  const showBrokerage = isRent && form.postedBy === "agent";
 
   const pricePerSqft =
     form.price.amount && form.area.carpet
@@ -832,7 +840,11 @@ export default function PropertyListingForm() {
       const res = await fetch(`${API_BASE}/${propertyId}/contact-info`, {
         method: "PUT",
         headers: apiHeaders,
-        body: JSON.stringify({ contactInfo: form.contactInfo }),
+        body: JSON.stringify({ 
+          contactInfo: form.contactInfo,
+          postedBy: form.postedBy,
+          brokerage: form.brokerage,
+        }),
       });
       const data = await res.json();
       if (data.success) { addToast("Contact info saved!"); setCurrentStep(7); }
@@ -1343,9 +1355,9 @@ export default function PropertyListingForm() {
                         {pricePerSqft > 0 && !isPlot && (
                           <div className="mt-3 p-2 bg-violet-50 rounded-lg inline-flex items-center gap-2">
                             <FiDollarSign size={14} className="text-violet-600" />
-                            <span className="text-sm text-violet-700 font-medium">
+                            {/* <span className="text-sm text-violet-700 font-medium">
                               ₹{pricePerSqft.toLocaleString("en-IN")}/sqft
-                            </span>
+                            </span> */}
                           </div>
                         )}
                       </div>
@@ -2197,6 +2209,66 @@ export default function PropertyListingForm() {
                           ))}
                         </div>
                       </InputField>
+
+                      {/* Brokerage Section - Only for Rent listings by agents */}
+                      {isRent && (
+                        <>
+                          <InputField label="Posted By">
+                            <div className="grid grid-cols-2 gap-2">
+                              {["owner", "agent"].map((type) => (
+                                <button
+                                  key={type}
+                                  type="button"
+                                  onClick={() => updateForm("postedBy", type)}
+                                  className={`py-2 px-3 rounded-xl border-2 text-xs font-medium transition-all capitalize
+                                    ${form.postedBy === type
+                                      ? "border-violet-500 bg-violet-50 text-violet-700"
+                                      : "border-gray-200 text-gray-600 hover:border-violet-300"}`}
+                                >
+                                  {type === "owner" ? "Owner" : "Agent / Broker"}
+                                </button>
+                              ))}
+                            </div>
+                          </InputField>
+
+                          {showBrokerage && (
+                            <>
+                              <InputField label="Brokerage Charge">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                  {["None", "15 Days", "30 Days", "Custom"].map((type) => (
+                                    <button
+                                      key={type}
+                                      type="button"
+                                      onClick={() => {
+                                        updateForm("brokerage.chargeType", type);
+                                        if (type === "None") {
+                                          updateForm("brokerage.customValue", "");
+                                        }
+                                      }}
+                                      className={`py-2 px-2 rounded-xl border-2 text-xs font-medium transition-all
+                                        ${form.brokerage.chargeType === type
+                                          ? "border-violet-500 bg-violet-50 text-violet-700"
+                                          : "border-gray-200 text-gray-600 hover:border-violet-300"}`}
+                                    >
+                                      {type}
+                                    </button>
+                                  ))}
+                                </div>
+                              </InputField>
+
+                              {form.brokerage.chargeType === "Custom" && (
+                                <InputField label="Custom Brokerage Value" hint="e.g., 1 Month Rent or ₹25,000">
+                                  <TextInput
+                                    placeholder="e.g., 1 Month Rent or ₹25,000"
+                                    value={form.brokerage.customValue}
+                                    onChange={(e) => updateForm("brokerage.customValue", e.target.value)}
+                                  />
+                                </InputField>
+                              )}
+                            </>
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
                 )}
@@ -2242,6 +2314,17 @@ export default function PropertyListingForm() {
                           <InfoItem label="Phone" value={form.contactInfo.phone} />
                           <InfoItem label="Email" value={form.contactInfo.email} />
                           <InfoItem label="Best Time" value={form.contactInfo.preferredCallTime} />
+                          {isRent && (
+                            <>
+                              <InfoItem label="Posted By" value={form.postedBy === "owner" ? "Owner" : "Agent / Broker"} />
+                              {showBrokerage && (
+                                <InfoItem 
+                                  label="Brokerage" 
+                                  value={form.brokerage.chargeType === "Custom" ? form.brokerage.customValue : form.brokerage.chargeType} 
+                                />
+                              )}
+                            </>
+                          )}
                         </div>
                       </PreviewSection>
 

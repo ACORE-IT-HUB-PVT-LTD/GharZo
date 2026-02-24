@@ -203,7 +203,7 @@ const ProfileTabs = ({ role }) => {
   const getToken = () => {
     let token = localStorage.getItem("usertoken");
     if (!token) token = localStorage.getItem("authToken");
-    if (!token) token = localStorage.getItem("access_token");
+    if (!token) token = localStorage.getItem("usertoken");
     return token;
   };
 
