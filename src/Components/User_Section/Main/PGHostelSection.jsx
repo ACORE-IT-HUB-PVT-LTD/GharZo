@@ -255,6 +255,7 @@ const PGHostelSection = () => {
   const goToHostels = () => navigate("/hotelsbanquets");
   const goToServices = () => navigate("/services");
   const goToHomeLoan = () => navigate("/home-loan");
+  const goToProjects = () => navigate("/projects");
 
   const categoryButtons = [
     { label: "Rent", onClick: goToRent, icon: Home },
@@ -264,7 +265,7 @@ const PGHostelSection = () => {
     { label: "Hotel/Banquet", onClick: goToHostels, icon: Briefcase },
     { label: "Services", onClick: goToServices, icon: BadgeIndianRupee },
     { label: "Home Loan", onClick: goToHomeLoan, icon: Landmark },
-    { label: "Project", onClick: goToCommercial, icon: ProjectorIcon },
+    { label: "Project", onClick: goToProjects, icon: ProjectorIcon },
   ];
 
   const totalSlides = Math.max(0, filteredProperties.length - itemsPerView + 1);
