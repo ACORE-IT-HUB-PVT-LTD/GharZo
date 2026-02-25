@@ -290,10 +290,13 @@ function PropertyDetails() {
   }
 
   if (!property) {
-    useEffect(() => {
-      navigate("/", { replace: true });
-    }, [navigate]);
-    return null;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 font-medium">Property not found</p>
+        </div>
+      </div>
+    );
   }
 
   const placeholderImage = "https://via.placeholder.com/400x250?text=No+Image";

@@ -192,11 +192,11 @@ const ProfileTabs = ({ role }) => {
   ];
 
   const tabs = [
-    { id: 'listings', label: 'My Listings', icon: <FaBuilding /> },
-    { id: 'reels', label: 'My Reels', icon: <FaVideo /> },
-    { id: 'visits', label: 'My Visits', icon: <FaClipboardList /> },
-    { id: 'wishlist', label: 'Wishlist', icon: <FaHeart /> },
-    { id: 'subscriptions', label: 'Subscriptions', icon: <FaCrown /> }
+    { id: 'listings', label: 'My Listings', icon: <FaBuilding style={{ color: 'orange' }} /> },
+    { id: 'reels', label: 'My Reels', icon: <FaVideo style={{ color: 'blue' }} /> },
+    // { id: 'visits', label: 'My Visits', icon: <FaClipboardList /> },
+    { id: 'wishlist', label: 'Wishlist', icon: <FaHeart style={{ color: 'red' }} /> },
+    { id: 'subscriptions', label: 'Subscriptions', icon: <FaCrown style={{ color: '#FFD700' }} /> }
   ];
 
   // Helper function to get token
