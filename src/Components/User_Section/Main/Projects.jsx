@@ -596,9 +596,10 @@ function DetailPage({ project, onBack, onEnquire, onReview }) {
   const [tab, setTab] = useState("overview");
   const [imgIdx, setImgIdx] = useState(0);
   const [similar, setSimilar] = useState([]);
+  const [carouselMode, setCarouselMode] = useState("all"); // "all", "images", "videos"
 
   useEffect(() => {
-    setTab("overview"); setImgIdx(0); setSimilar([]);
+    setTab("overview"); setImgIdx(0); setSimilar([]); setCarouselMode("all");
     if (project?._id) {
       fetch(`${API_BASE}/projects/${project._id}/similar?limit=4`, { headers: { Authorization: `Bearer ${getToken()}` } })
         .then((r) => r.json()).then((d) => { if (d.success) setSimilar(d.data || []); });
@@ -608,13 +609,33 @@ function DetailPage({ project, onBack, onEnquire, onReview }) {
 
   if (!project) return null;
 
-  const imgs = project.media?.images || [];
-  const videoCount = project.media?.videos?.length || 0;
+  // Combine images and videos: images first, then videos
+  const allMedia = [
+    ...(project.media?.images || []).map((img, i) => ({ type: "image", src: img.url, label: img.type || "Photo", isPrimary: img.isPrimary, index: i })),
+    ...(project.media?.videos || []).map((vid, i) => ({ type: "video", src: vid.url, label: vid.type || `Video ${i + 1}`, index: i })),
+  ];
+  const images = allMedia.filter((m) => m.type === "image");
+  const videos = allMedia.filter((m) => m.type === "video");
+  const imageCount = images.length;
+  const videoCount = videos.length;
+
+  // Filter media based on carousel mode
+  const getFilteredMedia = () => {
+    if (carouselMode === "images") return images;
+    if (carouselMode === "videos") return videos;
+    return allMedia;
+  };
+  
+  const filteredMedia = getFilteredMedia();
+  const currentImg = filteredMedia[imgIdx];
   const sc = STATUS_COLORS[project.projectStatus?.status] || { bg: "bg-slate-500", text: "text-white", light: "bg-slate-50 text-slate-500 border-slate-200" };
+
+  const handlePrev = () => setImgIdx((i) => (i - 1 + filteredMedia.length) % filteredMedia.length);
+  const handleNext = () => setImgIdx((i) => (i + 1) % filteredMedia.length);
 
   const TABS = [
     { key: "overview",  icon: <Home size={15} />,       label: "Overview" },
-    { key: "gallery",   icon: <Camera size={15} />,     label: `Gallery${imgs.length + videoCount > 0 ? ` (${imgs.length + videoCount})` : ""}` },
+    { key: "gallery",   icon: <Camera size={15} />,     label: `Gallery${imageCount + videoCount > 0 ? ` (${imageCount + videoCount})` : ""}` },
     { key: "amenities", icon: <Sparkles size={15} />,   label: "Amenities" },
     { key: "specs",     icon: <Layers size={15} />,     label: "Specs" },
     { key: "location",  icon: <MapPin size={15} />,     label: "Location" },
@@ -648,184 +669,241 @@ function DetailPage({ project, onBack, onEnquire, onReview }) {
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         {/* ── HERO SECTION ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
-          {/* Image gallery */}
-          <div className="lg:col-span-3">
-            <div className="relative rounded-3xl overflow-hidden bg-slate-900" style={{ height: 420 }}>
-              {imgs.length > 0 ? (
-                <>
-                  <img src={imgs[imgIdx]?.url} alt="" className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-                  {imgs.length > 1 && (
-                    <>
-                      <button onClick={() => setImgIdx((i) => (i - 1 + imgs.length) % imgs.length)}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/40 hover:bg-black/60 rounded-full flex items-center justify-center text-white transition-colors">
-                        <ChevronLeft size={20} />
-                      </button>
-                      <button onClick={() => setImgIdx((i) => (i + 1) % imgs.length)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/40 hover:bg-black/60 rounded-full flex items-center justify-center text-white transition-colors">
-                        <ChevronRight size={20} />
-                      </button>
-                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
-                        {imgs.map((_, i) => (
-                          <button key={i} onClick={() => setImgIdx(i)} className={`h-1.5 rounded-full transition-all ${i === imgIdx ? "bg-white w-5" : "bg-white/40 w-1.5"}`} />
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </>
-              ) : (
-                <div className="w-full h-full flex items-center justify-center" style={{ background: "linear-gradient(135deg,#1e3a5f,#0f172a)" }}>
-                  <Building2 size={80} className="text-white/10" />
-                </div>
-              )}
-              {/* Badges overlay */}
-              <div className="absolute top-4 left-4 flex gap-2 flex-wrap">
-                <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${sc.bg} ${sc.text}`}>{project.projectStatus?.status}</span>
-                {project.isFeatured && <span className="text-xs bg-orange-500 text-white px-2.5 py-1 rounded-full font-bold flex items-center gap-1"><Star size={10} fill="white" />Featured</span>}
-                {project.isTrending && <span className="text-xs bg-red-500 text-white px-2.5 py-1 rounded-full font-bold flex items-center gap-1"><Flame size={10} />Trending</span>}
-                {project.isPremium && <span className="text-xs bg-yellow-400 text-slate-900 px-2.5 py-1 rounded-full font-bold flex items-center gap-1"><Crown size={10} />Premium</span>}
+        {/* Full Width Carousel */}
+        <div className="mb-6">
+          <div className="relative rounded-3xl overflow-hidden bg-slate-900" style={{ height: 480 }}>
+            {filteredMedia.length > 0 ? (
+              <>
+                {currentImg?.type === "video" ? (
+                  <video 
+                    src={currentImg?.src} 
+                    className="w-full h-full object-cover"
+                    controls
+                    autoPlay={false}
+                    controlsList="nodownload"
+                  />
+                ) : (
+                  <img src={currentImg?.src} alt="" className="w-full h-full object-cover" />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                {filteredMedia.length > 1 && (
+                  <>
+                    <button onClick={handlePrev}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-black/40 hover:bg-black/60 rounded-full flex items-center justify-center text-white transition-colors">
+                      <ChevronLeft size={24} />
+                    </button>
+                    <button onClick={handleNext}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-black/40 hover:bg-black/60 rounded-full flex items-center justify-center text-white transition-colors">
+                      <ChevronRight size={24} />
+                    </button>
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                      {filteredMedia.map((_, i) => (
+                        <button key={i} onClick={() => setImgIdx(i)} className={`h-2 rounded-full transition-all ${i === imgIdx ? "bg-white w-8" : "bg-white/40 w-2"}`} />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center" style={{ background: "linear-gradient(135deg,#1e3a5f,#0f172a)" }}>
+                <Building2 size={80} className="text-white/10" />
               </div>
+            )}
+            
+            {/* Badges overlay */}
+            <div className="absolute top-4 left-4 flex gap-2 flex-wrap">
+              <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${sc.bg} ${sc.text}`}>{project.projectStatus?.status}</span>
+              {project.isFeatured && <span className="text-xs bg-orange-500 text-white px-2.5 py-1 rounded-full font-bold flex items-center gap-1"><Star size={10} fill="white" />Featured</span>}
+              {project.isTrending && <span className="text-xs bg-red-500 text-white px-2.5 py-1 rounded-full font-bold flex items-center gap-1"><Flame size={10} />Trending</span>}
+              {project.isPremium && <span className="text-xs bg-yellow-400 text-slate-900 px-2.5 py-1 rounded-full font-bold flex items-center gap-1"><Crown size={10} />Premium</span>}
+            </div>
+            
+            {/* Toggle Buttons - Image and Video */}
+            <div className="absolute top-4 right-4 flex gap-2">
+              <button 
+                onClick={() => { setCarouselMode("images"); setImgIdx(0); }} 
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors backdrop-blur-sm ${
+                  (carouselMode === "images" || carouselMode === "all") 
+                    ? "bg-orange-500 hover:bg-orange-600 text-white" 
+                    : "bg-black/50 hover:bg-black/70 text-white"
+                }`}>
+                <Image size={12} /> {imageCount} Photo{imageCount !== 1 ? "s" : ""}
+              </button>
               {videoCount > 0 && (
-                <button onClick={() => setTab("gallery")}
-                  className="absolute top-4 right-4 flex items-center gap-1.5 bg-black/50 hover:bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-xl text-white text-xs font-bold transition-colors">
-                  <Play size={12} /> {videoCount} Video{videoCount > 1 ? "s" : ""}
+                <button 
+                  onClick={() => { setCarouselMode("videos"); setImgIdx(0); }} 
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors backdrop-blur-sm ${
+                    carouselMode === "videos" 
+                      ? "bg-orange-500 hover:bg-orange-600 text-white" 
+                      : "bg-black/50 hover:bg-black/70 text-white"
+                  }`}>
+                  <Play size={12} /> {videoCount} Video{videoCount !== 1 ? "s" : ""}
                 </button>
               )}
-              {/* Media count */}
-              <div className="absolute bottom-4 right-4 flex gap-2">
-                {imgs.length > 0 && <span className="text-xs bg-black/50 text-white px-2.5 py-1 rounded-lg backdrop-blur-sm flex items-center gap-1"><Image size={11} />{imgs.length}</span>}
-              </div>
             </div>
-            {/* Thumbnail strip */}
-            {imgs.length > 1 && (
-              <div className="flex gap-2 mt-2 overflow-x-auto scrollbar-hide pb-1">
-                {imgs.slice(0, 8).map((img, i) => (
-                  <button key={i} onClick={() => setImgIdx(i)}
-                    className={`flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all ${i === imgIdx ? "border-orange-500" : "border-transparent hover:border-slate-300"}`}>
-                    <img src={img.url} alt="" className="w-full h-full object-cover" />
-                  </button>
-                ))}
+
+            {/* Media type indicator */}
+            {currentImg && (
+              <div className="absolute bottom-4 right-4 flex gap-2">
+                <span className={`text-xs bg-black/50 text-white px-2.5 py-1 rounded-lg backdrop-blur-sm flex items-center gap-1 ${
+                  currentImg.type === "video" ? "bg-orange-500" : ""
+                }`}>
+                  {currentImg.type === "video" ? <Play size={11} /> : <Camera size={11} />}
+                  {currentImg.type === "video" ? "Video" : "Photo"} {imgIdx + 1} of {filteredMedia.length}
+                </span>
               </div>
             )}
           </div>
 
-          {/* Project Info Card */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
-              <h1 className="text-2xl font-black text-slate-900 leading-tight">{project.projectName}</h1>
-              {project.tagline && <p className="text-slate-500 text-sm mt-1">{project.tagline}</p>}
-              <div className="flex items-center gap-2 mt-2 text-slate-500 text-sm">
-                <MapPin size={15} className="text-orange-500 flex-shrink-0" />
-                {project.location?.locality}, {project.location?.city}, {project.location?.state}
-              </div>
-              {project.ratings?.averageRating > 0 && (
-                <div className="flex items-center gap-2 mt-2">
-                  <Stars value={Math.round(project.ratings.averageRating)} size="sm" />
-                  <span className="font-black text-amber-500">{project.ratings.averageRating}</span>
-                  <span className="text-slate-400 text-xs">({project.ratings.totalReviews} reviews)</span>
+          {/* Thumbnail strip */}
+          {filteredMedia.length > 1 && (
+            <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-hide pb-1 px-1">
+              {filteredMedia.map((media, i) => (
+                <button 
+                  key={i} 
+                  onClick={() => setImgIdx(i)}
+                  className={`flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 transition-all relative ${
+                    i === imgIdx ? "border-orange-500 ring-2 ring-orange-200" : "border-transparent hover:border-slate-300"
+                  }`}>
+                  {media.type === "video" ? (
+                    <div className="w-full h-full bg-slate-800 flex items-center justify-center">
+                      <Play size={20} className="text-white" />
+                    </div>
+                  ) : (
+                    <img src={media.src} alt="" className="w-full h-full object-cover" />
+                  )}
+                  {media.isPrimary && (
+                    <span className="absolute top-1 right-1 text-xs bg-orange-500 text-white px-1.5 py-0.5 rounded font-bold">
+                      <Star size={8} fill="white" />
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── PROJECT INFO CARD (Below Carousel) ── */}
+        <div className="space-y-4">
+          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+              <div className="flex-1">
+                <h1 className="text-3xl font-black text-slate-900 leading-tight">{project.projectName}</h1>
+                {project.tagline && <p className="text-slate-500 text-base mt-1">{project.tagline}</p>}
+                <div className="flex items-center gap-2 mt-3 text-slate-500 text-sm">
+                  <MapPin size={16} className="text-orange-500 flex-shrink-0" />
+                  <span>{project.location?.locality}, {project.location?.city}, {project.location?.state}</span>
                 </div>
-              )}
+                {project.ratings?.averageRating > 0 && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <Stars value={Math.round(project.ratings.averageRating)} size="sm" />
+                    <span className="font-black text-amber-500">{project.ratings.averageRating}</span>
+                    <span className="text-slate-400 text-xs">({project.ratings.totalReviews} reviews)</span>
+                  </div>
+                )}
+              </div>
 
               {/* Price */}
-              <div className="mt-4 p-4 rounded-2xl" style={{ background: "linear-gradient(135deg,#fff7ed,#fffbeb)" }}>
-                <p className="text-xs text-slate-500 font-medium">Starting From</p>
-                <p className="text-3xl font-black text-orange-600">{fmtCr(project.pricing?.priceRange?.min)}</p>
-                {project.pricing?.priceRange?.max && (
-                  <p className="text-sm text-slate-500">Up to {fmtCr(project.pricing.priceRange.max)}</p>
-                )}
-                {project.pricing?.pricePerSqFt?.min && (
-                  <p className="text-xs text-slate-400 mt-1">{fmtCr(project.pricing.pricePerSqFt.min)} – {fmtCr(project.pricing.pricePerSqFt.max)} per sq.ft</p>
-                )}
+              <div className="lg:text-right">
+                <div className="p-4 rounded-2xl" style={{ background: "linear-gradient(135deg,#fff7ed,#fffbeb)" }}>
+                  <p className="text-xs text-slate-500 font-medium">Starting From</p>
+                  <p className="text-3xl font-black text-orange-600">{fmtCr(project.pricing?.priceRange?.min)}</p>
+                  {project.pricing?.priceRange?.max && (
+                    <p className="text-sm text-slate-500">Up to {fmtCr(project.pricing.priceRange.max)}</p>
+                  )}
+                  {project.pricing?.pricePerSqFt?.min && (
+                    <p className="text-xs text-slate-400 mt-1">{fmtCr(project.pricing.pricePerSqFt.min)} – {fmtCr(project.pricing.pricePerSqFt.max)} per sq.ft</p>
+                  )}
+                </div>
               </div>
+            </div>
 
-              {/* Quick Stats */}
-              <div className="grid grid-cols-2 gap-3 mt-4">
-                {[
-                  { icon: <Building2 size={16} />, label: "Total Units", value: project.projectSize?.totalUnits ?? "—" },
-                  { icon: <Layers size={16} />, label: "Floors", value: project.projectSize?.totalFloors ?? "—" },
-                  { icon: <BarChart3 size={16} />, label: "Built", value: `${project.projectStatus?.completionPercentage || 0}%` },
-                  { icon: <Calendar size={16} />, label: "Possession", value: fmtMY(project.projectStatus?.possessionDate) },
-                ].map((s) => (
-                  <div key={s.label} className="bg-slate-50 rounded-2xl p-3 border border-slate-100">
-                    <div className="flex items-center gap-1.5 text-orange-500 mb-1">{s.icon}</div>
-                    <p className="font-black text-slate-800 text-sm">{s.value}</p>
-                    <p className="text-xs text-slate-400">{s.label}</p>
-                  </div>
+            {/* Quick Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+              {[
+                { icon: <Building2 size={16} />, label: "Total Units", value: project.projectSize?.totalUnits ?? "—" },
+                { icon: <Layers size={16} />, label: "Floors", value: project.projectSize?.totalFloors ?? "—" },
+                { icon: <BarChart3 size={16} />, label: "Built", value: `${project.projectStatus?.completionPercentage || 0}%` },
+                { icon: <Calendar size={16} />, label: "Possession", value: fmtMY(project.projectStatus?.possessionDate) },
+              ].map((s) => (
+                <div key={s.label} className="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                  <div className="flex items-center gap-1.5 text-orange-500 mb-1">{s.icon}</div>
+                  <p className="font-black text-slate-800 text-sm">{s.value}</p>
+                  <p className="text-xs text-slate-400">{s.label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Property types */}
+            {project.propertyTypes?.length > 0 && (
+              <div className="flex gap-2 flex-wrap mt-4">
+                {project.propertyTypes.map((t) => (
+                  <span key={t} className="text-xs px-2.5 py-1 bg-orange-50 text-orange-600 rounded-lg font-semibold border border-orange-100">{t}</span>
                 ))}
               </div>
+            )}
 
-              {/* Property types */}
-              {project.propertyTypes?.length > 0 && (
-                <div className="flex gap-2 flex-wrap mt-4">
-                  {project.propertyTypes.map((t) => (
-                    <span key={t} className="text-xs px-2.5 py-1 bg-orange-50 text-orange-600 rounded-lg font-semibold border border-orange-100">{t}</span>
-                  ))}
-                </div>
+            {/* Approvals quick */}
+            <div className="flex gap-2 flex-wrap mt-3">
+              {project.approvals?.reraApproved && (
+                <span className="text-xs bg-green-50 text-green-700 border border-green-200 px-2.5 py-1 rounded-full font-semibold flex items-center gap-1">
+                  <BadgeCheck size={12} /> RERA Approved
+                </span>
               )}
-
-              {/* Approvals quick */}
-              <div className="flex gap-2 flex-wrap mt-3">
-                {project.approvals?.reraApproved && (
-                  <span className="text-xs bg-green-50 text-green-700 border border-green-200 px-2.5 py-1 rounded-full font-semibold flex items-center gap-1">
-                    <BadgeCheck size={12} /> RERA Approved
-                  </span>
-                )}
-                {project.pricing?.loanAvailable && (
-                  <span className="text-xs bg-blue-50 text-blue-600 border border-blue-100 px-2.5 py-1 rounded-full font-semibold flex items-center gap-1">
-                    <Banknote size={12} /> Loan Available
-                  </span>
-                )}
-              </div>
+              {project.pricing?.loanAvailable && (
+                <span className="text-xs bg-blue-50 text-blue-600 border border-blue-100 px-2.5 py-1 rounded-full font-semibold flex items-center gap-1">
+                  <Banknote size={12} /> Loan Available
+                </span>
+              )}
             </div>
+          </div>
 
-            {/* CTA Buttons */}
-            <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => onEnquire(project)}
-                className="text-white font-black py-4 rounded-2xl text-sm transition shadow-lg flex items-center justify-center gap-2"
-                style={{ background: "linear-gradient(135deg,#f97316,#ea580c)" }}>
-                <MessageSquare size={16} /> Enquire Now
-              </button>
-              <button onClick={() => onReview(project)}
-                className="text-white font-black py-4 rounded-2xl text-sm transition shadow-lg flex items-center justify-center gap-2"
-                style={{ background: "linear-gradient(135deg,#1e3a8a,#1e40af)" }}>
-                <Star size={16} /> Write Review
-              </button>
-            </div>
+          {/* CTA Buttons */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <button onClick={() => onEnquire(project)}
+              className="text-white font-black py-4 rounded-2xl text-sm transition shadow-lg flex items-center justify-center gap-2"
+              style={{ background: "linear-gradient(135deg,#f97316,#ea580c)" }}>
+              <MessageSquare size={16} /> Enquire Now
+            </button>
+            <button onClick={() => onReview(project)}
+              className="text-white font-black py-4 rounded-2xl text-sm transition shadow-lg flex items-center justify-center gap-2"
+              style={{ background: "linear-gradient(135deg,#1e3a8a,#1e40af)" }}>
+              <Star size={16} /> Write Review
+            </button>
             {project.media?.brochure?.url && (
               <a href={project.media.brochure.url} target="_blank" rel="noreferrer"
-                className="flex items-center justify-center gap-2 w-full py-3 bg-white border border-slate-200 text-slate-600 font-bold rounded-2xl text-sm hover:bg-slate-50 hover:border-slate-300 transition">
+                className="flex items-center justify-center gap-2 py-4 bg-white border border-slate-200 text-slate-600 font-bold rounded-2xl text-sm hover:bg-slate-50 hover:border-slate-300 transition col-span-2">
                 <Download size={15} /> Download Brochure (PDF)
               </a>
             )}
+          </div>
 
-            {/* Developer card */}
-            {project.developer && (
-              <div className="bg-white rounded-3xl p-4 border border-slate-100 shadow-sm flex items-center gap-4">
-                {project.developer.logo?.url ? (
-                  <img src={project.developer.logo.url} alt={project.developer.name} className="w-14 h-14 rounded-2xl object-cover border border-slate-200 shadow-sm flex-shrink-0" />
-                ) : (
-                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black text-xl flex-shrink-0"
-                    style={{ background: "linear-gradient(135deg,#1e3a8a,#1e40af)" }}>
-                    {project.developer.name?.[0]}
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs text-slate-400 font-medium">Developer</p>
-                  <p className="font-black text-slate-800">{project.developer.name}</p>
-                  {project.developer.establishedYear && <p className="text-xs text-slate-400">Est. {project.developer.establishedYear}</p>}
-                  <div className="flex gap-3 mt-1">
-                    {project.developer.phone && (
-                      <a href={`tel:${project.developer.phone}`} className="text-xs font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1"><Phone size={11} />{project.developer.phone}</a>
-                    )}
-                    {project.developer.email && (
-                      <a href={`mailto:${project.developer.email}`} className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"><Mail size={11} />Email</a>
-                    )}
-                  </div>
+          {/* Developer card */}
+          {project.developer && (
+            <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm flex items-center gap-4">
+              {project.developer.logo?.url ? (
+                <img src={project.developer.logo.url} alt={project.developer.name} className="w-16 h-16 rounded-2xl object-cover border border-slate-200 shadow-sm flex-shrink-0" />
+              ) : (
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-white font-black text-2xl flex-shrink-0"
+                  style={{ background: "linear-gradient(135deg,#1e3a8a,#1e40af)" }}>
+                  {project.developer.name?.[0]}
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-slate-400 font-medium">Developer</p>
+                <p className="font-black text-slate-800 text-lg">{project.developer.name}</p>
+                {project.developer.establishedYear && <p className="text-xs text-slate-400">Est. {project.developer.establishedYear}</p>}
+                <div className="flex gap-3 mt-2">
+                  {project.developer.phone && (
+                    <a href={`tel:${project.developer.phone}`} className="text-xs font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1"><Phone size={11} />{project.developer.phone}</a>
+                  )}
+                  {project.developer.email && (
+                    <a href={`mailto:${project.developer.email}`} className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"><Mail size={11} />Email</a>
+                  )}
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* ── TABS ── */}
@@ -1471,15 +1549,7 @@ export default function Projects() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 relative">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
             <div>
-              <div className="flex items-center gap-2.5 mb-3">
-                <div className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: "linear-gradient(135deg,#f97316,#ea580c)" }}>
-                  <Building2 size={22} className="text-white" />
-                </div>
-                <div>
-                  <p className="text-slate-400 text-xs font-medium">GharZo Reality</p>
-                  <p className="text-slate-300 text-xs">New Projects Portal</p>
-                </div>
-              </div>
+              
               <h1 className="text-3xl sm:text-4xl font-black text-white leading-tight">
                 Find Your <span style={{ color: "#f97316" }}>Dream</span> Project
               </h1>
@@ -1622,3 +1692,5 @@ export default function Projects() {
     </div>
   );
 }
+
+

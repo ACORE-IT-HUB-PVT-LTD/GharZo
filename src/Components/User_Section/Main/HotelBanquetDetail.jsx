@@ -56,6 +56,14 @@ const EnquiryForm = ({ property, isHotel, onClose }) => {
       children: 0,
       roomPreference: "",
     },
+    eventDetails: {
+      eventType: "",
+      eventDate: "",
+      guestCount: property?.totalCapacity?.seating || 100,
+      eventDuration: "",
+      additionalServices: [],
+      vegNonVeg: "",
+    },
     message: "",
   });
 
@@ -64,6 +72,8 @@ const EnquiryForm = ({ property, isHotel, onClose }) => {
   const [successData, setSuccessData] = useState(null);
 
   const roomTypes = property?.roomTypes?.map((r) => r.type) || [];
+  const hallNames = property?.halls?.map((h) => h.name) || [];
+  const eventTypes = property?.eventTypes || [];
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -72,9 +82,30 @@ const EnquiryForm = ({ property, isHotel, onClose }) => {
         ...prev,
         hotelDetails: { ...prev.hotelDetails, [name]: value },
       }));
+    } else if (name in formData.eventDetails) {
+      setFormData((prev) => ({
+        ...prev,
+        eventDetails: { ...prev.eventDetails, [name]: value },
+      }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
+  };
+
+  const handleServiceToggle = (service) => {
+    setFormData((prev) => {
+      const currentServices = prev.eventDetails.additionalServices || [];
+      const newServices = currentServices.includes(service)
+        ? currentServices.filter((s) => s !== service)
+        : [...currentServices, service];
+      return {
+        ...prev,
+        eventDetails: {
+          ...prev.eventDetails,
+          additionalServices: newServices,
+        },
+      };
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -87,14 +118,26 @@ const EnquiryForm = ({ property, isHotel, onClose }) => {
       : `https://api.gharzoreality.com/api/banquet-halls/${hotelId}/enquiry`;
 
     try {
-      const payload = isHotel
-        ? formData
-        : {
-            name: formData.name,
-            phone: formData.phone,
-            email: formData.email,
-            message: formData.message,
-          };
+      let payload;
+      if (isHotel) {
+        payload = formData;
+      } else {
+        // For banquet halls, use eventDetails format as specified
+        payload = {
+          name: formData.name,
+          phone: formData.phone,
+          email: formData.email,
+          eventDetails: {
+            eventType: formData.eventDetails.eventType,
+            eventDate: formData.eventDetails.eventDate,
+            guestCount: formData.eventDetails.guestCount,
+            eventDuration: formData.eventDetails.eventDuration,
+            additionalServices: formData.eventDetails.additionalServices,
+            vegNonVeg: formData.eventDetails.vegNonVeg,
+          },
+          message: formData.message,
+        };
+      }
 
       const res = await fetch(apiUrl, {
         method: "POST",
@@ -375,6 +418,162 @@ const EnquiryForm = ({ property, isHotel, onClose }) => {
                 </div>
               )}
 
+            
+
+              {/* Banquet Event Booking Details */}
+              {!isHotel && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
+                    Event Booking Details
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Event Type */}
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+                        <Sparkles size={13} className="text-orange-400" /> Event Type
+                        <span className="text-red-400">*</span>
+                      </label>
+                      {eventTypes.length > 0 ? (
+                        <select
+                          name="eventType"
+                          required
+                          value={formData.eventDetails.eventType}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent focus:bg-white transition-all text-sm appearance-none cursor-pointer"
+                        >
+                          <option value="">Select Event Type</option>
+                          {eventTypes.map((type, i) => (
+                            <option key={i} value={type}>
+                              {type}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type="text"
+                          name="eventType"
+                          required
+                          value={formData.eventDetails.eventType}
+                          onChange={handleChange}
+                          placeholder="e.g. Wedding, Birthday"
+                          className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent focus:bg-white transition-all text-sm"
+                        />
+                      )}
+                    </div>
+
+                    {/* Event Date */}
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+                        <CalendarDays size={13} className="text-orange-400" /> Event Date
+                        <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        name="eventDate"
+                        required
+                        value={formData.eventDetails.eventDate}
+                        onChange={handleChange}
+                        min={new Date().toISOString().split("T")[0]}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent focus:bg-white transition-all text-sm"
+                      />
+                    </div>
+
+                    {/* Guest Count */}
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+                        <Users size={13} className="text-orange-400" /> Guest Count
+                        <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        name="guestCount"
+                        required
+                        min={1}
+                        max={property?.totalCapacity?.floating || 500}
+                        value={formData.eventDetails.guestCount}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent focus:bg-white transition-all text-sm"
+                      />
+                    </div>
+
+                    {/* Event Duration */}
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+                        <Clock size={13} className="text-orange-400" /> Event Duration
+                      </label>
+                      <select
+                        name="eventDuration"
+                        value={formData.eventDetails.eventDuration}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent focus:bg-white transition-all text-sm appearance-none cursor-pointer"
+                      >
+                        <option value="">Select Duration</option>
+                        <option value="Half Day">Half Day</option>
+                        <option value="Full Day">Full Day</option>
+                        <option value="Evening">Evening</option>
+                        <option value="Multiple Days">Multiple Days</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Additional Services */}
+                  <div className="mt-4">
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">
+                      Additional Services (Optional)
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {["Catering", "Decoration", "DJ", "Photography", "Flowers", "Cake"].map((service) => (
+                        <label
+                          key={service}
+                          className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${
+                            formData.eventDetails.additionalServices?.includes(service)
+                              ? "border-orange-500 bg-orange-50 text-orange-700"
+                              : "border-gray-200 bg-gray-50 text-gray-600 hover:border-orange-300"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.eventDetails.additionalServices?.includes(service) || false}
+                            onChange={() => handleServiceToggle(service)}
+                            className="hidden"
+                          />
+                          <span className="text-sm">{service}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Veg/Non-Veg Preference */}
+                  <div className="mt-4">
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">
+                      Food Preference
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {["Veg Only", "Non-Veg Only", "Both"].map((pref) => (
+                        <label
+                          key={pref}
+                          className={`flex items-center justify-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${
+                            formData.eventDetails.vegNonVeg === pref
+                              ? "border-orange-500 bg-orange-50 text-orange-700"
+                              : "border-gray-200 bg-gray-50 text-gray-600 hover:border-orange-300"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="vegNonVeg"
+                            value={pref}
+                            checked={formData.eventDetails.vegNonVeg === pref}
+                            onChange={handleChange}
+                            className="hidden"
+                          />
+                          <span className="text-sm">{pref}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Message */}
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
@@ -548,7 +747,7 @@ const HotelBanquetDetail = () => {
     );
   }
 
-  const isHotel = type === "hotels";
+  const isHotel = type === "hotels" || !property?.venueType;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -1146,48 +1345,13 @@ const HotelBanquetDetail = () => {
                         </p>
                       </div>
                     )}
-                    {property.location?.coordinates && (
-                      <div className="p-4 bg-gray-50 rounded-xl">
-                        <h4 className="font-semibold text-gray-900 mb-2">
-                          Coordinates
-                        </h4>
-                        <p className="text-gray-600">
-                          Latitude: {property.location.coordinates.latitude}
-                          <br />
-                          Longitude: {property.location.coordinates.longitude}
-                        </p>
-                      </div>
-                    )}
+                   
                   </div>
                 )}
               </div>
             </div>
 
-            {/* ─── Enquiry Section (inline below tabs) ─────────────────────── */}
-            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-              {/* Section Header */}
-              <div className="relative px-6 pt-6 pb-4">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-400 via-orange-500 to-amber-400" />
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0">
-                    <Sparkles size={20} className="text-orange-500" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900">
-                      Send an Enquiry
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      Fill in your details and we'll get back to you quickly
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <EnquiryFormInline
-                property={property}
-                isHotel={isHotel}
-              />
-            </div>
+           
           </div>
 
           {/* Sidebar */}

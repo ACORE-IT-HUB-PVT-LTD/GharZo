@@ -145,12 +145,12 @@ const Sidebar = ({ propertyId, setSidebarWidth }) => {
     //   label: "Dues Packages",
     //   gradient: "from-blue-600 to-orange-500",
     // },
-    // {
-    //   to: `/landlord/expenses`,
-    //   icon: FaMoneyBillWave,
-    //   label: "Expenses",
-    //   gradient: "from-orange-600 to-blue-500",
-    // },
+    {
+      to: `/landlord/expenses`,
+      icon: FaMoneyBillWave,
+      label: "Expenses",
+      gradient: "from-orange-600 to-blue-500",
+    },
     // {
     //   to: `/landlord/dues`,
     //   icon: FaFileInvoice,
