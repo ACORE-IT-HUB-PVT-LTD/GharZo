@@ -133,13 +133,26 @@ function InputField({ label, required, error, children, hint }) {
 }
 
 function TextInput({ className = "", ...props }) {
+  // Prevent negative values for number inputs
+  const handleKeyDown = (e) => {
+    if (props.type === "number" && e.key === "-") {
+      e.preventDefault();
+    }
+    if (props.onKeyDown) props.onKeyDown(e);
+  };
+  const handleWheel = (e) => {
+    if (props.type === "number") e.target.blur();
+  };
   return (
     <input
       {...props}
-      className={`w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 placeholder-gray-400 
+      onKeyDown={handleKeyDown}
+      onWheel={handleWheel}
+      min={props.type === "number" ? (props.min !== undefined ? props.min : 0) : undefined}
+      className={`w-full px-3 py-2.5 rounded-xl border text-sm text-gray-800 placeholder-gray-400 
         focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition-all bg-white
         ${props.disabled ? "bg-gray-50 opacity-60" : ""}
-        ${className}`}
+        ${className ? className : "border-gray-200"}`}
     />
   );
 }
@@ -154,6 +167,16 @@ function SelectInput({ className = "", children, ...props }) {
     >
       {children}
     </select>
+  );
+}
+
+// Error styled input
+function TextInputWithError({ error, ...props }) {
+  return (
+    <TextInput
+      {...props}
+      className={`border ${error ? "border-red-400 focus:ring-red-400" : "border-gray-200"} ${props.className || ""}`}
+    />
   );
 }
 
@@ -235,7 +258,7 @@ export default function PropertyListingForm() {
     balconies: 1,
     propertyAge: "",
     availableFrom: "",
-    floor: { current: 0, total: 1 },
+    floor: { current: 0, total: 0 },
     area: { carpet: "", builtUp: "", superBuiltUp: "", plotArea: "", unit: "sqft" },
     price: {
       amount: "",
@@ -351,7 +374,6 @@ export default function PropertyListingForm() {
       email: "",
       preferredCallTime: "Anytime",
     },
-    // Brokerage (only for Rent listings by agents)
     postedBy: "owner",
     brokerage: {
       chargeType: "None",
@@ -376,31 +398,38 @@ export default function PropertyListingForm() {
   };
 
   // ─── Conditional Flags ─────────────────────────────────────────────────────
-  const isPG = form.listingType === "PG/Co-living";
+  // PG/Co-living is no longer available in the form
+  const isPG = false;
   const isRent = form.listingType === "Rent";
   const isSale = form.listingType === "Sale";
   const isResidential = form.category === "Residential";
   const isCommercial = form.category === "Commercial";
   const isPlot = form.propertyType === "Plot";
+  const isVilla = form.propertyType === "Villa";
+  const isOffice = form.propertyType === "Office";
+  const isWarehouse = form.propertyType === "Warehouse";
+  const isShop = form.propertyType === "Shop" || form.propertyType === "Showroom";
   const isUnderConstruction = form.propertyAge === "Under Construction";
   const isStudio = form.propertyType === "Studio";
-  const isRoomOrPG = form.propertyType === "Room" || form.propertyType === "PG/Co-living";
-  const showBHK = isResidential && !isPlot && !isCommercial;
-  const showBalconies = isResidential && !isPlot && !isRoomOrPG;
-  const showFurnishing = isResidential && !isPlot && !isPG;
-  const showBathrooms = isResidential && !isPlot && !isStudio;
-  const showAdditionalRooms = isResidential && !isPlot && !isCommercial && !isPG;
-  const showFacing = !isPlot;
+  const isRoom = form.propertyType === "Room";
+
+  // Configuration visibility
+  const showBHK = isResidential && !isPlot && !isRoom;
+  const showBalconies = isResidential && !isPlot && !isRoom && !isOffice && !isWarehouse && !isShop;
+  const showFurnishing = !isPlot;
+  const showBathrooms = !isPlot && !isOffice;
+  const showAdditionalRooms = isResidential && !isPlot && !isCommercial;
+  const showFacing = true; // show for all including plot
   const showFloor = !isPlot;
-  const showOwnership = isSale || isUnderConstruction;
-  const showBuilder = isUnderConstruction;
+  const showOwnership = isSale;
+  const showBuilder = isUnderConstruction && isSale;
   const showInvestment = isSale && isResidential;
   const showPropertyFeatures = !isPlot;
-  // Room Stats only for PG/Co-living (rental management)
-  const showRoomStats = isPG;
-  const showPGSection = isPG;
-  // Brokerage - show only for Rent listings posted by agent
+  const showPGSection = false;
+  const showRoomStats = false;
   const showBrokerage = isRent && form.postedBy === "agent";
+  const showCommercialDetails = isCommercial && !isPlot;
+  const showVillaConfig = isVilla || (isResidential && !isPlot && !isRoom && !isStudio);
 
   const pricePerSqft =
     form.price.amount && form.area.carpet
@@ -556,26 +585,21 @@ export default function PropertyListingForm() {
   const validateStep = () => {
     const errs = {};
     try {
-      const isPGSelected = form.listingType === "PG/Co-living";
-
       if (currentStep === 0) {
         if (!form.category) errs.category = "Category is required";
         if (!form.listingType) errs.listingType = "Listing type is required";
-        if (!isPGSelected && !form.propertyType) errs.propertyType = "Property type is required";
+        if (!isPG && !form.propertyType) errs.propertyType = "Property type is required";
       } else if (currentStep === 1) {
-        // Basic validation - let backend handle specific field requirements
         if (!form.title?.trim()) errs.title = "Title is required";
-        if (!form.description?.trim()) errs.description = "Description is required";
         if (!form.price?.amount) errs["price.amount"] = "Price is required";
-        if (form.propertyType !== "Plot" && !isPGSelected && !form.propertyAge)
-          errs.propertyAge = "Property age is required";
-        if (form.propertyType === "Plot") {
+        if (Number(form.price?.amount) < 0) errs["price.amount"] = "Price cannot be negative";
+        if (isPlot) {
           if (!form.area?.plotArea) errs["area.plotArea"] = "Plot area is required";
         } else {
           if (!form.area?.carpet) errs["area.carpet"] = "Carpet area is required";
         }
-        if (isPGSelected && !form.pgDetails?.roomType)
-          errs["pgDetails.roomType"] = "Room type is required";
+        // PG-specific validations removed - PG/Co-living is not available in the form
+        // Phone validation in contact step only
       } else if (currentStep === 3) {
         if (!form.location?.address?.trim()) errs["location.address"] = "Address is required";
         if (!form.location?.city?.trim()) errs["location.city"] = "City is required";
@@ -600,17 +624,13 @@ export default function PropertyListingForm() {
   const createDraft = async () => {
     setLoading(true);
     try {
-      // For PG/Co-living, don't send propertyType (it's a listing type, not property type)
       const draftData = {
         category: form.category,
         listingType: form.listingType,
       };
-      
-      // Only add propertyType if it's not PG/Co-living listing and has a value
       if (form.listingType !== "PG/Co-living" && form.propertyType) {
         draftData.propertyType = form.propertyType;
       }
-
       const res = await fetch(`${API_BASE}/create-draft`, {
         method: "POST",
         headers: apiHeaders,
@@ -622,8 +642,7 @@ export default function PropertyListingForm() {
         addToast("Property draft created!");
         setCurrentStep(1);
       } else {
-        const errorMsg = data.error || data.message || "Operation failed";
-        throw new Error(errorMsg);
+        throw new Error(data.error || data.message || "Operation failed");
       }
     } catch (e) {
       addToast(e.message || "Failed to create draft", "error");
@@ -635,76 +654,75 @@ export default function PropertyListingForm() {
   const saveBasicDetails = async () => {
     setLoading(true);
     try {
+      const payload = {
+        title: form.title,
+        description: form.description,
+        availableFrom: form.availableFrom,
+        availabilityStatus: "Available",
+        price: {
+          amount: Number(form.price.amount),
+          negotiable: form.price.negotiable,
+          per: isPG ? form.price.per : "Property",
+          securityDeposit: Number(form.price.securityDeposit) || 0,
+          maintenanceCharges: {
+            amount: Number(form.price.maintenanceCharges.amount) || 0,
+            frequency: form.price.maintenanceCharges.frequency,
+          },
+          lockInPeriod: Number(form.price.lockInPeriod) || 0,
+          noticePeriod: Number(form.price.noticePeriod) || 0,
+          expectedRental: Number(form.price.expectedRental) || 0,
+          currentlyLeasedOut: form.price.currentlyLeasedOut,
+          leaseExpiryDate: form.price.leaseExpiryDate || null,
+          annualDuesPayable: Number(form.price.annualDuesPayable) || 0,
+        },
+        area: (() => {
+          const areaObj = { unit: form.area.unit };
+          if (isPlot) {
+            const plotArea = Number(form.area.plotArea);
+            if (plotArea > 0) areaObj.plotArea = plotArea;
+          } else {
+            const carpet = Number(form.area.carpet);
+            if (carpet > 0) areaObj.carpet = carpet;
+            const builtUp = Number(form.area.builtUp);
+            if (builtUp > 0) areaObj.builtUp = builtUp;
+            const superBuiltUp = Number(form.area.superBuiltUp);
+            if (superBuiltUp > 0) areaObj.superBuiltUp = superBuiltUp;
+          }
+          return areaObj;
+        })(),
+      };
+
+      // Add BHK/bathrooms/balconies based on property type
+      if (!isPlot) {
+        if (showBHK) payload.bhk = form.bhk;
+        if (showBathrooms) payload.bathrooms = form.bathrooms;
+        if (showBalconies) payload.balconies = form.balconies;
+        payload.floor = {
+          current: form.floor.current,
+          total: form.floor.total < 1 ? 1 : form.floor.total
+        };
+      }
+
+      // Property age - not for PG and Plot
+      if (!isPG && !isPlot) {
+        payload.propertyAge = form.propertyAge;
+      }
+
+      if (isPG) {
+        payload.pgDetails = form.pgDetails;
+      }
+      if (showRoomStats) {
+        payload.roomStats = form.roomStats;
+      }
+
       const res = await fetch(`${API_BASE}/${propertyId}/basic-details`, {
         method: "PUT",
         headers: apiHeaders,
-        body: JSON.stringify({
-          title: form.title,
-          description: form.description,
-          // Don't send bhk, bathrooms, balconies for Plot
-          ...(isPlot ? {} : {
-            bhk: form.bhk,
-            bathrooms: form.bathrooms,
-            balconies: form.balconies,
-          }),
-          // Don't send propertyAge for PG and Plot listings
-          propertyAge: (isPG || isPlot) ? undefined : form.propertyAge,
-          availableFrom: form.availableFrom,
-          // Don't send floor for Plot
-          ...(isPlot ? {} : { floor: form.floor }),
-          // Only send area fields that are applicable and have values
-          area: (() => {
-            const areaObj = { unit: form.area.unit };
-            
-            if (isPlot) {
-              // For Plot: only send plotArea
-              const plotArea = Number(form.area.plotArea);
-              if (plotArea > 0) areaObj.plotArea = plotArea;
-            } else {
-              // For non-Plot: send carpet (required), builtUp, superBuiltUp if available
-              const carpet = Number(form.area.carpet);
-              if (carpet > 0) areaObj.carpet = carpet;
-              
-              const builtUp = Number(form.area.builtUp);
-              if (builtUp > 0) areaObj.builtUp = builtUp;
-              
-              const superBuiltUp = Number(form.area.superBuiltUp);
-              if (superBuiltUp > 0) areaObj.superBuiltUp = superBuiltUp;
-            }
-            
-            return areaObj;
-          })(),
-          
-          // Availability status
-          availabilityStatus: "Available",
-          
-          price: {
-            amount: Number(form.price.amount),
-            negotiable: form.price.negotiable,
-            per: form.price.per,
-            securityDeposit: Number(form.price.securityDeposit) || 0,
-            maintenanceCharges: {
-              amount: Number(form.price.maintenanceCharges.amount) || 0,
-              frequency: form.price.maintenanceCharges.frequency,
-            },
-            lockInPeriod: Number(form.price.lockInPeriod) || 0,
-            noticePeriod: Number(form.price.noticePeriod) || 0,
-            expectedRental: Number(form.price.expectedRental) || 0,
-            currentlyLeasedOut: form.price.currentlyLeasedOut,
-            leaseExpiryDate: form.price.leaseExpiryDate || null,
-            annualDuesPayable: Number(form.price.annualDuesPayable) || 0,
-          },
-          pgDetails: isPG ? form.pgDetails : undefined,
-          roomStats: showRoomStats ? form.roomStats : undefined,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (data.success) { addToast("Basic details saved!"); setCurrentStep(2); }
-      else {
-        // Show detailed error message from backend
-        const errorMsg = data.error || data.message || "Failed to save basic details";
-        throw new Error(errorMsg);
-      }
+      else throw new Error(data.error || data.message || "Failed to save basic details");
     } catch (e) {
       addToast(e.message || "Failed to save basic details", "error");
     } finally {
@@ -715,23 +733,16 @@ export default function PropertyListingForm() {
   const saveFeatures = async () => {
     setLoading(true);
     try {
-      // Build features data - exclude inapplicable fields for Plot
       const featuresData = {
-        furnishing: isPlot ? undefined : form.furnishing,
-        parking: isPlot ? undefined : form.parking,
         amenities: form.amenities,
       };
-      
-      // Only add facing for non-Plot properties
-      if (!isPlot && form.facing) {
-        featuresData.facing = form.facing;
-      }
-      
-      // Only add propertyFeatures for non-Plot properties
       if (!isPlot) {
+        if (showFurnishing) featuresData.furnishing = form.furnishing;
+        featuresData.parking = form.parking;
         featuresData.propertyFeatures = form.propertyFeatures;
       }
-      
+      if (form.facing) featuresData.facing = form.facing;
+
       const res = await fetch(`${API_BASE}/${propertyId}/features`, {
         method: "PUT",
         headers: apiHeaders,
@@ -739,10 +750,7 @@ export default function PropertyListingForm() {
       });
       const data = await res.json();
       if (data.success) { addToast("Features saved!"); setCurrentStep(3); }
-      else {
-        const errorMsg = data.error || data.message || "Operation failed";
-        throw new Error(errorMsg);
-      }
+      else throw new Error(data.error || data.message || "Operation failed");
     } catch (e) {
       addToast(e.message || "Failed to save features", "error");
     } finally {
@@ -753,10 +761,8 @@ export default function PropertyListingForm() {
   const saveLocation = async () => {
     setLoading(true);
     try {
-      // Build location data with geoLocation for spatial queries
       const locationData = {
         ...form.location,
-        // Add geoLocation for geospatial queries if coordinates exist
         ...(form.location.coordinates.latitude && form.location.coordinates.longitude ? {
           geoLocation: {
             type: "Point",
@@ -764,7 +770,6 @@ export default function PropertyListingForm() {
           }
         } : {})
       };
-      
       const res = await fetch(`${API_BASE}/${propertyId}/location`, {
         method: "PUT",
         headers: apiHeaders,
@@ -840,7 +845,7 @@ export default function PropertyListingForm() {
       const res = await fetch(`${API_BASE}/${propertyId}/contact-info`, {
         method: "PUT",
         headers: apiHeaders,
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           contactInfo: form.contactInfo,
           postedBy: form.postedBy,
           brokerage: form.brokerage,
@@ -874,15 +879,12 @@ export default function PropertyListingForm() {
   };
 
   // ─── Navigation ────────────────────────────────────────────────────────────
-  // FIX: propertyId check removed from step>0 navigation so Back button works freely
-  // FIX: If propertyId exists and we're on step 0 again, just go to step 1
   const handleNext = async () => {
     const validationResult = validateStep();
     const isValid = validationResult.isValid;
     const validationErrors = validationResult.errors || {};
-    
+
     if (!isValid) {
-      // Show detailed error message with all missing fields
       const errorMessages = Object.values(validationErrors);
       if (errorMessages.length > 0) {
         const errorText = errorMessages.slice(0, 5).join(", ");
@@ -897,7 +899,6 @@ export default function PropertyListingForm() {
       if (!propertyId) {
         await createDraft();
       } else {
-        // Draft already exists, just move forward
         setCurrentStep(1);
       }
       return;
@@ -905,14 +906,12 @@ export default function PropertyListingForm() {
     if (currentStep === 1) { await saveBasicDetails(); return; }
     if (currentStep === 2) { await saveFeatures(); return; }
     if (currentStep === 3) { await saveLocation(); return; }
-    // Skip ownership step for PG and Rent (only show for Sale)
     if (currentStep === 4) {
       if (!isSale) {
-        // Skip ownership for PG and Rent (only needed for Sale)
         setCurrentStep(5);
         return;
       }
-      await saveOwnership(); 
+      await saveOwnership();
       return;
     }
     if (currentStep === 5) { await uploadPhotos(); return; }
@@ -924,7 +923,7 @@ export default function PropertyListingForm() {
     if (currentStep > 0) setCurrentStep((p) => p - 1);
   };
 
-  // ─── Sidebar Steps (corrected order) ──────────────────────────────────────
+  // ─── Sidebar Steps ──────────────────────────────────────────────────────────
   const sidebarSteps = [
     { label: "Property Details", icon: FiHome, step: 0 },
     { label: "Basic Details", icon: FiInfo, step: 1 },
@@ -940,15 +939,15 @@ export default function PropertyListingForm() {
     c.name?.toLowerCase().includes(citySearch.toLowerCase())
   );
 
+  // Property Types based on category and listing type
   const residentialTypes = [
-    { label: "Room", icon: RiHotelBedLine },
+    ...(isRent ? [{ label: "Room", icon: RiHotelBedLine }] : []),
     { label: "Flat", icon: PiBuildingApartment },
     { label: "Villa", icon: MdVilla },
     { label: "Plot", icon: BiArea },
     { label: "Studio", icon: FiGrid },
     { label: "Independent House", icon: PiHouseLine },
     { label: "Builder Floor", icon: LuBuilding2 },
-    { label: "PG/Co-living", icon: FiGrid },
     { label: "Other", icon: FiBriefcase },
   ];
 
@@ -987,26 +986,75 @@ export default function PropertyListingForm() {
     "Waste Disposal", "Sewage Treatment Plant", "DG Backup", "Solar Panels",
   ];
 
+  // ─── WhatsApp redirect ─────────────────────────────────────────────────────
+  const handleWhatsApp = () => {
+    const msg = encodeURIComponent("Hi! I'm interested in listing my property on the Gharzo website. Please help me get started.");
+    window.open(`https://wa.me/918982734850?text=${msg}`, "_blank");
+  };
+
+  // ─── Auto advance step 0 ───────────────────────────────────────────────────
+  const step0Complete = form.category && form.listingType && (isPG || form.propertyType);
+
+  useEffect(() => {
+    if (currentStep === 0 && step0Complete) {
+      // Small delay for UX
+      const t = setTimeout(() => {
+        if (!propertyId) {
+          // Auto create draft
+          (async () => {
+            setLoading(true);
+            try {
+              const draftData = {
+                category: form.category,
+                listingType: form.listingType,
+              };
+              if (form.listingType !== "PG/Co-living" && form.propertyType) {
+                draftData.propertyType = form.propertyType;
+              }
+              const res = await fetch(`${API_BASE}/create-draft`, {
+                method: "POST",
+                headers: apiHeaders,
+                body: JSON.stringify(draftData),
+              });
+              const data = await res.json();
+              if (data.success) {
+                setPropertyId(data.data.propertyId);
+                setCurrentStep(1);
+              }
+            } catch (e) {
+              // Silently fail - user can still click button
+            } finally {
+              setLoading(false);
+            }
+          })();
+        } else {
+          setCurrentStep(1);
+        }
+      }, 400);
+      return () => clearTimeout(t);
+    }
+  }, [form.category, form.listingType, form.propertyType, currentStep]);
+
   // ─── Sidebar Content ───────────────────────────────────────────────────────
   const SidebarContent = () => (
     <>
       <div className="px-6 py-5 border-b border-gray-100">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xs">G</span>
-            </div>
-            <span className="text-gray-800 font-bold text-sm tracking-wide">
-              GHARZO <span className="text-orange-500 font-normal text-xs">REALTY™</span>
-            </span>
-          </div>
+          {/* WhatsApp button replacing logo text */}
+          <button
+            onClick={handleWhatsApp}
+            className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-xl transition-colors font-semibold text-xs shadow-sm"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+              <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.118 1.524 5.855L.057 23.943l6.241-1.637A11.946 11.946 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.8 9.8 0 01-5.003-1.372l-.36-.213-3.706.972.989-3.613-.234-.371A9.818 9.818 0 112.182 12 9.829 9.829 0 0112 21.818z"/>
+            </svg>
+            List via WhatsApp
+          </button>
           <button className="lg:hidden text-gray-400 hover:text-gray-600" onClick={() => setSidebarOpen(false)}>
             <FiX size={20} />
           </button>
         </div>
-        <button className="text-xs text-gray-500 flex items-center gap-1 hover:text-violet-600 transition-colors">
-          <FiChevronLeft size={14} /> Return to dashboard
-        </button>
       </div>
 
       <div className="px-6 py-4 border-b border-gray-100">
@@ -1029,10 +1077,18 @@ export default function PropertyListingForm() {
           const isActive = currentStep === step;
           const isDone = currentStep > step;
           return (
-            <div
+            <button
               key={label}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all
-                ${isActive ? "bg-violet-50" : "hover:bg-gray-50"}`}
+              type="button"
+              onClick={() => {
+                if (isDone || isActive) {
+                  setCurrentStep(step);
+                  setSidebarOpen(false);
+                }
+              }}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all w-full text-left
+                ${isActive ? "bg-violet-50" : isDone ? "hover:bg-gray-50 cursor-pointer" : "cursor-default"}
+              `}
             >
               <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
                 ${isDone ? "bg-emerald-100 text-emerald-600" : isActive ? "bg-violet-600 text-white" : "bg-gray-100 text-gray-400"}`}>
@@ -1047,7 +1103,7 @@ export default function PropertyListingForm() {
                   <p className="text-xs text-emerald-500">Score +{score}%</p>
                 )}
               </div>
-            </div>
+            </button>
           );
         })}
       </nav>
@@ -1084,6 +1140,11 @@ export default function PropertyListingForm() {
         .sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 40; }
         .sidebar-drawer { position: fixed; top: 0; left: 0; height: 100%; width: 280px; background: white; z-index: 50; display: flex; flex-direction: column; box-shadow: 4px 0 24px rgba(0,0,0,0.1); transform: translateX(-100%); transition: transform 0.3s ease; }
         .sidebar-drawer.open { transform: translateX(0); }
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+        .field-error { border-color: #f87171 !important; }
+        .field-error:focus { --tw-ring-color: #f87171 !important; }
       `}</style>
 
       <Toast toasts={toasts} removeToast={removeToast} />
@@ -1110,31 +1171,48 @@ export default function PropertyListingForm() {
 
           <div className="flex-1 flex flex-col overflow-hidden min-w-0">
 
-            {/* Mobile Top Bar */}
-            <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100 sticky top-0 z-30">
+            {/* Top Bar - Back + Save Continue */}
+            <div className="flex items-center justify-between px-4 sm:px-6 py-3 bg-white border-b border-gray-100 sticky top-0 z-30">
               <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setSidebarOpen(true)}
-                  className="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-50 text-gray-600 hover:bg-violet-50 hover:text-violet-600 transition-colors"
-                >
+                <button className="lg:hidden w-9 h-9 flex items-center justify-center rounded-xl bg-gray-50 text-gray-600 hover:bg-violet-50 hover:text-violet-600 transition-colors" onClick={() => setSidebarOpen(true)}>
                   <FiMenu size={18} />
                 </button>
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
-                    <span className="text-white font-bold text-xs">G</span>
-                  </div>
-                  <span className="text-gray-800 font-bold text-sm">GHARZO</span>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  disabled={currentStep === 0}
+                  className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-gray-600 hover:text-violet-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors rounded-xl hover:bg-violet-50"
+                >
+                  <FiChevronLeft size={16} /> Back
+                </button>
               </div>
+
               <div className="flex items-center gap-2">
-                <div className="w-28 bg-gray-100 rounded-full h-1.5">
-                  <div
-                    className="bg-gradient-to-r from-violet-500 to-violet-600 h-1.5 rounded-full transition-all duration-500"
-                    style={{ width: `${Math.round((currentStep / 7) * 100)}%` }}
-                  />
+                <div className="hidden sm:flex items-center gap-1.5">
+                  {Array.from({ length: 8 }, (_, i) => (
+                    <div
+                      key={i}
+                      className={`rounded-full transition-all ${i === currentStep ? "w-5 h-2 bg-violet-600" : i < currentStep ? "w-2 h-2 bg-violet-400" : "w-2 h-2 bg-gray-200"}`}
+                    />
+                  ))}
                 </div>
-                <span className="text-xs text-gray-500 font-medium">{Math.round((currentStep / 7) * 100)}%</span>
+                <span className="text-xs text-gray-500 font-medium hidden sm:block">{Math.round((currentStep / 7) * 100)}%</span>
               </div>
+
+              <button
+                type="button"
+                onClick={handleNext}
+                disabled={loading}
+                className="flex items-center gap-1.5 px-4 sm:px-5 py-2 bg-gradient-to-r from-violet-600 to-violet-700 text-white text-xs sm:text-sm font-semibold rounded-xl hover:from-violet-700 hover:to-violet-800 disabled:opacity-70 disabled:cursor-not-allowed transition-all shadow-md shadow-violet-200"
+              >
+                {loading ? (
+                  <><FiLoader size={14} className="animate-spin" /> Processing...</>
+                ) : currentStep === 7 ? (
+                  <><FiCheckCircle size={14} /> Submit</>
+                ) : (
+                  <>Save & Continue <FiChevronRight size={14} /></>
+                )}
+              </button>
             </div>
 
             <div className="flex-1 overflow-y-auto">
@@ -1171,20 +1249,18 @@ export default function PropertyListingForm() {
                         </div>
                       </InputField>
 
-                      <InputField label="Looking to" required error={errors.listingType}>
+                      <InputField label="Looking to" error={errors.listingType}>
                         <div className="flex gap-2 sm:gap-3 mt-1">
-                          {["Rent", "Sale", ...(form.category === "Residential" ? ["PG/Co-living"] : [])].map((t) => (
+                          {["Rent", "Sale"].map((t) => (
                             <button
                               key={t}
                               type="button"
                               onClick={() => {
                                 updateForm("listingType", t);
+                                updateForm("propertyType", "");
                                 if (t === "PG/Co-living") {
-                                  // For PG/Co-living, default to "Room" as property type and set price per to Bed
-                                  updateForm("propertyType", "Room");
                                   updateForm("price.per", "Bed");
-                                } else if (form.propertyType === "Room" && form.listingType !== "PG/Co-living") {
-                                  updateForm("propertyType", "");
+                                } else {
                                   updateForm("price.per", "Property");
                                 }
                               }}
@@ -1199,8 +1275,7 @@ export default function PropertyListingForm() {
                         </div>
                       </InputField>
 
-                      <InputField label="Property Type" required={!isPG} error={errors.propertyType}>
-                        {!isPG ? (
+                      <InputField label="Property Type" error={errors.propertyType}>
                           <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 sm:gap-2.5 mt-1">
                             {propertyTypes.map(({ label, icon }) => (
                               <SelectCard
@@ -1212,13 +1287,13 @@ export default function PropertyListingForm() {
                               />
                             ))}
                           </div>
-                        ) : (
-                          <div className="mt-1 p-3 bg-violet-50 rounded-xl border border-violet-200">
-                            <p className="text-sm text-violet-700 font-medium">PG/Co-living Selected</p>
-                            <p className="text-xs text-violet-600">Property type is automatically set to PG/Co-living</p>
-                          </div>
-                        )}
                       </InputField>
+
+                      {loading && (
+                        <div className="flex items-center gap-2 text-violet-600 text-sm">
+                          <FiLoader size={16} className="animate-spin" /> Creating your listing...
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1232,15 +1307,16 @@ export default function PropertyListingForm() {
                     <div className="space-y-4">
                       <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100 space-y-4">
                         <InputField label="Property Title" required error={errors.title}>
-                          <TextInput
+                          <input
                             placeholder="e.g. Spacious 3BHK in Vijay Nagar"
                             value={form.title}
                             onChange={(e) => updateForm("title", e.target.value)}
                             maxLength={200}
+                            className={`w-full px-3 py-2.5 rounded-xl border text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-white ${errors.title ? "border-red-400 focus:ring-red-400" : "border-gray-200 focus:ring-violet-400"}`}
                           />
                         </InputField>
 
-                        <InputField label="Description" required error={errors.description}>
+                        <InputField label="Description">
                           <textarea
                             placeholder="Describe your property..."
                             value={form.description}
@@ -1252,8 +1328,8 @@ export default function PropertyListingForm() {
                         </InputField>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          {!isPlot && (
-                            <InputField label="Property Age" required={!isPG} error={errors.propertyAge}>
+                          {!isPlot && !isPG && (
+                            <InputField label="Property Age">
                               <SelectInput value={form.propertyAge} onChange={(e) => updateForm("propertyAge", e.target.value)}>
                                 <option value="">Select age</option>
                                 {["Under Construction", "0-1 year", "1-5 years", "5-10 years", "10+ years"].map((a) => (
@@ -1291,20 +1367,45 @@ export default function PropertyListingForm() {
                           <FiHome size={16} className="text-violet-500" /> Configuration
                         </h3>
                         <div className="flex flex-wrap gap-4 sm:gap-6">
+                          {/* BHK - show for residential non-plot, non-pg, non-room */}
                           {showBHK && (
                             <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
                           )}
-                          {showBathrooms && (
+                          {/* Bathrooms - all except plot and office */}
+                          {showBathrooms && !isPlot && (
                             <CounterBox label="Bathrooms" value={form.bathrooms} onChange={(v) => updateForm("bathrooms", v)} icon={LuBath} min={1} max={10} />
                           )}
+                          {/* Balconies - residential non-plot, non-pg, non-room, non-commercial */}
                           {showBalconies && (
                             <CounterBox label="Balconies" value={form.balconies} onChange={(v) => updateForm("balconies", v)} icon={MdBalcony} min={0} max={10} />
                           )}
+                          {/* PG specific */}
+                          {isPG && (
+                            <>
+                              <CounterBox label="Total Beds" value={form.pgDetails.totalBeds} onChange={(v) => updateForm("pgDetails.totalBeds", v)} icon={MdBed} min={1} max={100} />
+                              {errors["pgDetails.totalBeds"] && (
+                                <p className="text-xs text-red-500 w-full mt-1">{errors["pgDetails.totalBeds"]}</p>
+                              )}
+                              <CounterBox label="Available Beds" value={form.pgDetails.availableBeds} onChange={(v) => updateForm("pgDetails.availableBeds", v)} icon={FiUser} min={0} max={100} />
+                            </>
+                          )}
+                          {/* Floor */}
                           {showFloor && (
                             <>
                               <CounterBox label="Current Floor" value={form.floor.current} onChange={(v) => updateForm("floor.current", v)} icon={FiLayers} min={0} max={100} />
-                              <CounterBox label="Total Floors" value={form.floor.total} onChange={(v) => updateForm("floor.total", v)} icon={LuBuilding2} min={1} max={100} />
+                              <CounterBox label="Total Floors" value={form.floor.total} onChange={(v) => updateForm("floor.total", v)} icon={LuBuilding2} min={0} max={100} />
                             </>
+                          )}
+                          {/* Office specific */}
+                          {isOffice && (
+                            <>
+                              <CounterBox label="Cabins" value={form.commercialCabins || 0} onChange={(v) => updateForm("commercialCabins", v)} icon={FiBriefcase} min={0} max={50} />
+                              <CounterBox label="Workstations" value={form.commercialWorkstations || 0} onChange={(v) => updateForm("commercialWorkstations", v)} icon={FiGrid} min={0} max={200} />
+                            </>
+                          )}
+                          {/* Villa specific - rooms */}
+                          {isVilla && (
+                            <CounterBox label="Floors in Villa" value={form.villaFloors || 1} onChange={(v) => updateForm("villaFloors", v)} icon={LuBuilding2} min={1} max={5} />
                           )}
                         </div>
                       </div>
@@ -1317,20 +1418,28 @@ export default function PropertyListingForm() {
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                           {isPlot ? (
                             <InputField label="Plot Area" required error={errors["area.plotArea"]}>
-                              <TextInput
+                              <input
                                 type="number"
                                 placeholder="e.g. 2400"
                                 value={form.area.plotArea}
                                 onChange={(e) => updateForm("area.plotArea", e.target.value)}
+                                min={0}
+                                onKeyDown={(e) => e.key === "-" && e.preventDefault()}
+                                onWheel={(e) => e.target.blur()}
+                                className={`w-full px-3 py-2.5 rounded-xl border text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-white ${errors["area.plotArea"] ? "border-red-400 focus:ring-red-400" : "border-gray-200 focus:ring-violet-400"}`}
                               />
                             </InputField>
                           ) : (
-                            <InputField label="Carpet Area"  error={errors["area.carpet"]}>
-                              <TextInput
+                            <InputField label="Carpet Area" required error={errors["area.carpet"]}>
+                              <input
                                 type="number"
                                 placeholder="e.g. 1200"
                                 value={form.area.carpet}
                                 onChange={(e) => updateForm("area.carpet", e.target.value)}
+                                min={0}
+                                onKeyDown={(e) => e.key === "-" && e.preventDefault()}
+                                onWheel={(e) => e.target.blur()}
+                                className={`w-full px-3 py-2.5 rounded-xl border text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-white ${errors["area.carpet"] ? "border-red-400 focus:ring-red-400" : "border-gray-200 focus:ring-violet-400"}`}
                               />
                             </InputField>
                           )}
@@ -1352,14 +1461,6 @@ export default function PropertyListingForm() {
                             </SelectInput>
                           </InputField>
                         </div>
-                        {pricePerSqft > 0 && !isPlot && (
-                          <div className="mt-3 p-2 bg-violet-50 rounded-lg inline-flex items-center gap-2">
-                            <FiDollarSign size={14} className="text-violet-600" />
-                            {/* <span className="text-sm text-violet-700 font-medium">
-                              ₹{pricePerSqft.toLocaleString("en-IN")}/sqft
-                            </span> */}
-                          </div>
-                        )}
                       </div>
 
                       {/* Pricing */}
@@ -1369,22 +1470,26 @@ export default function PropertyListingForm() {
                         </h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <InputField
-                            label={isPG ? "Price per Bed (₹)" : isSale ? "Sale Price (₹)" : "Monthly Rent (₹)"}
+                            label={isPG ? "Price (₹)" : isSale ? "Sale Price (₹)" : "Monthly Rent (₹)"}
                             required
                             error={errors["price.amount"]}
                           >
-                            <TextInput
+                            <input
                               type="number"
                               placeholder={isPG ? "e.g. 8000" : isSale ? "e.g. 5000000" : "e.g. 25000"}
                               value={form.price.amount}
                               onChange={(e) => updateForm("price.amount", e.target.value)}
+                              min={0}
+                              onKeyDown={(e) => e.key === "-" && e.preventDefault()}
+                              onWheel={(e) => e.target.blur()}
+                              className={`w-full px-3 py-2.5 rounded-xl border text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-white ${errors["price.amount"] ? "border-red-400 focus:ring-red-400" : "border-gray-200 focus:ring-violet-400"}`}
                             />
                           </InputField>
 
                           {isPG && (
                             <InputField label="Price Per">
                               <SelectInput value={form.price.per} onChange={(e) => updateForm("price.per", e.target.value)}>
-                                {["Bed", "Room", "Property"].map((p) => <option key={p} value={p}>{p}</option>)}
+                                {pgPricingOptions.map((p) => <option key={p} value={p}>{p}</option>)}
                               </SelectInput>
                             </InputField>
                           )}
@@ -1507,7 +1612,7 @@ export default function PropertyListingForm() {
                         )}
                       </div>
 
-                      {/* PG Section */}
+                      {/* PG Details Section */}
                       {showPGSection && (
                         <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100 space-y-4">
                           <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
@@ -1516,23 +1621,22 @@ export default function PropertyListingForm() {
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <InputField label="Room Type" required error={errors["pgDetails.roomType"]}>
-                              <SelectInput value={form.pgDetails.roomType} onChange={(e) => updateForm("pgDetails.roomType", e.target.value)}>
+                              <select
+                                value={form.pgDetails.roomType}
+                                onChange={(e) => updateForm("pgDetails.roomType", e.target.value)}
+                                className={`w-full px-3 py-2.5 rounded-xl border text-sm text-gray-800 focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-white appearance-none ${errors["pgDetails.roomType"] ? "border-red-400 focus:ring-red-400" : "border-gray-200 focus:ring-violet-400"}`}
+                              >
                                 <option value="">Select room type</option>
                                 {["Single", "Double Sharing", "Triple Sharing", "Dormitory"].map((r) => (
                                   <option key={r} value={r}>{r}</option>
                                 ))}
-                              </SelectInput>
+                              </select>
                             </InputField>
                             <InputField label="Gender Preference">
                               <SelectInput value={form.pgDetails.genderPreference} onChange={(e) => updateForm("pgDetails.genderPreference", e.target.value)}>
                                 {["Male", "Female", "Any"].map((g) => <option key={g} value={g}>{g}</option>)}
                               </SelectInput>
                             </InputField>
-                          </div>
-
-                          <div className="flex flex-wrap gap-6">
-                            <CounterBox label="Total Beds" value={form.pgDetails.totalBeds} onChange={(v) => updateForm("pgDetails.totalBeds", v)} icon={MdBed} min={1} max={100} />
-                            <CounterBox label="Available Beds" value={form.pgDetails.availableBeds} onChange={(v) => updateForm("pgDetails.availableBeds", v)} icon={FiUser} min={0} max={100} />
                           </div>
 
                           <div className="flex items-center gap-3">
@@ -1547,6 +1651,7 @@ export default function PropertyListingForm() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <InputField label="Food Type">
                                 <SelectInput value={form.pgDetails.foodType} onChange={(e) => updateForm("pgDetails.foodType", e.target.value)}>
+                                  <option value="">Select</option>
                                   {["Veg", "Non-Veg", "Both"].map((f) => <option key={f} value={f}>{f}</option>)}
                                 </SelectInput>
                               </InputField>
@@ -1605,7 +1710,7 @@ export default function PropertyListingForm() {
                         </div>
                       )}
 
-                      {/* Room Stats */}
+                      {/* Room Stats for PG */}
                       {showRoomStats && (
                         <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
                           <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
@@ -1664,28 +1769,28 @@ export default function PropertyListingForm() {
                         <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
                           <MdLocalParking size={16} className="text-violet-500" /> Parking & Facing
                         </h3>
-                        <div className="flex flex-wrap gap-4 sm:gap-6">
-                          <CounterBox label="Covered Parking" value={form.parking.covered} onChange={(v) => updateForm("parking.covered", v)} icon={RiParkingBoxLine} min={0} max={10} />
-                          <CounterBox label="Open Parking" value={form.parking.open} onChange={(v) => updateForm("parking.open", v)} icon={TbParking} min={0} max={10} />
-                        </div>
-                        {showFacing && (
-                          <div className="mt-4">
-                            <p className="text-sm font-semibold text-gray-700 mb-2">Facing Direction</p>
-                            <div className="grid grid-cols-4 gap-2">
-                              {["North", "South", "East", "West", "North-East", "North-West", "South-East", "South-West"].map((dir) => (
-                                <button
-                                  key={dir}
-                                  type="button"
-                                  onClick={() => updateForm("facing", dir)}
-                                  className={`py-2 rounded-xl border-2 text-xs font-medium transition-all
-                                    ${form.facing === dir ? "border-violet-500 bg-violet-50 text-violet-700" : "border-gray-200 text-gray-600 hover:border-violet-300"}`}
-                                >
-                                  {dir}
-                                </button>
-                              ))}
-                            </div>
+                        {!isPlot && (
+                          <div className="flex flex-wrap gap-4 sm:gap-6 mb-4">
+                            <CounterBox label="Covered Parking" value={form.parking.covered} onChange={(v) => updateForm("parking.covered", v)} icon={RiParkingBoxLine} min={0} max={10} />
+                            <CounterBox label="Open Parking" value={form.parking.open} onChange={(v) => updateForm("parking.open", v)} icon={TbParking} min={0} max={10} />
                           </div>
                         )}
+                        <div>
+                          <p className="text-sm font-semibold text-gray-700 mb-2">Facing Direction</p>
+                          <div className="grid grid-cols-4 gap-2">
+                            {["North", "South", "East", "West", "North-East", "North-West", "South-East", "South-West"].map((dir) => (
+                              <button
+                                key={dir}
+                                type="button"
+                                onClick={() => updateForm("facing", dir)}
+                                className={`py-2 rounded-xl border-2 text-xs font-medium transition-all
+                                  ${form.facing === dir ? "border-violet-500 bg-violet-50 text-violet-700" : "border-gray-200 text-gray-600 hover:border-violet-300"}`}
+                              >
+                                {dir}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       </div>
 
                       <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
@@ -1753,7 +1858,7 @@ export default function PropertyListingForm() {
                             </InputField>
                             <InputField label="Flooring">
                               <SelectInput value={form.propertyFeatures.flooring} onChange={(e) => updateForm("propertyFeatures.flooring", e.target.value)}>
-                                <option value="">Select</option>
+                                <option value="">Select (Optional)</option>
                                 {["Marble", "Vitrified Tiles", "Wooden", "Granite", "Ceramic", "Cement", "Other"].map((v) => <option key={v} value={v}>{v}</option>)}
                               </SelectInput>
                             </InputField>
@@ -1860,7 +1965,7 @@ export default function PropertyListingForm() {
                               }}
                               onFocus={() => setShowCityDropdown(true)}
                               onBlur={() => setTimeout(() => setShowCityDropdown(false), 200)}
-                              className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                              className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:border-transparent ${errors["location.city"] ? "border-red-400 focus:ring-red-400" : "border-gray-200 focus:ring-violet-400"}`}
                             />
                             {showCityDropdown && filteredCities.length > 0 && (
                               <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 max-h-48 overflow-y-auto">
@@ -1887,7 +1992,12 @@ export default function PropertyListingForm() {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <InputField label="Locality" required error={errors["location.locality"]}>
-                            <TextInput placeholder="e.g. Vijay Nagar" value={form.location.locality} onChange={(e) => updateForm("location.locality", e.target.value)} />
+                            <input
+                              placeholder="e.g. Vijay Nagar"
+                              value={form.location.locality}
+                              onChange={(e) => updateForm("location.locality", e.target.value)}
+                              className={`w-full px-3 py-2.5 rounded-xl border text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-white ${errors["location.locality"] ? "border-red-400 focus:ring-red-400" : "border-gray-200 focus:ring-violet-400"}`}
+                            />
                           </InputField>
                           <InputField label="Sub Locality">
                             <TextInput placeholder="e.g. Scheme 54" value={form.location.subLocality} onChange={(e) => updateForm("location.subLocality", e.target.value)} />
@@ -1896,13 +2006,14 @@ export default function PropertyListingForm() {
 
                         <InputField label="Full Address" required error={errors["location.address"]}>
                           <div className="relative">
-                            <TextInput
+                            <input
                               placeholder="Search or type your address..."
                               value={form.location.address}
                               onChange={(e) => {
                                 updateForm("location.address", e.target.value);
                                 searchAddress(e.target.value);
                               }}
+                              className={`w-full px-3 py-2.5 rounded-xl border text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-white ${errors["location.address"] ? "border-red-400 focus:ring-red-400" : "border-gray-200 focus:ring-violet-400"}`}
                             />
                             {locationSuggestions.length > 0 && (
                               <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 max-h-48 overflow-y-auto">
@@ -1926,7 +2037,13 @@ export default function PropertyListingForm() {
                             <TextInput placeholder="Near C21 Mall" value={form.location.landmark} onChange={(e) => updateForm("location.landmark", e.target.value)} />
                           </InputField>
                           <InputField label="Pincode" required error={errors["location.pincode"]}>
-                            <TextInput placeholder="452010" value={form.location.pincode} onChange={(e) => updateForm("location.pincode", e.target.value)} maxLength={6} />
+                            <input
+                              placeholder="452010"
+                              value={form.location.pincode}
+                              onChange={(e) => updateForm("location.pincode", e.target.value)}
+                              maxLength={6}
+                              className={`w-full px-3 py-2.5 rounded-xl border text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-white ${errors["location.pincode"] ? "border-red-400 focus:ring-red-400" : "border-gray-200 focus:ring-violet-400"}`}
+                            />
                           </InputField>
                           <InputField label="State">
                             <TextInput placeholder="Madhya Pradesh" value={form.location.state} onChange={(e) => updateForm("location.state", e.target.value)} />
@@ -1971,10 +2088,10 @@ export default function PropertyListingForm() {
                     <p className="text-gray-500 text-sm mb-6">Verify your ownership details</p>
 
                     <div className="space-y-4">
-                      {showOwnership && (
+                      {showOwnership ? (
                         <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100 space-y-4">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <InputField label="Ownership Type" required={isSale} error={errors["ownership.type"]}>
+                            <InputField label="Ownership Type">
                               <SelectInput value={form.ownership.type} onChange={(e) => updateForm("ownership.type", e.target.value)}>
                                 <option value="">Select</option>
                                 {["Freehold", "Leasehold", "Co-operative Society", "Power of Attorney"].map((v) => <option key={v} value={v}>{v}</option>)}
@@ -2018,10 +2135,7 @@ export default function PropertyListingForm() {
                             </div>
                           </div>
                         </div>
-                      )}
-
-                      {/* If Rent/PG and no ownership section, show a simple info card */}
-                      {!showOwnership && (
+                      ) : (
                         <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
                           <div className="flex items-start gap-3">
                             <div className="w-10 h-10 bg-violet-100 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -2166,7 +2280,12 @@ export default function PropertyListingForm() {
                       <InputField label="Full Name" required error={errors["contactInfo.name"]}>
                         <div className="relative">
                           <FiUser size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                          <TextInput className="pl-9" placeholder="Your full name" value={form.contactInfo.name} onChange={(e) => updateForm("contactInfo.name", e.target.value)} />
+                          <input
+                            className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-white ${errors["contactInfo.name"] ? "border-red-400 focus:ring-red-400" : "border-gray-200 focus:ring-violet-400"}`}
+                            placeholder="Your full name"
+                            value={form.contactInfo.name}
+                            onChange={(e) => updateForm("contactInfo.name", e.target.value)}
+                          />
                         </div>
                       </InputField>
 
@@ -2174,7 +2293,13 @@ export default function PropertyListingForm() {
                         <InputField label="Phone Number" required error={errors["contactInfo.phone"]}>
                           <div className="relative">
                             <FiPhone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                            <TextInput className="pl-9" placeholder="10-digit mobile number" value={form.contactInfo.phone} onChange={(e) => updateForm("contactInfo.phone", e.target.value)} maxLength={10} />
+                            <input
+                              className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-white ${errors["contactInfo.phone"] ? "border-red-400 focus:ring-red-400" : "border-gray-200 focus:ring-violet-400"}`}
+                              placeholder="10-digit mobile number"
+                              value={form.contactInfo.phone}
+                              onChange={(e) => updateForm("contactInfo.phone", e.target.value)}
+                              maxLength={10}
+                            />
                           </div>
                         </InputField>
                         <InputField label="Alternate Phone">
@@ -2188,7 +2313,13 @@ export default function PropertyListingForm() {
                       <InputField label="Email Address" error={errors["contactInfo.email"]}>
                         <div className="relative">
                           <FiMail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                          <TextInput className="pl-9" placeholder="your@email.com" type="email" value={form.contactInfo.email} onChange={(e) => updateForm("contactInfo.email", e.target.value)} />
+                          <input
+                            className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-white ${errors["contactInfo.email"] ? "border-red-400 focus:ring-red-400" : "border-gray-200 focus:ring-violet-400"}`}
+                            placeholder="your@email.com (Optional)"
+                            type="email"
+                            value={form.contactInfo.email}
+                            onChange={(e) => updateForm("contactInfo.email", e.target.value)}
+                          />
                         </div>
                       </InputField>
 
@@ -2210,7 +2341,6 @@ export default function PropertyListingForm() {
                         </div>
                       </InputField>
 
-                      {/* Brokerage Section - Only for Rent listings by agents */}
                       {isRent && (
                         <>
                           <InputField label="Posted By">
@@ -2241,9 +2371,7 @@ export default function PropertyListingForm() {
                                       type="button"
                                       onClick={() => {
                                         updateForm("brokerage.chargeType", type);
-                                        if (type === "None") {
-                                          updateForm("brokerage.customValue", "");
-                                        }
+                                        if (type === "None") updateForm("brokerage.customValue", "");
                                       }}
                                       className={`py-2 px-2 rounded-xl border-2 text-xs font-medium transition-all
                                         ${form.brokerage.chargeType === type
@@ -2283,7 +2411,7 @@ export default function PropertyListingForm() {
                       <PreviewSection title="Property Type" icon={FiHome}>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                           <InfoItem label="Category" value={form.category} />
-                          <InfoItem label="Property Type" value={form.propertyType} />
+                          <InfoItem label="Property Type" value={form.propertyType || "PG/Co-living"} />
                           <InfoItem label="Listing Type" value={form.listingType} />
                         </div>
                       </PreviewSection>
@@ -2292,9 +2420,9 @@ export default function PropertyListingForm() {
                         <div className="grid grid-cols-2 gap-3">
                           <InfoItem label="Title" value={form.title} />
                           {showBHK && <InfoItem label="BHK" value={`${form.bhk} BHK`} />}
-                          {showBathrooms && <InfoItem label="Bathrooms" value={form.bathrooms} />}
+                          {showBathrooms && !isPlot && <InfoItem label="Bathrooms" value={form.bathrooms} />}
                           <InfoItem label={isPlot ? "Plot Area" : "Carpet Area"} value={`${isPlot ? form.area.plotArea : form.area.carpet} ${form.area.unit}`} />
-                          <InfoItem label="Price" value={`₹${Number(form.price.amount || 0).toLocaleString("en-IN")}`} />
+                          <InfoItem label="Price" value={`₹${Number(form.price.amount || 0).toLocaleString("en-IN")}${isPG ? ` per ${form.price.per}` : ""}`} />
                           {form.propertyAge && <InfoItem label="Property Age" value={form.propertyAge} />}
                         </div>
                       </PreviewSection>
@@ -2318,9 +2446,9 @@ export default function PropertyListingForm() {
                             <>
                               <InfoItem label="Posted By" value={form.postedBy === "owner" ? "Owner" : "Agent / Broker"} />
                               {showBrokerage && (
-                                <InfoItem 
-                                  label="Brokerage" 
-                                  value={form.brokerage.chargeType === "Custom" ? form.brokerage.customValue : form.brokerage.chargeType} 
+                                <InfoItem
+                                  label="Brokerage"
+                                  value={form.brokerage.chargeType === "Custom" ? form.brokerage.customValue : form.brokerage.chargeType}
                                 />
                               )}
                             </>
@@ -2361,40 +2489,14 @@ export default function PropertyListingForm() {
               </div>
             </div>
 
-            {/* ── Footer Navigation ──────────────────────────────────────── */}
-            <div className="border-t border-gray-100 bg-white px-4 sm:px-8 py-3 sm:py-4 flex items-center justify-between sticky bottom-0 z-20">
-              <button
-                type="button"
-                onClick={handleBack}
-                disabled={currentStep === 0}
-                className="flex items-center gap-1 sm:gap-2 px-3 sm:px-5 py-2.5 text-sm font-semibold text-gray-600 hover:text-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                <FiChevronLeft size={18} /> <span className="hidden sm:inline">Back</span>
-              </button>
-
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                {Array.from({ length: 8 }, (_, i) => (
-                  <div
-                    key={i}
-                    className={`rounded-full transition-all ${i === currentStep ? "w-5 sm:w-6 h-2 bg-violet-600" : i < currentStep ? "w-2 h-2 bg-violet-400" : "w-2 h-2 bg-gray-200"}`}
-                  />
-                ))}
-              </div>
-
-              <button
-                type="button"
-                onClick={handleNext}
-                disabled={loading}
-                className="flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2.5 bg-gradient-to-r from-violet-600 to-violet-700 text-white text-xs sm:text-sm font-semibold rounded-xl hover:from-violet-700 hover:to-violet-800 disabled:opacity-70 disabled:cursor-not-allowed transition-all shadow-md shadow-violet-200"
-              >
-                {loading ? (
-                  <><FiLoader size={14} className="animate-spin" /> <span className="hidden sm:inline">Processing...</span></>
-                ) : currentStep === 7 ? (
-                  <><FiCheckCircle size={14} /> <span>Submit</span></>
-                ) : (
-                  <><span className="hidden sm:inline">Save & </span>Continue <FiChevronRight size={14} /></>
-                )}
-              </button>
+            {/* Bottom progress dots for mobile */}
+            <div className="lg:hidden flex justify-center gap-1.5 py-2 bg-white border-t border-gray-100">
+              {Array.from({ length: 8 }, (_, i) => (
+                <div
+                  key={i}
+                  className={`rounded-full transition-all ${i === currentStep ? "w-5 h-2 bg-violet-600" : i < currentStep ? "w-2 h-2 bg-violet-400" : "w-2 h-2 bg-gray-200"}`}
+                />
+              ))}
             </div>
           </div>
         </div>
