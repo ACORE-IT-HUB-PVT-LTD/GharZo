@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { FaWhatsapp } from "react-icons/fa";
+
 import {
   FiHome, FiMapPin, FiCamera, FiCheckCircle, FiEye, FiChevronRight,
   FiChevronLeft, FiPlus, FiMinus, FiX, FiUpload, FiPhone, FiMail,
@@ -398,8 +400,7 @@ export default function PropertyListingForm() {
   };
 
   // ─── Conditional Flags ─────────────────────────────────────────────────────
-  // PG/Co-living is no longer available in the form
-  const isPG = false;
+  const isPG = form.listingType === "PG/Co-living" || form.propertyType === "PG/Co-living";
   const isRent = form.listingType === "Rent";
   const isSale = form.listingType === "Sale";
   const isResidential = form.category === "Residential";
@@ -414,22 +415,22 @@ export default function PropertyListingForm() {
   const isRoom = form.propertyType === "Room";
 
   // Configuration visibility
-  const showBHK = isResidential && !isPlot && !isRoom;
-  const showBalconies = isResidential && !isPlot && !isRoom && !isOffice && !isWarehouse && !isShop;
-  const showFurnishing = !isPlot;
-  const showBathrooms = !isPlot && !isOffice;
-  const showAdditionalRooms = isResidential && !isPlot && !isCommercial;
-  const showFacing = true; // show for all including plot
-  const showFloor = !isPlot;
+  const showBHK = isResidential && !isPlot && !isRoom && !isPG;
+  const showBalconies = isResidential && !isPlot && !isRoom && !isOffice && !isWarehouse && !isShop && !isPG;
+  const showFurnishing = !isPlot && !isPG;
+  const showBathrooms = !isPlot && !isOffice && !isPG;
+  const showAdditionalRooms = isResidential && !isPlot && !isCommercial && !isPG;
+  const showFacing = !isPlot && !isPG; // hide facing for PG
+  const showFloor = !isPlot && !isPG;
   const showOwnership = isSale;
   const showBuilder = isUnderConstruction && isSale;
   const showInvestment = isSale && isResidential;
-  const showPropertyFeatures = !isPlot;
-  const showPGSection = false;
-  const showRoomStats = false;
+  const showPropertyFeatures = !isPlot && !isPG;
+  const showPGSection = form.listingType === "PG/Co-living"; // Show PG Details when listing type is PG/Co-living
+  const showRoomStats = form.listingType === "PG/Co-living";
   const showBrokerage = isRent && form.postedBy === "agent";
   const showCommercialDetails = isCommercial && !isPlot;
-  const showVillaConfig = isVilla || (isResidential && !isPlot && !isRoom && !isStudio);
+  const showVillaConfig = isVilla || (isResidential && !isPlot && !isRoom && !isStudio && !isPG);
 
   const pricePerSqft =
     form.price.amount && form.area.carpet
@@ -595,10 +596,11 @@ export default function PropertyListingForm() {
         if (Number(form.price?.amount) < 0) errs["price.amount"] = "Price cannot be negative";
         if (isPlot) {
           if (!form.area?.plotArea) errs["area.plotArea"] = "Plot area is required";
-        } else {
+        } else if (!isPG) {
+          // For PG/Co-living, area is optional on frontend
           if (!form.area?.carpet) errs["area.carpet"] = "Carpet area is required";
         }
-        // PG-specific validations removed - PG/Co-living is not available in the form
+        // PG-specific validations - keeping optional as per backend schema
         // Phone validation in contact step only
       } else if (currentStep === 3) {
         if (!form.location?.address?.trim()) errs["location.address"] = "Address is required";
@@ -739,7 +741,19 @@ export default function PropertyListingForm() {
       if (!isPlot) {
         if (showFurnishing) featuresData.furnishing = form.furnishing;
         featuresData.parking = form.parking;
-        featuresData.propertyFeatures = form.propertyFeatures;
+        
+        // Filter out empty string values from propertyFeatures to avoid enum validation errors
+        const cleanedPropertyFeatures = {};
+        Object.keys(form.propertyFeatures).forEach(key => {
+          const value = form.propertyFeatures[key];
+          // Keep non-empty strings, booleans, numbers, and arrays
+          if (value !== "" && value !== null && value !== undefined) {
+            cleanedPropertyFeatures[key] = value;
+          }
+        });
+        if (Object.keys(cleanedPropertyFeatures).length > 0) {
+          featuresData.propertyFeatures = cleanedPropertyFeatures;
+        }
       }
       if (form.facing) featuresData.facing = form.facing;
 
@@ -948,6 +962,7 @@ export default function PropertyListingForm() {
     { label: "Studio", icon: FiGrid },
     { label: "Independent House", icon: PiHouseLine },
     { label: "Builder Floor", icon: LuBuilding2 },
+    ...((isPG || isSale) ? [{ label: "PG/Co-living", icon: RiHotelBedLine }] : []),
     { label: "Other", icon: FiBriefcase },
   ];
 
@@ -962,6 +977,9 @@ export default function PropertyListingForm() {
   ];
 
   const propertyTypes = form.category === "Residential" ? residentialTypes : commercialTypes;
+
+  // PG Pricing Options
+  const pgPricingOptions = ["Bed", "Room"];
 
   const furnishingItems = [
     "Sofa", "Center Table", "Dining Table", "TV Unit", "Curtains", "Carpet",
@@ -988,7 +1006,7 @@ export default function PropertyListingForm() {
 
   // ─── WhatsApp redirect ─────────────────────────────────────────────────────
   const handleWhatsApp = () => {
-    const phoneNumber = "918982734850";
+    const phoneNumber = "9755271778";
     const imageUrl = "https://gharzoreality.com/assets/stigar.png";
     const message = `Hi! I'm interested to list my property on Gharzo Realty website.\n\nPlease find the attached reference: ${imageUrl}\n\nLooking forward to listing my property with Gharzo Realty™`;
     const msg = encodeURIComponent(message);
@@ -1041,24 +1059,28 @@ export default function PropertyListingForm() {
   // ─── Sidebar Content ───────────────────────────────────────────────────────
   const SidebarContent = () => (
     <>
-      <div className="px-6 py-5 border-b border-gray-100">
-        <div className="flex items-center justify-between mb-4">
-          {/* WhatsApp button replacing logo text */}
-          <button
-            onClick={handleWhatsApp}
-            className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2.5 rounded-xl transition-all font-semibold text-xs shadow-md hover:shadow-lg transform hover:scale-105 w-full justify-center"
-          >
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-              <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.118 1.524 5.855L.057 23.943l6.241-1.637A11.946 11.946 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.8 9.8 0 01-5.003-1.372l-.36-.213-3.706.972.989-3.613-.234-.371A9.818 9.818 0 112.182 12 9.829 9.829 0 0112 21.818z"/>
-            </svg>
-            List Property on WhatsApp
-          </button>
-          <button className="lg:hidden text-gray-400 hover:text-gray-600" onClick={() => setSidebarOpen(false)}>
-            <FiX size={20} />
-          </button>
-        </div>
-      </div>
+      <div className="px-2 py-5 border-b border-gray-100">
+  <div className="flex items-center justify-between mb-4">
+
+    <button
+      onClick={handleWhatsApp}
+      className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2.5 rounded-xl transition-all font-semibold text-xs shadow-md hover:shadow-lg transform hover:scale-105 w-full justify-center"
+    >
+      {/* WhatsApp Icon */}
+      <FaWhatsapp size={18} className="text-white" />
+
+      List Property with WhatsApp
+    </button>
+
+    <button
+      className="lg:hidden text-gray-400 hover:text-gray-600"
+      onClick={() => setSidebarOpen(false)}
+    >
+      <FiX size={20} />
+    </button>
+
+  </div>
+</div>
 
       <div className="px-6 py-4 border-b border-gray-100">
         <h2 className="font-bold text-gray-900 text-base leading-tight">Post your property</h2>
@@ -1254,16 +1276,17 @@ export default function PropertyListingForm() {
 
                       <InputField label="Looking to" error={errors.listingType}>
                         <div className="flex gap-2 sm:gap-3 mt-1">
-                          {["Rent", "Sale"].map((t) => (
+                          {["Rent", "Sale", "PG/Co-living"].map((t) => (
                             <button
                               key={t}
                               type="button"
                               onClick={() => {
                                 updateForm("listingType", t);
-                                updateForm("propertyType", "");
                                 if (t === "PG/Co-living") {
+                                  updateForm("propertyType", "PG/Co-living");
                                   updateForm("price.per", "Bed");
                                 } else {
+                                  updateForm("propertyType", "");
                                   updateForm("price.per", "Property");
                                 }
                               }}
@@ -1278,6 +1301,15 @@ export default function PropertyListingForm() {
                         </div>
                       </InputField>
 
+                      {isPG ? (
+                        <div className="bg-violet-50 border border-violet-200 rounded-xl p-4">
+                          <div className="flex items-center gap-2 text-violet-700">
+                            <RiHotelBedLine size={20} />
+                            <span className="font-semibold">PG/Co-living Selected</span>
+                          </div>
+                          <p className="text-sm text-violet-600 mt-1">Property type is automatically set to PG/Co-living</p>
+                        </div>
+                      ) : (
                       <InputField label="Property Type" error={errors.propertyType}>
                           <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 sm:gap-2.5 mt-1">
                             {propertyTypes.map(({ label, icon }) => (
@@ -1291,6 +1323,7 @@ export default function PropertyListingForm() {
                             ))}
                           </div>
                       </InputField>
+                      )}
 
                       {loading && (
                         <div className="flex items-center gap-2 text-violet-600 text-sm">
@@ -1623,7 +1656,7 @@ export default function PropertyListingForm() {
                           </h3>
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <InputField label="Room Type" required error={errors["pgDetails.roomType"]}>
+                            <InputField label="Room Type" error={errors["pgDetails.roomType"]}>
                               <select
                                 value={form.pgDetails.roomType}
                                 onChange={(e) => updateForm("pgDetails.roomType", e.target.value)}

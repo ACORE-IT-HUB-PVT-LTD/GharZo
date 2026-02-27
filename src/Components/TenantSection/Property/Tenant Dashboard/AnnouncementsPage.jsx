@@ -45,7 +45,7 @@ export default function AnnouncementsPage() {
   // Fetch single announcement details
   const fetchAnnouncementDetails = async (announcementId) => {
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("usertoken");
       
       const response = await axios.get(
         `https://api.gharzoreality.com/api/announcements/${announcementId}`,
