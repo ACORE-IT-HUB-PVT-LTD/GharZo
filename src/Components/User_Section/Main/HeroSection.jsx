@@ -13,15 +13,32 @@ import { useAuth } from "../Context/AuthContext";
    Budget presets per property type
 ───────────────────────────────────────────── */
 const BUDGET_PRESETS = {
-  Buy:        ["₹5 Lac","₹10 Lac","₹20 Lac","₹30 Lac","₹40 Lac","₹50 Lac","₹60 Lac","₹75 Lac","₹1 Cr","₹1.5 Cr","₹2 Cr","₹3 Cr"],
-  Rent:       ["₹2,000","₹5,000","₹8,000","₹10,000","₹15,000","₹20,000","₹25,000","₹30,000","₹40,000","₹50,000"],
-  PG:         ["₹2,000","₹3,000","₹4,000","₹5,000","₹6,000","₹8,000","₹10,000","₹12,000","₹15,000"],
-  Plot:       ["₹5 Lac","₹10 Lac","₹15 Lac","₹25 Lac","₹30 Lac","₹40 Lac","₹50 Lac","₹75 Lac","₹1 Cr","₹2 Cr"],
-  Commercial: ["₹20,000","₹50,000","₹1 Lac","₹2 Lac","₹3 Lac","₹5 Lac","₹7 Lac","₹10 Lac"],
-  Hostel:     ["₹2,000","₹3,000","₹4,000","₹5,000","₹7,000","₹10,000","₹12,000","₹15,000"],
-  Hotel:      ["₹50,000","₹1 Lac","₹2 Lac","₹3 Lac","₹5 Lac","₹7 Lac","₹10 Lac"],
-  Banquet:    ["₹20,000","₹50,000","₹1 Lac","₹2 Lac","₹3 Lac","₹5 Lac"],
-  default:    ["₹5,000","₹10,000","₹20,000","₹30,000","₹50,000","₹75,000","₹1 Lac","₹2 Lac","₹3 Lac"],
+  Buy: ["Rs 5 Lac", "Rs 10 Lac", "Rs 20 Lac", "Rs 30 Lac", "Rs 40 Lac", "Rs 50 Lac", "Rs 75 Lac", "Rs 1 Cr", "Rs 1.5 Cr", "Rs 2 Cr", "Rs 3 Cr", "Rs 5 Cr", "Rs 7 Cr", "Rs 10 Cr"],
+  Room: ["Rs 5 Lac", "Rs 10 Lac", "Rs 15 Lac", "Rs 20 Lac", "Rs 30 Lac", "Rs 40 Lac", "Rs 50 Lac", "Rs 60 Lac", "Rs 75 Lac", "Rs 1 Cr", "Rs 1.5 Cr", "Rs 2 Cr"],
+  "Flat/Apartment": ["Rs 10 Lac", "Rs 20 Lac", "Rs 30 Lac", "Rs 40 Lac", "Rs 50 Lac", "Rs 75 Lac", "Rs 1 Cr", "Rs 1.5 Cr", "Rs 2 Cr", "Rs 3 Cr", "Rs 5 Cr", "Rs 7 Cr", "Rs 10 Cr"],
+  Villa: ["Rs 30 Lac", "Rs 50 Lac", "Rs 75 Lac", "Rs 1 Cr", "Rs 1.5 Cr", "Rs 2 Cr", "Rs 3 Cr", "Rs 5 Cr", "Rs 7 Cr", "Rs 10 Cr", "Rs 15 Cr", "Rs 20 Cr"],
+  Plot: ["Rs 10 Lac", "Rs 20 Lac", "Rs 30 Lac", "Rs 40 Lac", "Rs 50 Lac", "Rs 75 Lac", "Rs 1 Cr", "Rs 1.5 Cr", "Rs 2 Cr", "Rs 3 Cr", "Rs 5 Cr", "Rs 7 Cr", "Rs 10 Cr"],
+  Shop: ["Rs 15 Lac", "Rs 25 Lac", "Rs 40 Lac", "Rs 60 Lac", "Rs 75 Lac", "Rs 1 Cr", "Rs 1.5 Cr", "Rs 2 Cr", "Rs 3 Cr", "Rs 5 Cr", "Rs 7 Cr", "Rs 10 Cr"],
+  Office: ["Rs 20 Lac", "Rs 30 Lac", "Rs 50 Lac", "Rs 75 Lac", "Rs 1 Cr", "Rs 1.5 Cr", "Rs 2 Cr", "Rs 3 Cr", "Rs 5 Cr", "Rs 7 Cr", "Rs 10 Cr", "Rs 15 Cr"],
+  Warehouse: ["Rs 30 Lac", "Rs 50 Lac", "Rs 75 Lac", "Rs 1 Cr", "Rs 1.5 Cr", "Rs 2 Cr", "Rs 3 Cr", "Rs 5 Cr", "Rs 7 Cr", "Rs 10 Cr", "Rs 15 Cr", "Rs 20 Cr"],
+  Showroom: ["Rs 40 Lac", "Rs 60 Lac", "Rs 75 Lac", "Rs 1 Cr", "Rs 1.5 Cr", "Rs 2 Cr", "Rs 3 Cr", "Rs 5 Cr", "Rs 7 Cr", "Rs 10 Cr", "Rs 15 Cr", "Rs 20 Cr"],
+  Studio: ["Rs 10 Lac", "Rs 20 Lac", "Rs 30 Lac", "Rs 40 Lac", "Rs 50 Lac", "Rs 75 Lac", "Rs 1 Cr", "Rs 1.5 Cr", "Rs 2 Cr", "Rs 3 Cr"],
+  "Independent House": ["Rs 20 Lac", "Rs 30 Lac", "Rs 50 Lac", "Rs 75 Lac", "Rs 1 Cr", "Rs 1.5 Cr", "Rs 2 Cr", "Rs 3 Cr", "Rs 5 Cr", "Rs 7 Cr", "Rs 10 Cr", "Rs 15 Cr"],
+  "Independent Floor": ["Rs 15 Lac", "Rs 25 Lac", "Rs 40 Lac", "Rs 60 Lac", "Rs 75 Lac", "Rs 1 Cr", "Rs 1.5 Cr", "Rs 2 Cr", "Rs 3 Cr", "Rs 5 Cr", "Rs 7 Cr"],
+  "Agricultural Land": ["Rs 10 Lac", "Rs 20 Lac", "Rs 30 Lac", "Rs 50 Lac", "Rs 75 Lac", "Rs 1 Cr", "Rs 2 Cr", "Rs 3 Cr", "Rs 5 Cr", "Rs 7 Cr", "Rs 10 Cr", "Rs 15 Cr"],
+  "Builder Floor": ["Rs 20 Lac", "Rs 30 Lac", "Rs 50 Lac", "Rs 75 Lac", "Rs 1 Cr", "Rs 1.5 Cr", "Rs 2 Cr", "Rs 3 Cr", "Rs 5 Cr", "Rs 7 Cr", "Rs 10 Cr"],
+  Duplex: ["Rs 30 Lac", "Rs 50 Lac", "Rs 75 Lac", "Rs 1 Cr", "Rs 1.5 Cr", "Rs 2 Cr", "Rs 3 Cr", "Rs 5 Cr", "Rs 7 Cr", "Rs 10 Cr", "Rs 15 Cr"],
+  Penthouse: ["Rs 50 Lac", "Rs 75 Lac", "Rs 1 Cr", "Rs 1.5 Cr", "Rs 2 Cr", "Rs 3 Cr", "Rs 5 Cr", "Rs 7 Cr", "Rs 10 Cr", "Rs 15 Cr", "Rs 20 Cr", "Rs 30 Cr"],
+  "Farm House": ["Rs 40 Lac", "Rs 60 Lac", "Rs 75 Lac", "Rs 1 Cr", "Rs 1.5 Cr", "Rs 2 Cr", "Rs 3 Cr", "Rs 5 Cr", "Rs 7 Cr", "Rs 10 Cr", "Rs 15 Cr", "Rs 20 Cr"],
+  "PG/Co-living": ["Rs 15 Lac", "Rs 25 Lac", "Rs 40 Lac", "Rs 60 Lac", "Rs 75 Lac", "Rs 1 Cr", "Rs 1.5 Cr", "Rs 2 Cr", "Rs 3 Cr", "Rs 5 Cr", "Rs 7 Cr", "Rs 10 Cr"],
+  Other: ["Rs 10 Lac", "Rs 20 Lac", "Rs 30 Lac", "Rs 50 Lac", "Rs 75 Lac", "Rs 1 Cr", "Rs 1.5 Cr", "Rs 2 Cr", "Rs 3 Cr", "Rs 5 Cr", "Rs 7 Cr", "Rs 10 Cr"],
+  Rent: ["Rs 2,000", "Rs 5,000", "Rs 8,000", "Rs 10,000", "Rs 15,000", "Rs 20,000", "Rs 25,000", "Rs 30,000", "Rs 40,000", "Rs 50,000"],
+  PG: ["Rs 2,000", "Rs 3,000", "Rs 4,000", "Rs 5,000", "Rs 6,000", "Rs 8,000", "Rs 10,000", "Rs 12,000", "Rs 15,000"],
+  Commercial: ["Rs 20,000", "Rs 50,000", "Rs 1 Lac", "Rs 2 Lac", "Rs 3 Lac", "Rs 5 Lac", "Rs 7 Lac", "Rs 10 Lac"],
+  Hostel: ["Rs 2,000", "Rs 3,000", "Rs 4,000", "Rs 5,000", "Rs 7,000", "Rs 10,000", "Rs 12,000", "Rs 15,000"],
+  Hotel: ["Rs 50,000", "Rs 1 Lac", "Rs 2 Lac", "Rs 3 Lac", "Rs 5 Lac", "Rs 7 Lac", "Rs 10 Lac"],
+  Banquet: ["Rs 20,000", "Rs 50,000", "Rs 1 Lac", "Rs 2 Lac", "Rs 3 Lac", "Rs 5 Lac"],
+  default: ["Rs 10 Lac", "Rs 20 Lac", "Rs 30 Lac", "Rs 50 Lac", "Rs 75 Lac", "Rs 1 Cr", "Rs 1.5 Cr", "Rs 2 Cr", "Rs 3 Cr", "Rs 5 Cr", "Rs 7 Cr", "Rs 10 Cr"],
 };
 
 /* ─────────────────────────────────────────────
@@ -379,7 +396,25 @@ const HeroSection = () => {
   ];
 
   const propertyTypes = [
-    "Property Type","Buy","Rent","PG","Plot","Commercial","Hostel","Hotel","Banquet",
+    "Property Type",
+    "Room",
+    "Flat/Apartment",
+    "Villa",
+    "Plot",
+    "Shop",
+    "Office",
+    "Warehouse",
+    "Showroom",
+    "Studio",
+    "Independent House",
+    "Independent Floor",
+    "Agricultural Land",
+    "Builder Floor",
+    "Duplex",
+    "Penthouse",
+    "Farm House",
+    "PG/Co-living",
+    "Other",
   ];
 
   useEffect(() => {
@@ -392,12 +427,15 @@ const HeroSection = () => {
 
   const handleSearch = () => {
     const params = new URLSearchParams();
-    if (searchQuery.trim())                               params.set("q",        searchQuery.trim());
-    if (selectedType && selectedType !== "Property Type") params.set("type",     selectedType);
-    if (minPrice)                                         params.set("minPrice", minPrice);
-    if (maxPrice)                                         params.set("maxPrice", maxPrice);
-    navigate(`/?${params.toString()}`);
-    document.getElementById("properties-section")?.scrollIntoView({ behavior: "smooth" });
+    if (searchQuery.trim()) params.set("q", searchQuery.trim());
+    if (selectedType && selectedType !== "Property Type") {
+      params.set("propertyType", selectedType);
+    }
+    if (minPrice) params.set("minPrice", minPrice);
+    if (maxPrice) params.set("maxPrice", maxPrice);
+
+    const query = params.toString();
+    navigate(query ? `/properties?${query}` : "/properties");
   };
 
   return (
@@ -611,3 +649,4 @@ const HeroSection = () => {
 };
 
 export default HeroSection;
+

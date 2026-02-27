@@ -135,7 +135,6 @@ function InputField({ label, required, error, children, hint }) {
 }
 
 function TextInput({ className = "", ...props }) {
-  // Prevent negative values for number inputs
   const handleKeyDown = (e) => {
     if (props.type === "number" && e.key === "-") {
       e.preventDefault();
@@ -172,7 +171,6 @@ function SelectInput({ className = "", children, ...props }) {
   );
 }
 
-// Error styled input
 function TextInputWithError({ error, ...props }) {
   return (
     <TextInput
@@ -381,6 +379,11 @@ export default function PropertyListingForm() {
       chargeType: "None",
       customValue: "",
     },
+    // Commercial specific
+    commercialCabins: 0,
+    commercialWorkstations: 0,
+    commercialWashrooms: 0,
+    villaFloors: 1,
   });
 
   // ─── Toast Helpers ─────────────────────────────────────────────────────────
@@ -405,35 +408,69 @@ export default function PropertyListingForm() {
   const isSale = form.listingType === "Sale";
   const isResidential = form.category === "Residential";
   const isCommercial = form.category === "Commercial";
-  const isPlot = form.propertyType === "Plot";
-  const isVilla = form.propertyType === "Villa";
+  const isPlot = form.propertyType === "Plot" || form.propertyType === "Agricultural Land";
+  const isVilla = form.propertyType === "Villa" || form.propertyType === "Penthouse" || form.propertyType === "Farm House" || form.propertyType === "Duplex";
   const isOffice = form.propertyType === "Office";
   const isWarehouse = form.propertyType === "Warehouse";
   const isShop = form.propertyType === "Shop" || form.propertyType === "Showroom";
   const isUnderConstruction = form.propertyAge === "Under Construction";
   const isStudio = form.propertyType === "Studio";
   const isRoom = form.propertyType === "Room";
+  const isFlat = form.propertyType === "Flat/Apartment";
+  const isIndependentHouse = form.propertyType === "Independent House";
+  const isIndependentFloor = form.propertyType === "Independent Floor";
+  const isBuilderFloor = form.propertyType === "Builder Floor";
 
-  // PG for Sale flag
-  const isPGSale = form.listingType === "Sale" && form.propertyType === "PG/Co-living";
+  // ─── Property-Type Specific Configuration Flags ────────────────────────────
+  // BHK: Flat, Villa, Independent House, Independent Floor, Builder Floor, Penthouse, Duplex, Farm House
+  const showBHK = !isPG && !isPlot && !isStudio && !isRoom && !isOffice && !isWarehouse && !isShop && isResidential &&
+    (isFlat || isVilla || isIndependentHouse || isIndependentFloor || isBuilderFloor ||
+      form.propertyType === "Penthouse" || form.propertyType === "Duplex" || form.propertyType === "Farm House");
 
-  // Configuration visibility
-  const showBHK = isResidential && !isPlot && !isRoom && !isPG;
-  const showBalconies = isResidential && !isPlot && !isRoom && !isOffice && !isWarehouse && !isShop && !isPG;
-  const showFurnishing = !isPlot && !isPG;
-  const showBathrooms = !isPlot && !isOffice && !isPG;
-  const showAdditionalRooms = isResidential && !isPlot && !isCommercial && !isPG;
-  const showFacing = !isPlot && !isPG; // hide facing for PG
+  // Bathrooms: All residential living spaces (not plot, not pg, not warehouse)
+  const showBathrooms = !isPG && !isPlot && !isWarehouse && isResidential &&
+    (isFlat || isVilla || isStudio || isRoom || isIndependentHouse || isIndependentFloor || isBuilderFloor ||
+      form.propertyType === "Penthouse" || form.propertyType === "Duplex" || form.propertyType === "Farm House" || isShop || isOffice);
+
+  // Commercial washrooms (for office, shop, showroom, warehouse)
+  const showCommercialWashrooms = isCommercial && (isOffice || isShop || isWarehouse);
+
+  // Balconies: Residential living spaces only (not plot, pg, room, office, warehouse, shop)
+  const showBalconies = !isPG && !isPlot && !isRoom && !isOffice && !isWarehouse && !isShop && isResidential &&
+    (isFlat || isVilla || isStudio || isIndependentHouse || isIndependentFloor || isBuilderFloor ||
+      form.propertyType === "Penthouse" || form.propertyType === "Duplex" || form.propertyType === "Farm House");
+
+  // Floor: All except plot
   const showFloor = !isPlot && !isPG;
+
+  // Floors in Villa: Only for villa-type properties
+  const showVillaFloors = isVilla;
+
+  // Office Specific: Cabins & Workstations
+  const showOfficeCabinsWorkstations = isOffice;
+
+  // Furnishing: Residential non-plot, non-pg + commercial office/shop
+  const showFurnishing = !isPlot && !isPG && (isResidential || isOffice || isShop);
+
+  // Facing: All except plot when pg
+  const showFacing = !isPG;
+
+  // Floor details visibility
+  const showFloorDetails = !isPlot && !isPG;
+
+  const showAdditionalRooms = !isPG && !isPlot && isResidential &&
+    (isFlat || isVilla || isIndependentHouse || isIndependentFloor || isBuilderFloor ||
+      form.propertyType === "Penthouse" || form.propertyType === "Duplex" || form.propertyType === "Farm House");
+
   const showOwnership = isSale;
   const showBuilder = isUnderConstruction && isSale;
   const showInvestment = isSale && isResidential;
-  const showPropertyFeatures = !isPlot && !isPG;
-  const showPGSection = isPG; // Show PG Details when either listingType OR propertyType is PG/Co-living
+  const showPropertyFeatures = !isPlot && !isPG && isResidential;
+  const showPGSection = isPG;
   const showRoomStats = form.listingType === "PG/Co-living";
   const showBrokerage = isRent && form.postedBy === "agent";
   const showCommercialDetails = isCommercial && !isPlot;
-  const showVillaConfig = isVilla || (isResidential && !isPlot && !isRoom && !isStudio && !isPG);
+  const isPGSale = form.listingType === "Sale" && form.propertyType === "PG/Co-living";
 
   const pricePerSqft =
     form.price.amount && form.area.carpet
@@ -600,10 +637,8 @@ export default function PropertyListingForm() {
         if (isPlot) {
           if (!form.area?.plotArea) errs["area.plotArea"] = "Plot area is required";
         } else if (!isPG) {
-          // For PG/Co-living, area is optional on frontend
           if (!form.area?.carpet) errs["area.carpet"] = "Carpet area is required";
         }
-        // PG-specific validations
         if (isPG) {
           if (!form.pgDetails?.roomType || form.pgDetails.roomType === "") {
             errs["pgDetails.roomType"] = "Room type is required";
@@ -612,7 +647,6 @@ export default function PropertyListingForm() {
             errs["pgDetails.totalBeds"] = "Total beds is required";
           }
         }
-        // Phone validation in contact step only
       } else if (currentStep === 3) {
         if (!form.location?.address?.trim()) errs["location.address"] = "Address is required";
         if (!form.location?.city?.trim()) errs["location.city"] = "City is required";
@@ -665,7 +699,8 @@ export default function PropertyListingForm() {
   };
 
   const saveBasicDetails = async () => {
-    // Validate required PG details before saving
+    setLoading(true);
+
     if (isPG) {
       if (!form.pgDetails.roomType || form.pgDetails.roomType === "") {
         addToast("Please select a room type for PG/Co-living property", "error");
@@ -678,7 +713,7 @@ export default function PropertyListingForm() {
         return;
       }
     }
-    setLoading(true);
+
     try {
       const payload = {
         listingType: form.listingType,
@@ -720,7 +755,6 @@ export default function PropertyListingForm() {
         })(),
       };
 
-      // Add BHK/bathrooms/balconies based on property type
       if (!isPlot) {
         if (showBHK) payload.bhk = form.bhk;
         if (showBathrooms) payload.bathrooms = form.bathrooms;
@@ -731,15 +765,18 @@ export default function PropertyListingForm() {
         };
       }
 
-      // Property age - not for PG and Plot
       if (!isPG && !isPlot) {
         payload.propertyAge = form.propertyAge;
       }
 
-      // Send pgDetails when either listingType or propertyType is PG/Co-living
       if (isPG) {
-        payload.pgDetails = form.pgDetails;
+        payload.pgDetails = {
+          ...form.pgDetails,
+          totalBeds: Number(form.pgDetails.totalBeds),
+          availableBeds: Number(form.pgDetails.availableBeds),
+        };
       }
+
       if (showRoomStats) {
         payload.roomStats = form.roomStats;
       }
@@ -768,12 +805,10 @@ export default function PropertyListingForm() {
       if (!isPlot) {
         if (showFurnishing) featuresData.furnishing = form.furnishing;
         featuresData.parking = form.parking;
-        
-        // Filter out empty string values from propertyFeatures to avoid enum validation errors
+
         const cleanedPropertyFeatures = {};
         Object.keys(form.propertyFeatures).forEach(key => {
           const value = form.propertyFeatures[key];
-          // Keep non-empty strings, booleans, numbers, and arrays
           if (value !== "" && value !== null && value !== undefined) {
             cleanedPropertyFeatures[key] = value;
           }
@@ -903,7 +938,6 @@ export default function PropertyListingForm() {
   };
 
   const submitProperty = async () => {
-    // Final validation for PG properties
     if (isPG) {
       if (!form.pgDetails?.roomType || form.pgDetails.roomType === "") {
         addToast("Please select a room type before submitting", "error");
@@ -993,16 +1027,24 @@ export default function PropertyListingForm() {
     c.name?.toLowerCase().includes(citySearch.toLowerCase())
   );
 
-  // Property Types based on category and listing type
   const residentialTypes = [
-    ...(isRent ? [{ label: "Room", icon: RiHotelBedLine }] : []),
-    { label: "Flat", icon: PiBuildingApartment },
+    { label: "Room", icon: RiHotelBedLine },
+    { label: "Flat/Apartment", icon: PiBuildingApartment },
     { label: "Villa", icon: MdVilla },
     { label: "Plot", icon: BiArea },
+    { label: "Shop", icon: MdStorefront },
+    { label: "Office", icon: HiOutlineOfficeBuilding },
+    { label: "Warehouse", icon: MdOutlineWarehouse },
+    { label: "Showroom", icon: MdDoorSliding },
     { label: "Studio", icon: FiGrid },
     { label: "Independent House", icon: PiHouseLine },
+    { label: "Independent Floor", icon: LuBuilding2 },
+    { label: "Agricultural Land", icon: BiArea },
     { label: "Builder Floor", icon: LuBuilding2 },
-    ...((form.listingType === "PG/Co-living" || form.propertyType === "PG/Co-living" || isSale) ? [{ label: "PG/Co-living", icon: RiHotelBedLine }] : []),
+    { label: "Duplex", icon: BiBuildings },
+    { label: "Penthouse", icon: MdVilla },
+    { label: "Farm House", icon: MdVilla },
+    { label: "PG/Co-living", icon: RiHotelBedLine },
     { label: "Other", icon: FiBriefcase },
   ];
 
@@ -1011,14 +1053,23 @@ export default function PropertyListingForm() {
     { label: "Shop", icon: MdStorefront },
     { label: "Showroom", icon: MdDoorSliding },
     { label: "Warehouse", icon: MdOutlineWarehouse },
-    { label: "Plot", icon: BiArea },
     { label: "Studio", icon: FiGrid },
+    { label: "Independent House", icon: PiHouseLine },
+    { label: "Independent Floor", icon: LuBuilding2 },
+    { label: "Agricultural Land", icon: BiArea },
+    { label: "Builder Floor", icon: LuBuilding2 },
+    { label: "Flat/Apartment", icon: PiBuildingApartment },
+    { label: "Villa", icon: MdVilla },
+    { label: "Plot", icon: BiArea },
+    { label: "Duplex", icon: BiBuildings },
+    { label: "Penthouse", icon: MdVilla },
+    { label: "Farm House", icon: MdVilla },
+    { label: "PG/Co-living", icon: RiHotelBedLine },
     { label: "Other", icon: FiBriefcase },
   ];
 
   const propertyTypes = form.category === "Residential" ? residentialTypes : commercialTypes;
 
-  // PG Pricing Options
   const pgPricingOptions = ["Bed", "Room"];
 
   const furnishingItems = [
@@ -1058,10 +1109,8 @@ export default function PropertyListingForm() {
 
   useEffect(() => {
     if (currentStep === 0 && step0Complete) {
-      // Small delay for UX
       const t = setTimeout(() => {
         if (!propertyId) {
-          // Auto create draft
           (async () => {
             setLoading(true);
             try {
@@ -1096,31 +1145,39 @@ export default function PropertyListingForm() {
     }
   }, [form.category, form.listingType, form.propertyType, currentStep]);
 
+  // ─── Configuration Section Helper - property type ke hisaab se label ──────
+  const getConfigurationTitle = () => {
+    if (isPG) return "PG Configuration";
+    if (isPlot) return "Plot Details";
+    if (isOffice) return "Office Configuration";
+    if (isWarehouse) return "Warehouse Configuration";
+    if (isShop) return "Shop / Showroom Configuration";
+    if (isVilla) return "Villa Configuration";
+    if (isStudio) return "Studio Configuration";
+    if (isRoom) return "Room Configuration";
+    return "Configuration";
+  };
+
   // ─── Sidebar Content ───────────────────────────────────────────────────────
   const SidebarContent = () => (
     <>
       <div className="px-2 py-5 border-b border-gray-100">
-  <div className="flex items-center justify-between mb-4">
-
-    <button
-      onClick={handleWhatsApp}
-      className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2.5 rounded-xl transition-all font-semibold text-xs shadow-md hover:shadow-lg transform hover:scale-105 w-full justify-center"
-    >
-      {/* WhatsApp Icon */}
-      <FaWhatsapp size={18} className="text-white" />
-
-      List Property with WhatsApp
-    </button>
-
-    <button
-      className="lg:hidden text-gray-400 hover:text-gray-600"
-      onClick={() => setSidebarOpen(false)}
-    >
-      <FiX size={20} />
-    </button>
-
-  </div>
-</div>
+        <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={handleWhatsApp}
+            className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2.5 rounded-xl transition-all font-semibold text-xs shadow-md hover:shadow-lg transform hover:scale-105 w-full justify-center"
+          >
+            <FaWhatsapp size={18} className="text-white" />
+            List Property with WhatsApp
+          </button>
+          <button
+            className="lg:hidden text-gray-400 hover:text-gray-600"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <FiX size={20} />
+          </button>
+        </div>
+      </div>
 
       <div className="px-6 py-4 border-b border-gray-100">
         <h2 className="font-bold text-gray-900 text-base leading-tight">Post your property</h2>
@@ -1236,7 +1293,7 @@ export default function PropertyListingForm() {
 
           <div className="flex-1 flex flex-col overflow-hidden min-w-0">
 
-            {/* Top Bar - Back + Save Continue */}
+            {/* Top Bar */}
             <div className="flex items-center justify-between px-4 sm:px-6 py-3 bg-white border-b border-gray-100 sticky top-0 z-30">
               <div className="flex items-center gap-3">
                 <button className="lg:hidden w-9 h-9 flex items-center justify-center rounded-xl bg-gray-50 text-gray-600 hover:bg-violet-50 hover:text-violet-600 transition-colors" onClick={() => setSidebarOpen(true)}>
@@ -1350,7 +1407,7 @@ export default function PropertyListingForm() {
                           <p className="text-sm text-violet-600 mt-1">Property type is automatically set to PG/Co-living</p>
                         </div>
                       ) : (
-                      <InputField label="Property Type" error={errors.propertyType}>
+                        <InputField label="Property Type" error={errors.propertyType}>
                           <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 sm:gap-2.5 mt-1">
                             {propertyTypes.map(({ label, icon }) => (
                               <SelectCard
@@ -1362,7 +1419,7 @@ export default function PropertyListingForm() {
                               />
                             ))}
                           </div>
-                      </InputField>
+                        </InputField>
                       )}
 
                       {loading && (
@@ -1437,56 +1494,147 @@ export default function PropertyListingForm() {
                         </div>
                       </div>
 
-                      {/* Configuration */}
+                      {/* ── Configuration Section - Property Type ke Hisaab se ── */}
                       <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
                         <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                          <FiHome size={16} className="text-violet-500" /> Configuration
+                          <FiHome size={16} className="text-violet-500" /> {getConfigurationTitle()}
                         </h3>
-                        <div className="flex flex-wrap gap-4 sm:gap-6">
-                          {/* BHK - show for residential non-plot, non-pg, non-room */}
-                          {showBHK && (
-                            <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
-                          )}
-                          {/* Bathrooms - all except plot and office */}
-                          {showBathrooms && !isPlot && (
+
+                        {/* Plot / Agricultural Land - Koi configuration nahi, sirf area */}
+                        {isPlot && (
+                          <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                            <BiArea size={20} className="text-amber-600 flex-shrink-0" />
+                            <p className="text-sm text-amber-700">Plot area details are captured in the Area section below.</p>
+                          </div>
+                        )}
+
+                        {/* PG/Co-living */}
+                        {isPG && (
+                          <div className="flex flex-wrap gap-4 sm:gap-6">
+                            <CounterBox label="Total Beds" value={form.pgDetails.totalBeds} onChange={(v) => updateForm("pgDetails.totalBeds", v)} icon={MdBed} min={1} max={100} />
+                            {errors["pgDetails.totalBeds"] && (
+                              <p className="text-xs text-red-500 w-full mt-1">{errors["pgDetails.totalBeds"]}</p>
+                            )}
+                            <CounterBox label="Available Beds" value={form.pgDetails.availableBeds} onChange={(v) => updateForm("pgDetails.availableBeds", v)} icon={FiUser} min={0} max={100} />
+                          </div>
+                        )}
+
+                        {/* Room - Bathrooms + Floor only (no BHK, no Balconies) */}
+                        {isRoom && !isPG && (
+                          <div className="flex flex-wrap gap-4 sm:gap-6">
                             <CounterBox label="Bathrooms" value={form.bathrooms} onChange={(v) => updateForm("bathrooms", v)} icon={LuBath} min={1} max={10} />
-                          )}
-                          {/* Balconies - residential non-plot, non-pg, non-room, non-commercial */}
-                          {showBalconies && (
+                            <CounterBox label="Current Floor" value={form.floor.current} onChange={(v) => updateForm("floor.current", v)} icon={FiLayers} min={0} max={100} />
+                            <CounterBox label="Total Floors" value={form.floor.total} onChange={(v) => updateForm("floor.total", v)} icon={LuBuilding2} min={0} max={100} />
+                          </div>
+                        )}
+
+                        {/* Studio - Bathrooms + Balconies + Floor (no BHK) */}
+                        {isStudio && !isPG && (
+                          <div className="flex flex-wrap gap-4 sm:gap-6">
+                            <CounterBox label="Bathrooms" value={form.bathrooms} onChange={(v) => updateForm("bathrooms", v)} icon={LuBath} min={1} max={10} />
                             <CounterBox label="Balconies" value={form.balconies} onChange={(v) => updateForm("balconies", v)} icon={MdBalcony} min={0} max={10} />
-                          )}
-                          {/* PG specific */}
-                          {isPG && (
-                            <>
-                              <CounterBox label="Total Beds" value={form.pgDetails.totalBeds} onChange={(v) => updateForm("pgDetails.totalBeds", v)} icon={MdBed} min={1} max={100} />
-                              {errors["pgDetails.totalBeds"] && (
-                                <p className="text-xs text-red-500 w-full mt-1">{errors["pgDetails.totalBeds"]}</p>
-                              )}
-                              <CounterBox label="Available Beds" value={form.pgDetails.availableBeds} onChange={(v) => updateForm("pgDetails.availableBeds", v)} icon={FiUser} min={0} max={100} />
-                            </>
-                          )}
-                          {/* Floor */}
-                          {showFloor && (
-                            <>
+                            <CounterBox label="Current Floor" value={form.floor.current} onChange={(v) => updateForm("floor.current", v)} icon={FiLayers} min={0} max={100} />
+                            <CounterBox label="Total Floors" value={form.floor.total} onChange={(v) => updateForm("floor.total", v)} icon={LuBuilding2} min={0} max={100} />
+                          </div>
+                        )}
+
+                        {/* Flat/Apartment - BHK + Bathrooms + Balconies + Floor */}
+                        {isFlat && !isPG && (
+                          <div className="flex flex-wrap gap-4 sm:gap-6">
+                            <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                            <CounterBox label="Bathrooms" value={form.bathrooms} onChange={(v) => updateForm("bathrooms", v)} icon={LuBath} min={1} max={10} />
+                            <CounterBox label="Balconies" value={form.balconies} onChange={(v) => updateForm("balconies", v)} icon={MdBalcony} min={0} max={10} />
+                            <CounterBox label="Current Floor" value={form.floor.current} onChange={(v) => updateForm("floor.current", v)} icon={FiLayers} min={0} max={100} />
+                            <CounterBox label="Total Floors" value={form.floor.total} onChange={(v) => updateForm("floor.total", v)} icon={LuBuilding2} min={0} max={100} />
+                          </div>
+                        )}
+
+                        {/* Villa / Penthouse / Duplex / Farm House - BHK + Bathrooms + Balconies + Floors in Villa + Floor */}
+                        {isVilla && !isPG && (
+                          <div className="flex flex-wrap gap-4 sm:gap-6">
+                            <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                            <CounterBox label="Bathrooms" value={form.bathrooms} onChange={(v) => updateForm("bathrooms", v)} icon={LuBath} min={1} max={10} />
+                            <CounterBox label="Balconies" value={form.balconies} onChange={(v) => updateForm("balconies", v)} icon={MdBalcony} min={0} max={10} />
+                            <CounterBox label="Floors in Villa" value={form.villaFloors} onChange={(v) => updateForm("villaFloors", v)} icon={LuBuilding2} min={1} max={5} />
+                            <CounterBox label="Current Floor" value={form.floor.current} onChange={(v) => updateForm("floor.current", v)} icon={FiLayers} min={0} max={100} />
+                            <CounterBox label="Total Floors" value={form.floor.total} onChange={(v) => updateForm("floor.total", v)} icon={LuBuilding2} min={0} max={100} />
+                          </div>
+                        )}
+
+                        {/* Independent House - BHK + Bathrooms + Balconies + Floors */}
+                        {isIndependentHouse && !isPG && (
+                          <div className="flex flex-wrap gap-4 sm:gap-6">
+                            <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                            <CounterBox label="Bathrooms" value={form.bathrooms} onChange={(v) => updateForm("bathrooms", v)} icon={LuBath} min={1} max={10} />
+                            <CounterBox label="Balconies" value={form.balconies} onChange={(v) => updateForm("balconies", v)} icon={MdBalcony} min={0} max={10} />
+                            <CounterBox label="Total Floors" value={form.floor.total} onChange={(v) => updateForm("floor.total", v)} icon={LuBuilding2} min={0} max={20} />
+                          </div>
+                        )}
+
+                        {/* Independent Floor / Builder Floor - BHK + Bathrooms + Balconies + Floor */}
+                        {(isIndependentFloor || isBuilderFloor) && !isPG && (
+                          <div className="flex flex-wrap gap-4 sm:gap-6">
+                            <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                            <CounterBox label="Bathrooms" value={form.bathrooms} onChange={(v) => updateForm("bathrooms", v)} icon={LuBath} min={1} max={10} />
+                            <CounterBox label="Balconies" value={form.balconies} onChange={(v) => updateForm("balconies", v)} icon={MdBalcony} min={0} max={10} />
+                            <CounterBox label="Current Floor" value={form.floor.current} onChange={(v) => updateForm("floor.current", v)} icon={FiLayers} min={0} max={100} />
+                            <CounterBox label="Total Floors" value={form.floor.total} onChange={(v) => updateForm("floor.total", v)} icon={LuBuilding2} min={0} max={100} />
+                          </div>
+                        )}
+
+                        {/* Office - Floor + Cabins + Workstations + Washrooms */}
+                        {isOffice && (
+                          <div className="space-y-4">
+                            <div className="flex flex-wrap gap-4 sm:gap-6">
                               <CounterBox label="Current Floor" value={form.floor.current} onChange={(v) => updateForm("floor.current", v)} icon={FiLayers} min={0} max={100} />
                               <CounterBox label="Total Floors" value={form.floor.total} onChange={(v) => updateForm("floor.total", v)} icon={LuBuilding2} min={0} max={100} />
-                            </>
-                          )}
-                          {/* Office specific */}
-                          {isOffice && (
-                            <>
-                              <CounterBox label="Cabins" value={form.commercialCabins || 0} onChange={(v) => updateForm("commercialCabins", v)} icon={FiBriefcase} min={0} max={50} />
-                              <CounterBox label="Workstations" value={form.commercialWorkstations || 0} onChange={(v) => updateForm("commercialWorkstations", v)} icon={FiGrid} min={0} max={200} />
-                            </>
-                          )}
-                          {/* Villa specific - rooms */}
-                          {isVilla && (
-                            <CounterBox label="Floors in Villa" value={form.villaFloors || 1} onChange={(v) => updateForm("villaFloors", v)} icon={LuBuilding2} min={1} max={5} />
-                          )}
-                        </div>
+                              <CounterBox label="Cabins" value={form.commercialCabins} onChange={(v) => updateForm("commercialCabins", v)} icon={FiBriefcase} min={0} max={50} />
+                              <CounterBox label="Workstations" value={form.commercialWorkstations} onChange={(v) => updateForm("commercialWorkstations", v)} icon={FiGrid} min={0} max={200} />
+                              <CounterBox label="Washrooms" value={form.commercialWashrooms} onChange={(v) => updateForm("commercialWashrooms", v)} icon={LuBath} min={0} max={20} />
+                            </div>
+                            <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
+                              <p className="text-xs text-blue-700 flex items-center gap-1.5">
+                                <FiInfo size={12} /> Cabins = Enclosed private rooms. Workstations = Open seating area.
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Shop / Showroom - Floor + Washrooms */}
+                        {isShop && (
+                          <div className="flex flex-wrap gap-4 sm:gap-6">
+                            <CounterBox label="Current Floor" value={form.floor.current} onChange={(v) => updateForm("floor.current", v)} icon={FiLayers} min={0} max={100} />
+                            <CounterBox label="Total Floors" value={form.floor.total} onChange={(v) => updateForm("floor.total", v)} icon={LuBuilding2} min={0} max={100} />
+                            <CounterBox label="Washrooms" value={form.commercialWashrooms} onChange={(v) => updateForm("commercialWashrooms", v)} icon={LuBath} min={0} max={10} />
+                          </div>
+                        )}
+
+                        {/* Warehouse - Floor only */}
+                        {isWarehouse && (
+                          <div className="space-y-4">
+                            <div className="flex flex-wrap gap-4 sm:gap-6">
+                              <CounterBox label="Current Floor" value={form.floor.current} onChange={(v) => updateForm("floor.current", v)} icon={FiLayers} min={0} max={100} />
+                              <CounterBox label="Total Floors" value={form.floor.total} onChange={(v) => updateForm("floor.total", v)} icon={LuBuilding2} min={0} max={100} />
+                              <CounterBox label="Washrooms" value={form.commercialWashrooms} onChange={(v) => updateForm("commercialWashrooms", v)} icon={LuBath} min={0} max={10} />
+                            </div>
+                            <div className="bg-orange-50 border border-orange-100 rounded-xl p-3">
+                              <p className="text-xs text-orange-700 flex items-center gap-1.5">
+                                <FiInfo size={12} /> For warehouse/godown: specify ceiling height & road width in Features section.
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Other property type - generic configuration */}
+                        {form.propertyType === "Other" && !isPG && (
+                          <div className="flex flex-wrap gap-4 sm:gap-6">
+                            <CounterBox label="Current Floor" value={form.floor.current} onChange={(v) => updateForm("floor.current", v)} icon={FiLayers} min={0} max={100} />
+                            <CounterBox label="Total Floors" value={form.floor.total} onChange={(v) => updateForm("floor.total", v)} icon={LuBuilding2} min={0} max={100} />
+                          </div>
+                        )}
                       </div>
 
-                      {/* Area */}
+                      {/* Area Section */}
                       <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
                         <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
                           <BiArea size={16} className="text-violet-500" /> Area Details
@@ -1506,10 +1654,14 @@ export default function PropertyListingForm() {
                               />
                             </InputField>
                           ) : (
-                            <InputField label="Carpet Area" required error={errors["area.carpet"]}>
+                            <InputField
+                              label={isWarehouse ? "Warehouse Area" : isOffice ? "Office Area" : isShop ? "Shop Area" : "Carpet Area"}
+                              required
+                              error={errors["area.carpet"]}
+                            >
                               <input
                                 type="number"
-                                placeholder="e.g. 1200"
+                                placeholder={isWarehouse ? "e.g. 5000" : isOffice ? "e.g. 1500" : "e.g. 1200"}
                                 value={form.area.carpet}
                                 onChange={(e) => updateForm("area.carpet", e.target.value)}
                                 min={0}
@@ -1539,7 +1691,7 @@ export default function PropertyListingForm() {
                         </div>
                       </div>
 
-                      {/* Pricing */}
+                      {/* Pricing Section */}
                       <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
                         <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
                           <FiDollarSign size={16} className="text-violet-500" /> Pricing
@@ -1851,22 +2003,24 @@ export default function PropertyListingForm() {
                             <CounterBox label="Open Parking" value={form.parking.open} onChange={(v) => updateForm("parking.open", v)} icon={TbParking} min={0} max={10} />
                           </div>
                         )}
-                        <div>
-                          <p className="text-sm font-semibold text-gray-700 mb-2">Facing Direction</p>
-                          <div className="grid grid-cols-4 gap-2">
-                            {["North", "South", "East", "West", "North-East", "North-West", "South-East", "South-West"].map((dir) => (
-                              <button
-                                key={dir}
-                                type="button"
-                                onClick={() => updateForm("facing", dir)}
-                                className={`py-2 rounded-xl border-2 text-xs font-medium transition-all
-                                  ${form.facing === dir ? "border-violet-500 bg-violet-50 text-violet-700" : "border-gray-200 text-gray-600 hover:border-violet-300"}`}
-                              >
-                                {dir}
-                              </button>
-                            ))}
+                        {showFacing && (
+                          <div>
+                            <p className="text-sm font-semibold text-gray-700 mb-2">Facing Direction</p>
+                            <div className="grid grid-cols-4 gap-2">
+                              {["North", "South", "East", "West", "North-East", "North-West", "South-East", "South-West"].map((dir) => (
+                                <button
+                                  key={dir}
+                                  type="button"
+                                  onClick={() => updateForm("facing", dir)}
+                                  className={`py-2 rounded-xl border-2 text-xs font-medium transition-all
+                                    ${form.facing === dir ? "border-violet-500 bg-violet-50 text-violet-700" : "border-gray-200 text-gray-600 hover:border-violet-300"}`}
+                                >
+                                  {dir}
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
 
                       <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
@@ -2497,6 +2651,10 @@ export default function PropertyListingForm() {
                           <InfoItem label="Title" value={form.title} />
                           {showBHK && <InfoItem label="BHK" value={`${form.bhk} BHK`} />}
                           {showBathrooms && !isPlot && <InfoItem label="Bathrooms" value={form.bathrooms} />}
+                          {isOffice && form.commercialCabins > 0 && <InfoItem label="Cabins" value={form.commercialCabins} />}
+                          {isOffice && form.commercialWorkstations > 0 && <InfoItem label="Workstations" value={form.commercialWorkstations} />}
+                          {(isOffice || isShop || isWarehouse) && form.commercialWashrooms > 0 && <InfoItem label="Washrooms" value={form.commercialWashrooms} />}
+                          {isVilla && <InfoItem label="Floors in Villa" value={form.villaFloors} />}
                           <InfoItem label={isPlot ? "Plot Area" : "Carpet Area"} value={`${isPlot ? form.area.plotArea : form.area.carpet} ${form.area.unit}`} />
                           <InfoItem label="Price" value={`₹${Number(form.price.amount || 0).toLocaleString("en-IN")}${isPG ? ` per ${form.price.per}` : ""}`} />
                           {form.propertyAge && <InfoItem label="Property Age" value={form.propertyAge} />}

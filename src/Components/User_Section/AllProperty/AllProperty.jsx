@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { BedDouble, MapPin, Home, RotateCcw, ArrowLeft, ChevronDown, X, Search } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import gsap from "gsap";
 import { motion } from "framer-motion";
 import baseurl from "../../../../BaseUrl";
@@ -304,6 +304,7 @@ function FilterBar({
 // ─── Main AllProperty ─────────────────────────────────────────────────────────
 function AllProperty() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -324,6 +325,31 @@ function AllProperty() {
   const [maxBudget, setMaxBudget] = useState("");
   const [bhk, setBhk] = useState([]);              // ["1","2","3"]
   const [selectedCity, setSelectedCity] = useState(""); // exact city string from API
+
+  // Apply URL query filters (used by HeroSection search redirect)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const q = params.get("q") || "";
+    const type = params.get("propertyType") || params.get("type") || "";
+    const min = params.get("minPrice") || "";
+    const max = params.get("maxPrice") || "";
+    const listingType = params.get("listingType") || "";
+    const city = params.get("city") || "";
+
+    setSearchTerm(q);
+    setPropertyType(type);
+    setMinBudget(min);
+    setMaxBudget(max);
+    setSelectedCity(city);
+    setPurpose(
+      listingType === "Buy"
+        ? "Sale"
+        : listingType === "Rent" || listingType === "Sale"
+        ? listingType
+        : ""
+    );
+    setCurrentPage(1);
+  }, [location.search]);
 
   // Debounce search
   useEffect(() => {
