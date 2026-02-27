@@ -414,6 +414,9 @@ export default function PropertyListingForm() {
   const isStudio = form.propertyType === "Studio";
   const isRoom = form.propertyType === "Room";
 
+  // PG for Sale flag
+  const isPGSale = form.listingType === "Sale" && form.propertyType === "PG/Co-living";
+
   // Configuration visibility
   const showBHK = isResidential && !isPlot && !isRoom && !isPG;
   const showBalconies = isResidential && !isPlot && !isRoom && !isOffice && !isWarehouse && !isShop && !isPG;
@@ -426,7 +429,7 @@ export default function PropertyListingForm() {
   const showBuilder = isUnderConstruction && isSale;
   const showInvestment = isSale && isResidential;
   const showPropertyFeatures = !isPlot && !isPG;
-  const showPGSection = form.listingType === "PG/Co-living"; // Show PG Details when listing type is PG/Co-living
+  const showPGSection = isPG; // Show PG Details when either listingType OR propertyType is PG/Co-living
   const showRoomStats = form.listingType === "PG/Co-living";
   const showBrokerage = isRent && form.postedBy === "agent";
   const showCommercialDetails = isCommercial && !isPlot;
@@ -600,7 +603,15 @@ export default function PropertyListingForm() {
           // For PG/Co-living, area is optional on frontend
           if (!form.area?.carpet) errs["area.carpet"] = "Carpet area is required";
         }
-        // PG-specific validations - keeping optional as per backend schema
+        // PG-specific validations
+        if (isPG) {
+          if (!form.pgDetails?.roomType || form.pgDetails.roomType === "") {
+            errs["pgDetails.roomType"] = "Room type is required";
+          }
+          if (!form.pgDetails?.totalBeds || form.pgDetails.totalBeds < 1) {
+            errs["pgDetails.totalBeds"] = "Total beds is required";
+          }
+        }
         // Phone validation in contact step only
       } else if (currentStep === 3) {
         if (!form.location?.address?.trim()) errs["location.address"] = "Address is required";
@@ -654,9 +665,24 @@ export default function PropertyListingForm() {
   };
 
   const saveBasicDetails = async () => {
+    // Validate required PG details before saving
+    if (isPG) {
+      if (!form.pgDetails.roomType || form.pgDetails.roomType === "") {
+        addToast("Please select a room type for PG/Co-living property", "error");
+        setLoading(false);
+        return;
+      }
+      if (!form.pgDetails.totalBeds || form.pgDetails.totalBeds < 1) {
+        addToast("Please specify total beds for PG/Co-living property", "error");
+        setLoading(false);
+        return;
+      }
+    }
     setLoading(true);
     try {
       const payload = {
+        listingType: form.listingType,
+        category: form.category,
         title: form.title,
         description: form.description,
         availableFrom: form.availableFrom,
@@ -710,6 +736,7 @@ export default function PropertyListingForm() {
         payload.propertyAge = form.propertyAge;
       }
 
+      // Send pgDetails when either listingType or propertyType is PG/Co-living
       if (isPG) {
         payload.pgDetails = form.pgDetails;
       }
@@ -876,6 +903,19 @@ export default function PropertyListingForm() {
   };
 
   const submitProperty = async () => {
+    // Final validation for PG properties
+    if (isPG) {
+      if (!form.pgDetails?.roomType || form.pgDetails.roomType === "") {
+        addToast("Please select a room type before submitting", "error");
+        setLoading(false);
+        return;
+      }
+      if (!form.pgDetails?.totalBeds || form.pgDetails.totalBeds < 1) {
+        addToast("Please specify total beds before submitting", "error");
+        setLoading(false);
+        return;
+      }
+    }
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/${propertyId}/submit`, {
@@ -962,7 +1002,7 @@ export default function PropertyListingForm() {
     { label: "Studio", icon: FiGrid },
     { label: "Independent House", icon: PiHouseLine },
     { label: "Builder Floor", icon: LuBuilding2 },
-    ...((isPG || isSale) ? [{ label: "PG/Co-living", icon: RiHotelBedLine }] : []),
+    ...((form.listingType === "PG/Co-living" || form.propertyType === "PG/Co-living" || isSale) ? [{ label: "PG/Co-living", icon: RiHotelBedLine }] : []),
     { label: "Other", icon: FiBriefcase },
   ];
 
@@ -1522,7 +1562,7 @@ export default function PropertyListingForm() {
                             />
                           </InputField>
 
-                          {isPG && (
+                          {isPG && !isPGSale && (
                             <InputField label="Price Per">
                               <SelectInput value={form.price.per} onChange={(e) => updateForm("price.per", e.target.value)}>
                                 {pgPricingOptions.map((p) => <option key={p} value={p}>{p}</option>)}
@@ -1585,7 +1625,7 @@ export default function PropertyListingForm() {
                             </>
                           )}
 
-                          {showInvestment && (
+                          {showInvestment && !isPGSale && (
                             <>
                               <InputField label="Expected Rental (₹/month)">
                                 <TextInput
@@ -1607,7 +1647,7 @@ export default function PropertyListingForm() {
                           )}
                         </div>
 
-                        {isSale && (
+                        {isSale && !isPGSale && (
                           <div className="mt-3 flex items-center gap-3">
                             <label className="toggle-switch">
                               <input
