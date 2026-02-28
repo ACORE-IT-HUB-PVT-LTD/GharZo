@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Search, Star, MapPin, Building2, Calendar, TrendingUp, Award,
   Phone, Mail, ChevronLeft, ChevronRight, X, CheckCircle, Clock,
@@ -1439,6 +1440,9 @@ function Skeleton() {
 
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 export default function Projects() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const [projects,   setProjects]   = useState([]);
   const [featured,   setFeatured]   = useState([]);
   const [trending,   setTrending]   = useState([]);
@@ -1491,6 +1495,31 @@ export default function Projects() {
     const t = setTimeout(fetchProjects, 350);
     return () => clearTimeout(t);
   }, [filters]);
+
+  useEffect(() => {
+    const stateProject = location.state?.openProject;
+    if (stateProject && !detailP) {
+      setDetailP(stateProject);
+      navigate(location.pathname, { replace: true, state: null });
+      return;
+    }
+
+    const openProjectId = location.state?.openProjectId;
+    const openProjectSlug = location.state?.openProjectSlug;
+    if (detailP || (!openProjectId && !openProjectSlug)) return;
+
+    const allProjects = [...projects, ...featured, ...trending];
+    const matchedProject = allProjects.find(
+      (project) =>
+        (openProjectId && project?._id === openProjectId) ||
+        (openProjectSlug && project?.slug === openProjectSlug)
+    );
+
+    if (matchedProject) {
+      setDetailP(matchedProject);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.state, location.pathname, navigate, detailP, projects, featured, trending]);
 
   const displayList = tab === "featured" ? featured : tab === "trending" ? trending : projects;
   const isLoading   = tab === "featured" ? loadFeat  : tab === "trending" ? loadTrend  : loading;

@@ -48,6 +48,7 @@ import PlotsHome from "./PlotsHome.jsx";
 import DownloadAppSection from "./DownloadAppSection.jsx";
 import HeroSection from "./HeroSection.jsx";
 import AdsCarousel from "./AdsCarousel.jsx";
+import ProjectsHome from "./ProjectsHome.jsx";
 
 function MainPage() { 
   const navigate = useNavigate();
@@ -448,6 +449,7 @@ function MainPage() {
 
       <RentalPropety />
       <PlotsHome />
+      <ProjectsHome />
       <ExploreCities />
 
       <section className="py-16 px-6 bg-gradient-to-br from-gray-50 to-blue-50">
