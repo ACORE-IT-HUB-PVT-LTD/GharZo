@@ -7,6 +7,7 @@ import AllProperty from "../Components/User_Section/AllProperty/AllProperty";
 import PropertyDetails from "../Components/User_Section/AllProperty/PropertyDetails";
 import PG from "../Components/User_Section/PG/PG";
 import Reel from "../Components/User_Section/Reels/Reel";
+import ServiceReels from "../Components/User_Section/Reels/ServiceReels";
 import PgDetails from "../Components/User_Section/PG/PgDetails";
 import RentProperty from "../Components/User_Section/RentProperty/RentProperty";
 import SellProperty from "../Components/User_Section/SellProperty/SellProperty";
@@ -52,19 +53,19 @@ import Projects from "../Components/User_Section/Main/Projects.jsx";
 const PublicLayout = () => {
   const location = useLocation();
 
-  // /reels pe Navbar aur Footer dono hide
-  const isReelsPage = location.pathname === "/reels";
+  // /reels and /service-reels pe Navbar aur Footer dono hide
+  const isReelsPage = location.pathname === "/reels" || location.pathname === "/service-reels";
 
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Navbar sirf tab show hoga jab /reels nahi hai */}
+      {/* Navbar sirf tab show hoga jab /reels ya /service-reels nahi hai */}
       {!isReelsPage && <Navbar />}
 
       {/* <AdsPopup /> */}
 
       {/* 
         pt-20 sirf tab lagega jab Navbar dikha raha ho.
-        /reels pe Navbar nahi hai toh top padding 0 rakho taaki
+        /reels ya /service-reels pe Navbar nahi hai toh top padding 0 rakho taaki
         ReelsPage apna full-screen layout khud manage kar sake.
       */}
       <div className={`flex-grow ${isReelsPage ? "pt-0" : "pt-20"}`}>
@@ -81,6 +82,7 @@ const PublicLayout = () => {
           <Route path="/properties" element={<AllProperty />} />
           <Route path="/property/:id" element={<PropertyDetails />} />
           <Route path="/reels" element={<Reel />} />
+          <Route path="/service-reels" element={<ServiceReels />} />
           <Route path="/pg" element={<PG />} />
           <Route path="/pg/:id" element={<PgDetails />} />
           <Route path="/contact" element={<Contact />} />
@@ -118,7 +120,7 @@ const PublicLayout = () => {
         </Routes>
       </div>
 
-      {/* Footer bhi /reels pe hide */}
+      {/* Footer bhi /reels aur /service-reels pe hide */}
       {!isReelsPage && <Footer />}
     </div>
   );

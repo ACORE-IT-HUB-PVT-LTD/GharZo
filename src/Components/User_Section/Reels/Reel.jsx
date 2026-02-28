@@ -5,10 +5,11 @@ import { useNavigate } from "react-router-dom";
    CONSTANTS
    ────────────────────────────────────────────── */
 const BASE = "https://api.gharzoreality.com/api";
+const SERVICE_REELS_BASE = "https://api.gharzoreality.com/api/service-reels";
 const CATEGORIES = [
-  { key: "latest", label: "Latest" },
-  { key: "popular", label: "Popular" },
-  { key: "trending", label: "Trending" },
+  { key: "property", label: "Property" },
+  { key: "services", label: "Services" },
+  { key: "hotel_banquet", label: "Hotels & Banquets" },
 ];
 
 /* ──────────────────────────────────────────────
@@ -75,7 +76,7 @@ function ReelsPage() {
   const [activeIndex, setActiveIndex]       = useState(0);
   const [paused, setPaused]                 = useState(false);
   const [isMuted, setIsMuted]               = useState(false);
-  const [category, setCategory]             = useState("latest");
+  const [category, setCategory]             = useState("property");
   const [showCommentsFor, setShowCommentsFor] = useState(null);
   const [showLandlordModal, setShowLandlordModal] = useState(null);
   const [showSearch, setShowSearch]         = useState(false);
@@ -89,21 +90,16 @@ function ReelsPage() {
       const token = getToken();
       if (!token) { setReels([]); return; }
 
-      const res = await fetch(
-        `${BASE}/reels/feed?type=${category}&city=Indore&page=1&limit=10`,
-        { headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` } }
-      );
-      if (!res.ok) throw new Error("Feed fetch failed");
-      const json = await res.json();
+      let url = "";
+      let transformFn = null;
 
-      const active = (json.data || []).filter(
-        (r) => r.status === "Active" || r.status === "active"
-      );
-
-      setReels(
-        active.map((item, i) => ({
+      if (category === "property") {
+        // Property Reels - existing API
+        url = `${BASE}/reels/feed?type=latest&city=Indore&page=1&limit=20`;
+        transformFn = (item, i) => ({
           id:            item._id,
-          propertyId:    item.propertyId,           // full nested object
+          propertyId:    item.propertyId,
+          entityType:    "Property",
           src:           item.videoUrl,
           poster:        item.thumbnail?.url || "",
           caption:       item.caption || "",
@@ -119,8 +115,83 @@ function ReelsPage() {
           isBoosted:     !!item.isBoosted,
           views:         item.views || 0,
           uploadedBy:    item.uploadedBy,
-        }))
+        });
+      } else if (category === "services") {
+        // Services Reels
+        url = `${SERVICE_REELS_BASE}?entityType=Service&page=1&limit=20`;
+        transformFn = (item, i) => ({
+          id:            item._id,
+          propertyId:    null,
+          entityType:    "Service",
+          entityId:      item.entityId,
+          src:           item.video?.url || "",
+          poster:        item.thumbnail?.url || "",
+          caption:       item.title || "",
+          tags:          item.tags || [],
+          username:      item.entityId?.serviceName || "Service Provider",
+          avatar:        `https://i.pravatar.cc/100?img=${(i + 12) % 70}`,
+          likes:         item.stats?.likes || 0,
+          comments:      0,
+          liked:         false,
+          saved:         false,
+          isBoosted:     false,
+          views:         item.stats?.views || 0,
+        });
+      } else if (category === "hotel_banquet") {
+        // Hotel & Banquet Reels - fetch both and combine
+        const [hotelRes, banquetRes] = await Promise.all([
+          fetch(`${SERVICE_REELS_BASE}?entityType=Hotel&page=1&limit=20`, {
+            headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          }),
+          fetch(`${SERVICE_REELS_BASE}?entityType=BanquetHall&page=1&limit=20`, {
+            headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          }),
+        ]);
+
+        const hotelJson = await hotelRes.json();
+        const banquetJson = await banquetRes.json();
+
+        const allData = [
+          ...(hotelJson.data || []),
+          ...(banquetJson.data || []),
+        ];
+
+        const active = allData.filter((r) => r.status === "Active" || r.status === "active");
+        
+        setReels(
+          active.map((item, i) => ({
+            id:            item._id,
+            propertyId:    null,
+            entityType:    item.entityType,
+            entityId:      item.entityId,
+            src:           item.video?.url || "",
+            poster:        item.thumbnail?.url || "",
+            caption:       item.title || "",
+            tags:          item.tags || [],
+            username:      item.entityId?.name || (item.entityType === "Hotel" ? "Hotel" : "Banquet Hall"),
+            avatar:        `https://i.pravatar.cc/100?img=${(i + 12) % 70}`,
+            likes:         item.stats?.likes || 0,
+            comments:      0,
+            liked:         false,
+            saved:         false,
+            isBoosted:     false,
+            views:         item.stats?.views || 0,
+          }))
+        );
+        return;
+      }
+
+      const res = await fetch(url, {
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Feed fetch failed");
+      const json = await res.json();
+
+      const active = (json.data || []).filter(
+        (r) => r.status === "Active" || r.status === "active"
       );
+
+      setReels(active.map(transformFn));
     } catch (e) {
       console.error(e);
       setReels([]);
@@ -382,6 +453,17 @@ function ReelsPage() {
                   </div>
                 )}
 
+                {/* ── Entity Type badge ── */}
+                {reel.entityType && reel.entityType !== "Property" && (
+                  <div className={`absolute top-3 ${reel.isBoosted ? 'left-20' : 'left-3'} z-10`}>
+                    <span className="inline-flex items-center gap-1 bg-pink-500/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
+                      {reel.entityType === "Service" && "🔧 Service"}
+                      {reel.entityType === "Hotel" && "🏨 Hotel"}
+                      {reel.entityType === "BanquetHall" && "🎉 Banquet"}
+                    </span>
+                  </div>
+                )}
+
                 {/* ── Bottom-left info: username row + caption + tags ── */}
                 <div className="absolute left-4 bottom-20 pr-14 z-5 space-y-1.5">
 
@@ -458,16 +540,38 @@ function ReelsPage() {
                     )}
                   />
 
-                  {/* View Property (house icon) */}
+                  {/* View Details based on entity type */}
                   <ActionBtn
-                    label="View Property"
+                    label={reel.entityType === "Property" ? "Property" : reel.entityType === "Service" ? "Service" : "Details"}
                     onClick={() => {
-                      if (reel.propertyId?._id) {
-                        navigate(`/property/${reel.propertyId._id}`);
-                      } else if (reel.propertyId && typeof reel.propertyId === 'string') {
-                        navigate(`/property/${reel.propertyId}`);
+                      if (reel.entityType === "Property") {
+                        if (reel.propertyId?._id) {
+                          navigate(`/property/${reel.propertyId._id}`);
+                        } else if (reel.propertyId && typeof reel.propertyId === 'string') {
+                          navigate(`/property/${reel.propertyId}`);
+                        } else {
+                          alert('Property details not available');
+                        }
+                      } else if (reel.entityType === "Service") {
+                        if (reel.entityId?._id) {
+                          navigate(`/service/${reel.entityId._id}`);
+                        } else {
+                          alert('Service details not available');
+                        }
+                      } else if (reel.entityType === "Hotel") {
+                        if (reel.entityId?._id) {
+                          navigate(`/hotel/${reel.entityId._id}`);
+                        } else {
+                          alert('Hotel details not available');
+                        }
+                      } else if (reel.entityType === "BanquetHall") {
+                        if (reel.entityId?._id) {
+                          navigate(`/banquet/${reel.entityId._id}`);
+                        } else {
+                          alert('Banquet details not available');
+                        }
                       } else {
-                        alert('Property details not available');
+                        alert('Details not available');
                       }
                     }}
                     icon={() => (

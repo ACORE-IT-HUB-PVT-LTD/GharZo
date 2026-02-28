@@ -128,7 +128,7 @@ function Navbar() {
     return true;
   });
 
-  if (currentPath === "/reels") return null;
+  if (currentPath === "/reels" || currentPath === "/service-reels") return null;
 
   return (
     <>

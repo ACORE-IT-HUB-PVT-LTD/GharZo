@@ -666,7 +666,7 @@ export default function PropertyListingForm() {
           if (!form.area?.carpet) errs["area.carpet"] = "Carpet area is required";
         }
         if (isPG) {
-          if (!form.pgDetails?.roomType || form.pgDetails.roomType === "") {
+          if (!form.pgDetails?.roomType || !["Single", "Double Sharing", "Triple Sharing", "Dormitory"].includes(form.pgDetails.roomType.trim())) {
             errs["pgDetails.roomType"] = "Room type is required";
           }
           if (!form.pgDetails?.totalBeds || form.pgDetails.totalBeds < 1) {
@@ -724,12 +724,14 @@ export default function PropertyListingForm() {
     }
   };
 
+  const VALID_ROOM_TYPES = ["Single", "Double Sharing", "Triple Sharing", "Dormitory"];
+
   const saveBasicDetails = async () => {
     setLoading(true);
 
     if (isPG) {
-      if (!form.pgDetails.roomType || form.pgDetails.roomType === "") {
-        addToast("Please select a room type for PG/Co-living property", "error");
+      if (!form.pgDetails.roomType || !VALID_ROOM_TYPES.includes(form.pgDetails.roomType.trim())) {
+        addToast("Please select a valid room type (Single / Double Sharing / Triple Sharing / Dormitory)", "error");
         setLoading(false);
         return;
       }
@@ -796,11 +798,29 @@ export default function PropertyListingForm() {
       }
 
       if (isPG) {
+        const cleanedPgDetails = {};
+
+        // Only include roomType if it's a valid enum value
+        if (form.pgDetails.roomType && VALID_ROOM_TYPES.includes(form.pgDetails.roomType.trim())) {
+          cleanedPgDetails.roomType = form.pgDetails.roomType.trim();
+        }
+
+        // Only include foodType if it's a valid enum value
+        if (form.pgDetails.foodType && ["Veg", "Non-Veg", "Both"].includes(form.pgDetails.foodType.trim())) {
+          cleanedPgDetails.foodType = form.pgDetails.foodType.trim();
+        }
+
         payload.pgDetails = {
           ...form.pgDetails,
+          ...cleanedPgDetails,
           totalBeds: Number(form.pgDetails.totalBeds),
           availableBeds: Number(form.pgDetails.availableBeds),
         };
+
+        // Remove foodType from payload if not valid (spread above may have set it)
+        if (!cleanedPgDetails.foodType) delete payload.pgDetails.foodType;
+        // Remove roomType from payload if not valid
+        if (!cleanedPgDetails.roomType) delete payload.pgDetails.roomType;
       }
 
       if (showRoomStats) {
@@ -965,8 +985,8 @@ export default function PropertyListingForm() {
 
   const submitProperty = async () => {
     if (isPG) {
-      if (!form.pgDetails?.roomType || form.pgDetails.roomType === "") {
-        addToast("Please select a room type before submitting", "error");
+      if (!form.pgDetails?.roomType || !["Single", "Double Sharing", "Triple Sharing", "Dormitory"].includes(form.pgDetails.roomType.trim())) {
+        addToast("Please select a valid room type before submitting", "error");
         setLoading(false);
         return;
       }
@@ -1080,14 +1100,21 @@ export default function PropertyListingForm() {
     { label: "Showroom", icon: MdDoorSliding },
     { label: "Warehouse", icon: MdOutlineWarehouse },
     { label: "Studio", icon: FiGrid },
+    { label: "Independent House", icon: PiHouseLine },
+    { label: "Independent Floor", icon: LuBuilding2 },
+    { label: "Agricultural Land", icon: BiArea },
+    { label: "Builder Floor", icon: LuBuilding2 },
+    { label: "Flat/Apartment", icon: PiBuildingApartment },
+    { label: "Villa", icon: MdVilla },
+    { label: "Plot", icon: BiArea },
+    { label: "Duplex", icon: BiBuildings },
+    { label: "Penthouse", icon: MdVilla },
+    { label: "Farm House", icon: MdVilla },
+    { label: "PG/Co-living", icon: RiHotelBedLine },
     { label: "Other", icon: FiBriefcase },
   ];
 
   const propertyTypes = form.category === "Residential" ? residentialTypes : commercialTypes;
-  const visiblePropertyTypes =
-    form.listingType === "Rent"
-      ? propertyTypes.filter((type) => type.label !== "PG/Co-living")
-      : propertyTypes;
 
   const pgPricingOptions = ["Bed", "Room"];
 
@@ -1434,7 +1461,7 @@ export default function PropertyListingForm() {
                       ) : (
                         <InputField label="Property Type" error={errors.propertyType}>
                           <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 sm:gap-2.5 mt-1">
-                            {visiblePropertyTypes.map(({ label, icon }) => (
+                            {propertyTypes.map(({ label, icon }) => (
                               <SelectCard
                                 key={label}
                                 label={label}
