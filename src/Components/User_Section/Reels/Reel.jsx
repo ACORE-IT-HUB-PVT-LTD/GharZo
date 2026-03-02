@@ -105,9 +105,11 @@ function ReelsPage() {
           caption:       item.caption || "",
           tags:          item.tags || [],
           username:      item.uploadedBy?.name || "landlord",
+          userInitial:   (item.uploadedBy?.name || "U").charAt(0).toUpperCase(),
           avatar:        item.uploadedBy?.profileImage
                            ? `https://api.gharzoreality.com${item.uploadedBy.profileImage}`
-                           : `https://i.pravatar.cc/100?img=${(i + 12) % 70}`,
+                           : null, // Will show initial instead
+          hasAvatar:     !!item.uploadedBy?.profileImage,
           likes:         item.likes || 0,
           comments:      item.comments || 0,
           liked:         !!item.isLiked,
@@ -129,7 +131,9 @@ function ReelsPage() {
           caption:       item.title || "",
           tags:          item.tags || [],
           username:      item.entityId?.serviceName || "Service Provider",
-          avatar:        `https://i.pravatar.cc/100?img=${(i + 12) % 70}`,
+          userInitial:   (item.entityId?.serviceName || "S").charAt(0).toUpperCase(),
+          avatar:        null,
+          hasAvatar:     false,
           likes:         item.stats?.likes || 0,
           comments:      0,
           liked:         false,
@@ -169,7 +173,9 @@ function ReelsPage() {
             caption:       item.title || "",
             tags:          item.tags || [],
             username:      item.entityId?.name || (item.entityType === "Hotel" ? "Hotel" : "Banquet Hall"),
-            avatar:        `https://i.pravatar.cc/100?img=${(i + 12) % 70}`,
+            userInitial:   (item.entityId?.name || (item.entityType === "Hotel" ? "H" : "B")).charAt(0).toUpperCase(),
+            avatar:        null,
+            hasAvatar:     false,
             likes:         item.stats?.likes || 0,
             comments:      0,
             liked:         false,
@@ -270,18 +276,28 @@ function ReelsPage() {
   };
 
   /* ── like ── */
-  const toggleLike = async (id) => {
+  const toggleLike = async (id, entityType = "Property") => {
     try {
       const token = getToken();
       if (!token) { alert("Please log in."); return; }
-      const res = await fetch(`${BASE}/reels/${id}/like`, {
+      
+      // Use different endpoints based on entity type
+      let url = "";
+      if (entityType === "Property") {
+        url = `${BASE}/reels/${id}/like`;
+      } else {
+        // Service, Hotel, Banquet reels use service-reels endpoint
+        url = `${SERVICE_REELS_BASE}/${id}/like`;
+      }
+      
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("Like failed");
-      const data = await res.json();                          // { success, isLiked, likes }
+      const data = await res.json();                          // { success, liked, likes }
       setReels((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, liked: data.isLiked, likes: data.likes } : r))
+        prev.map((r) => (r.id === id ? { ...r, liked: data.liked, likes: data.likes || (data.liked ? r.likes + 1 : r.likes - 1) } : r))
       );
     } catch (e) {
       console.error(e);
@@ -472,11 +488,9 @@ function ReelsPage() {
                     onClick={() => handleLandlordClick(reel)}
                     className="flex items-center gap-2 group"
                   >
-                    <img
-                      src={reel.avatar}
-                      alt={reel.username}
-                      className="w-8 h-8 rounded-full border-2 border-white object-cover"
-                    />
+                    <div className="w-8 h-8 rounded-full border-2 border-white bg-violet-600 flex items-center justify-center text-white font-semibold text-sm">
+                      {reel.userInitial}
+                    </div>
                     <span className="text-sm font-semibold text-white group-hover:underline">{reel.username}</span>
                   </button>
 
@@ -508,7 +522,7 @@ function ReelsPage() {
                     label="Like"
                     active={reel.liked}
                     count={reel.likes}
-                    onClick={() => toggleLike(reel.id)}
+                    onClick={() => toggleLike(reel.id, reel.entityType)}
                     icon={(active) => (
                       <svg width="24" height="24" viewBox="0 0 24 24" fill={active ? "#fb7185" : "none"} stroke={active ? "#fb7185" : "white"} strokeWidth="2">
                         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
@@ -826,15 +840,14 @@ function CommentsSheet({ reelId, totalComments, onClose, onCommentAdded }) {
 /* ── single comment row + replies ── */
 function CommentItem({ comment, replies, onExpandReplies, onReply }) {
   const hasReplies = comment.replyCount > 0 || (replies && replies.length > 0);
+  const commentInitial = comment.userId?.name ? comment.userId.name.charAt(0).toUpperCase() : "U";
 
   return (
     <div>
       <div className="flex items-start gap-3">
-        <img
-          src={comment.userId?.profileImage ? `https://api.gharzoreality.com${comment.userId.profileImage}` : `https://i.pravatar.cc/40?u=${comment.userId?.name}`}
-          alt=""
-          className="w-7 h-7 rounded-full border border-white/15 object-cover mt-0.5"
-        />
+        <div className="w-7 h-7 rounded-full border border-white/15 bg-violet-600 flex items-center justify-center text-white font-semibold text-xs mt-0.5">
+          {commentInitial}
+        </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-2 flex-wrap">
             <span className="text-sm font-semibold text-white">{comment.userId?.name || "Anonymous"}</span>
@@ -857,13 +870,22 @@ function CommentItem({ comment, replies, onExpandReplies, onReply }) {
       {/* expanded replies */}
       {replies && replies.length > 0 && (
         <div className="ml-10 mt-2 space-y-2 border-l border-white/10 pl-3">
-          {replies.map((r) => (
+          {replies.map((r) => {
+            const replyInitial = r.userId?.name ? r.userId.name.charAt(0).toUpperCase() : "U";
+            const hasReplyAvatar = !!r.userId?.profileImage;
+            return (
             <div key={r._id} className="flex items-start gap-2">
-              <img
-                src={r.userId?.profileImage ? `https://api.gharzoreality.com${r.userId.profileImage}` : `https://i.pravatar.cc/40?u=${r.userId?.name}`}
-                alt=""
-                className="w-5 h-5 rounded-full border border-white/15 object-cover mt-0.5"
-              />
+              {hasReplyAvatar ? (
+                <img
+                  src={`https://api.gharzoreality.com${r.userId.profileImage}`}
+                  alt=""
+                  className="w-5 h-5 rounded-full border border-white/15 object-cover mt-0.5"
+                />
+              ) : (
+                <div className="w-5 h-5 rounded-full border border-white/15 bg-violet-600 flex items-center justify-center text-white font-semibold text-[10px] mt-0.5">
+                  {replyInitial}
+                </div>
+              )}
               <div>
                 <div className="flex items-baseline gap-1.5">
                   <span className="text-[12px] font-semibold text-white">{r.userId?.name || "Anonymous"}</span>
@@ -872,7 +894,7 @@ function CommentItem({ comment, replies, onExpandReplies, onReply }) {
                 <p className="text-[12px] text-white/80 leading-snug">{r.text}</p>
               </div>
             </div>
-          ))}
+          );})}
         </div>
       )}
     </div>
@@ -894,12 +916,10 @@ function LandlordModal({ data, onClose, navigate }) {
         </button>
 
         <div className="flex flex-col items-center gap-3">
-          {/* avatar */}
-          <img
-            src={data.profilePhoto ? `https://api.gharzoreality.com${data.profilePhoto}` : `https://i.pravatar.cc/100?u=${data.name}`}
-            alt={data.name}
-            className="w-20 h-20 rounded-full object-cover border-2 border-white/20"
-          />
+          {/* avatar - always show first letter */}
+          <div className="w-20 h-20 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold text-3xl border-2 border-white/20">
+            {data.name ? data.name.charAt(0).toUpperCase() : "U"}
+          </div>
           <h2 className="text-lg font-bold text-white">{data.name}</h2>
 
           {/* contact info */}
@@ -986,14 +1006,17 @@ function SearchOverlay({ onClose, onResults }) {
       const mapped = (json.data || []).map((item, i) => ({
         id:            item._id,
         propertyId:    item.propertyId,
+        entityType:    "Property",
         src:           item.videoUrl,
         poster:        item.thumbnail?.url || "",
         caption:       item.caption || "",
         tags:          item.tags || [],
         username:      item.uploadedBy?.name || "landlord",
+        userInitial:   (item.uploadedBy?.name || "U").charAt(0).toUpperCase(),
         avatar:        item.uploadedBy?.profileImage
                          ? `https://api.gharzoreality.com${item.uploadedBy.profileImage}`
-                         : `https://i.pravatar.cc/100?img=${(i + 12) % 70}`,
+                         : null,
+        hasAvatar:     !!item.uploadedBy?.profileImage,
         likes:         item.likes || 0,
         comments:      item.comments || 0,
         liked:         !!item.isLiked,
@@ -1039,14 +1062,17 @@ function SearchOverlay({ onClose, onResults }) {
       const mapped = (json.data || []).map((item, i) => ({
         id:            item._id,
         propertyId:    item.propertyId,
+        entityType:    "Property",
         src:           item.videoUrl,
         poster:        item.thumbnail?.url || "",
         caption:       item.caption || "",
         tags:          item.tags || [],
         username:      item.uploadedBy?.name || "landlord",
+        userInitial:   (item.uploadedBy?.name || "U").charAt(0).toUpperCase(),
         avatar:        item.uploadedBy?.profileImage
                          ? `https://api.gharzoreality.com${item.uploadedBy.profileImage}`
-                         : `https://i.pravatar.cc/100?img=${(i + 12) % 70}`,
+                         : null,
+        hasAvatar:     !!item.uploadedBy?.profileImage,
         likes:         item.likes || 0,
         comments:      item.comments || 0,
         liked:         !!item.isLiked,

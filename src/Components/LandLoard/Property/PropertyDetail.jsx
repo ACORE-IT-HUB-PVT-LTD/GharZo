@@ -367,7 +367,7 @@ const PropertyDetail = () => {
               <div className="col-span-1 md:col-span-2 bg-white p-5 rounded-xl border-2 border-[#FF6B35]/30 shadow-md">
                 <h6 className="text-[#003366] font-bold text-lg mb-3 flex items-center">
                   <span className="w-1 h-6 bg-[#FF6B35] mr-3 rounded"></span>
-                  Contact Information
+                  Contact Information 
                 </h6>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <p className="text-gray-700"><span className="font-semibold">Name:</span> {property?.contactInfo?.name}</p>

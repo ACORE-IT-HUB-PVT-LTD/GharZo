@@ -271,6 +271,7 @@ export default function PropertyListingForm() {
     title: "",
     description: "",
     bhk: 2,
+    isRK: false,
     bathrooms: 1,
     balconies: 1,
     propertyAge: "",
@@ -445,6 +446,64 @@ export default function PropertyListingForm() {
   const isSale = form.listingType === "Sale";
   const isResidential = form.category === "Residential";
   const isCommercial = form.category === "Commercial";
+
+  // ─── Property Types based on Category and Listing Type ─────────────────────────
+  const residentialRentTypes = [
+    { label: "Room", icon: RiHotelBedLine },
+    { label: "Independent House", icon: PiHouseLine },
+    { label: "Duplex", icon: BiBuildings },
+    { label: "Villa", icon: MdVilla },
+    { label: "Penthouse", icon: MdVilla },
+    { label: "Studio", icon: FiGrid },
+    { label: "Farm House", icon: MdVilla },
+    { label: "Flat/Apartment", icon: PiBuildingApartment },
+    { label: "Plot", icon: BiArea },
+    { label: "Independent Floor", icon: LuBuilding2 },
+  ];
+
+  const residentialSaleTypes = [
+    { label: "Flat/Apartment", icon: PiBuildingApartment },
+    { label: "Independent House", icon: PiHouseLine },
+    { label: "Duplex", icon: BiBuildings },
+    { label: "Independent Floor", icon: LuBuilding2 },
+    { label: "Villa", icon: MdVilla },
+    { label: "Penthouse", icon: MdVilla },
+    { label: "Studio", icon: FiGrid },
+    { label: "Plot", icon: BiArea },
+    { label: "Farm House", icon: MdVilla },
+    { label: "Agricultural Land", icon: BiArea },
+  ];
+
+  const commercialRentTypes = [
+    { label: "Office", icon: HiOutlineOfficeBuilding },
+    { label: "Retail Shop", icon: MdStorefront },
+    { label: "Showroom", icon: MdDoorSliding },
+    { label: "Warehouse", icon: MdOutlineWarehouse },
+    { label: "Plot", icon: BiArea },
+    { label: "Studio", icon: FiGrid },
+    { label: "Other", icon: FiBriefcase },
+  ];
+
+  const commercialSaleTypes = [
+    { label: "Office", icon: HiOutlineOfficeBuilding },
+    { label: "Retail Shop", icon: MdStorefront },
+    { label: "Showroom", icon: MdDoorSliding },
+    { label: "Warehouse", icon: MdOutlineWarehouse },
+    { label: "Plot", icon: BiArea },
+    { label: "Studio", icon: FiGrid },
+    { label: "Other", icon: FiBriefcase },
+  ];
+
+  // Get property types based on category and listing type
+  const getPropertyTypes = () => {
+    if (isResidential && isRent) return residentialRentTypes;
+    if (isResidential && isSale) return residentialSaleTypes;
+    if (isCommercial && isRent) return commercialRentTypes;
+    if (isCommercial && isSale) return commercialSaleTypes;
+    return residentialRentTypes;
+  };
+
+  const propertyTypes = getPropertyTypes();
   const isPlot = form.propertyType === "Plot" || form.propertyType === "Agricultural Land";
   const isVilla = form.propertyType === "Villa" || form.propertyType === "Penthouse" || form.propertyType === "Farm House" || form.propertyType === "Duplex";
   const isOffice = form.propertyType === "Office";
@@ -463,8 +522,12 @@ export default function PropertyListingForm() {
   const isVillaOnly = form.propertyType === "Villa";
 
   // ─── Property-Type Specific Configuration Flags ────────────────────────────
-  const showBHK = !isPG && !isPlot && !isStudio && !isRoom && !isOffice && !isWarehouse && !isShop && isResidential &&
-    (isFlat || isVilla || isIndependentHouse || isIndependentFloor || isBuilderFloor ||
+  const showBHK = !isPG && !isPlot && !isRoom && !isOffice && !isWarehouse && !isShop && isResidential &&
+    (isFlat || isVilla || isStudio || isIndependentHouse || isIndependentFloor || isBuilderFloor ||
+      form.propertyType === "Penthouse" || form.propertyType === "Duplex" || form.propertyType === "Farm House");
+
+  const showRK = !isPG && !isPlot && !isOffice && !isWarehouse && !isShop && isResidential &&
+    (isFlat || isStudio || isIndependentHouse || isIndependentFloor || isBuilderFloor ||
       form.propertyType === "Penthouse" || form.propertyType === "Duplex" || form.propertyType === "Farm House");
 
   const showBathrooms = !isPG && !isPlot && !isWarehouse && isResidential &&
@@ -784,7 +847,10 @@ export default function PropertyListingForm() {
       };
 
       if (!isPlot) {
-        if (showBHK) payload.bhk = form.bhk;
+        if (showBHK) {
+          payload.bhk = form.bhk;
+          payload.isRK = form.isRK;
+        }
         if (showBathrooms) payload.bathrooms = form.bathrooms;
         if (showBalconies) payload.balconies = form.balconies;
         payload.floor = {
@@ -1073,48 +1139,9 @@ export default function PropertyListingForm() {
     c.name?.toLowerCase().includes(citySearch.toLowerCase())
   );
 
-  const residentialTypes = [
-    { label: "Room", icon: RiHotelBedLine },
-    { label: "Flat/Apartment", icon: PiBuildingApartment },
-    { label: "Villa", icon: MdVilla },
-    { label: "Plot", icon: BiArea },
-    { label: "Shop", icon: MdStorefront },
-    { label: "Office", icon: HiOutlineOfficeBuilding },
-    { label: "Warehouse", icon: MdOutlineWarehouse },
-    { label: "Showroom", icon: MdDoorSliding },
-    { label: "Studio", icon: FiGrid },
-    { label: "Independent House", icon: PiHouseLine },
-    { label: "Independent Floor", icon: LuBuilding2 },
-    { label: "Agricultural Land", icon: BiArea },
-    { label: "Builder Floor", icon: LuBuilding2 },
-    { label: "Duplex", icon: BiBuildings },
-    { label: "Penthouse", icon: MdVilla },
-    { label: "Farm House", icon: MdVilla },
-    { label: "PG/Co-living", icon: RiHotelBedLine },
-    { label: "Other", icon: FiBriefcase },
-  ];
-
-  const commercialTypes = [
-    { label: "Office", icon: HiOutlineOfficeBuilding },
-    { label: "Shop", icon: MdStorefront },
-    { label: "Showroom", icon: MdDoorSliding },
-    { label: "Warehouse", icon: MdOutlineWarehouse },
-    { label: "Studio", icon: FiGrid },
-    { label: "Independent House", icon: PiHouseLine },
-    { label: "Independent Floor", icon: LuBuilding2 },
-    { label: "Agricultural Land", icon: BiArea },
-    { label: "Builder Floor", icon: LuBuilding2 },
-    { label: "Flat/Apartment", icon: PiBuildingApartment },
-    { label: "Villa", icon: MdVilla },
-    { label: "Plot", icon: BiArea },
-    { label: "Duplex", icon: BiBuildings },
-    { label: "Penthouse", icon: MdVilla },
-    { label: "Farm House", icon: MdVilla },
-    { label: "PG/Co-living", icon: RiHotelBedLine },
-    { label: "Other", icon: FiBriefcase },
-  ];
-
-  const propertyTypes = form.category === "Residential" ? residentialTypes : commercialTypes;
+  // Keep legacy arrays for backward compatibility but they're not used anymore
+  const residentialTypes = [];
+  const commercialTypes = [];
 
   const pgPricingOptions = ["Bed", "Room"];
 
@@ -1150,47 +1177,6 @@ export default function PropertyListingForm() {
     window.open(`https://wa.me/${phoneNumber}?text=${msg}`, "_blank");
   };
 
-  // ─── Auto advance step 0 ───────────────────────────────────────────────────
-  const step0Complete = form.category && form.listingType && (isPG || form.propertyType);
-
-  useEffect(() => {
-    if (currentStep === 0 && step0Complete) {
-      const t = setTimeout(() => {
-        if (!propertyId) {
-          (async () => {
-            setLoading(true);
-            try {
-              const draftData = {
-                category: form.category,
-                listingType: form.listingType,
-              };
-              if (form.listingType !== "PG/Co-living" && form.propertyType) {
-                draftData.propertyType = form.propertyType;
-              }
-              const res = await fetch(`${API_BASE}/create-draft`, {
-                method: "POST",
-                headers: apiHeaders,
-                body: JSON.stringify(draftData),
-              });
-              const data = await res.json();
-              if (data.success) {
-                setPropertyId(data.data.propertyId);
-                setCurrentStep(1);
-              }
-            } catch (e) {
-              // Silently fail - user can still click button
-            } finally {
-              setLoading(false);
-            }
-          })();
-        } else {
-          setCurrentStep(1);
-        }
-      }, 400);
-      return () => clearTimeout(t);
-    }
-  }, [form.category, form.listingType, form.propertyType, currentStep]);
-
   // ─── Configuration Section Helper ─────────────────────────────────────────
   const getConfigurationTitle = () => {
     if (isPG) return "PG / Co-living Configuration";
@@ -1213,14 +1199,14 @@ export default function PropertyListingForm() {
   // ─── Sidebar Content ───────────────────────────────────────────────────────
   const SidebarContent = () => (
     <>
-      <div className="px-2 py-5 border-b border-gray-100">
-        <div className="flex items-center justify-between mb-4">
+      <div className="px-2 py-4 border-b border-gray-100">
+        <div className="flex items-center justify-between mb-2">
           <button
             onClick={handleWhatsApp}
-            className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2.5 rounded-xl transition-all font-semibold text-xs shadow-md hover:shadow-lg transform hover:scale-105 w-full justify-center"
+            className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-xl transition-all font-semibold text-xs shadow-md hover:shadow-lg transform hover:scale-105 w-full justify-center"
           >
             <FaWhatsapp size={18} className="text-white" />
-            List Property with WhatsApp
+            Post Property via
           </button>
           <button
             className="lg:hidden text-gray-400 hover:text-gray-600"
@@ -1479,6 +1465,26 @@ export default function PropertyListingForm() {
                           <FiLoader size={16} className="animate-spin" /> Creating your listing...
                         </div>
                       )}
+
+                      {/* Save & Continue Button for Step 0 */}
+                      <div className="flex justify-center mt-6">
+                        <button
+                          type="button"
+                          onClick={handleNext}
+                          disabled={loading || !form.category || !form.listingType || (!isPG && !form.propertyType)}
+                          className="px-8 py-3 bg-violet-600 text-white rounded-xl font-semibold hover:bg-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                          {loading ? (
+                            <>
+                              <FiLoader size={18} className="animate-spin" /> Saving...
+                            </>
+                          ) : (
+                            <>
+                              Save & Continue <FiChevronRight size={18} />
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1629,6 +1635,46 @@ export default function PropertyListingForm() {
                         {/* ── Studio ── */}
                         {isStudio && !isPG && (
                           <div className="space-y-4">
+                            {/* BHK with RK Toggle */}
+                            {showBHK && (
+                              <div className="flex flex-wrap items-center gap-4">
+                                <div className="flex flex-wrap gap-4 sm:gap-6">
+                                  <CounterBox label={form.isRK ? "RK" : "BHK"} value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                                </div>
+                                {showRK && (
+                                  <div className="flex gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        updateForm("isRK", false);
+                                        if (form.bhk < 1) updateForm("bhk", 1);
+                                      }}
+                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                                        !form.isRK
+                                          ? "bg-violet-600 border-violet-600 text-white"
+                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
+                                      }`}
+                                    >
+                                      BHK
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        updateForm("isRK", true);
+                                        updateForm("bhk", 1);
+                                      }}
+                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                                        form.isRK
+                                          ? "bg-violet-600 border-violet-600 text-white"
+                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
+                                      }`}
+                                    >
+                                      1 RK
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                             <div className="flex flex-wrap gap-4 sm:gap-6">
                               <CounterBox label="Bathrooms" value={form.bathrooms} onChange={(v) => updateForm("bathrooms", v)} icon={LuBath} min={1} max={10} />
                               <CounterBox label="Balconies" value={form.balconies} onChange={(v) => updateForm("balconies", v)} icon={MdBalcony} min={0} max={10} />
@@ -1649,6 +1695,46 @@ export default function PropertyListingForm() {
                         {/* ── Flat / Apartment ── */}
                         {isFlat && !isPG && (
                           <div className="space-y-4">
+                            {/* BHK with RK Toggle */}
+                            {showBHK && (
+                              <div className="flex flex-wrap items-center gap-4">
+                                <div className="flex flex-wrap gap-4 sm:gap-6">
+                                  <CounterBox label={form.isRK ? "RK" : "BHK"} value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                                </div>
+                                {showRK && (
+                                  <div className="flex gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        updateForm("isRK", false);
+                                        if (form.bhk < 1) updateForm("bhk", 1);
+                                      }}
+                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                                        !form.isRK
+                                          ? "bg-violet-600 border-violet-600 text-white"
+                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
+                                      }`}
+                                    >
+                                      BHK
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        updateForm("isRK", true);
+                                        updateForm("bhk", 1);
+                                      }}
+                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                                        form.isRK
+                                          ? "bg-violet-600 border-violet-600 text-white"
+                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
+                                      }`}
+                                    >
+                                      1 RK
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                             <div className="flex flex-wrap gap-4 sm:gap-6">
                               <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
                               <CounterBox label="Bathrooms" value={form.bathrooms} onChange={(v) => updateForm("bathrooms", v)} icon={LuBath} min={1} max={10} />
@@ -1666,6 +1752,46 @@ export default function PropertyListingForm() {
                         {/* ── Villa (only) ── */}
                         {isVillaOnly && !isPG && (
                           <div className="space-y-4">
+                            {/* BHK with RK Toggle */}
+                            {showBHK && (
+                              <div className="flex flex-wrap items-center gap-4">
+                                <div className="flex flex-wrap gap-4 sm:gap-6">
+                                  <CounterBox label={form.isRK ? "RK" : "BHK"} value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                                </div>
+                                {showRK && (
+                                  <div className="flex gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        updateForm("isRK", false);
+                                        if (form.bhk < 1) updateForm("bhk", 1);
+                                      }}
+                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                                        !form.isRK
+                                          ? "bg-violet-600 border-violet-600 text-white"
+                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
+                                      }`}
+                                    >
+                                      BHK
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        updateForm("isRK", true);
+                                        updateForm("bhk", 1);
+                                      }}
+                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                                        form.isRK
+                                          ? "bg-violet-600 border-violet-600 text-white"
+                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
+                                      }`}
+                                    >
+                                      1 RK
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                             <div className="flex flex-wrap gap-4 sm:gap-6">
                               <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
                               <CounterBox label="Bathrooms" value={form.bathrooms} onChange={(v) => updateForm("bathrooms", v)} icon={LuBath} min={1} max={10} />
@@ -1686,6 +1812,46 @@ export default function PropertyListingForm() {
                         {/* ── Duplex ── */}
                         {isDuplex && !isPG && (
                           <div className="space-y-4">
+                            {/* BHK with RK Toggle */}
+                            {showBHK && (
+                              <div className="flex flex-wrap items-center gap-4">
+                                <div className="flex flex-wrap gap-4 sm:gap-6">
+                                  <CounterBox label={form.isRK ? "RK" : "BHK"} value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                                </div>
+                                {showRK && (
+                                  <div className="flex gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        updateForm("isRK", false);
+                                        if (form.bhk < 1) updateForm("bhk", 1);
+                                      }}
+                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                                        !form.isRK
+                                          ? "bg-violet-600 border-violet-600 text-white"
+                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
+                                      }`}
+                                    >
+                                      BHK
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        updateForm("isRK", true);
+                                        updateForm("bhk", 1);
+                                      }}
+                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                                        form.isRK
+                                          ? "bg-violet-600 border-violet-600 text-white"
+                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
+                                      }`}
+                                    >
+                                      1 RK
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                             <div className="flex flex-wrap gap-4 sm:gap-6">
                               <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
                               <CounterBox label="Bathrooms" value={form.bathrooms} onChange={(v) => updateForm("bathrooms", v)} icon={LuBath} min={1} max={10} />
@@ -1702,6 +1868,46 @@ export default function PropertyListingForm() {
                         {/* ── Penthouse ── */}
                         {isPenthouse && !isPG && (
                           <div className="space-y-4">
+                            {/* BHK with RK Toggle */}
+                            {showBHK && (
+                              <div className="flex flex-wrap items-center gap-4">
+                                <div className="flex flex-wrap gap-4 sm:gap-6">
+                                  <CounterBox label={form.isRK ? "RK" : "BHK"} value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                                </div>
+                                {showRK && (
+                                  <div className="flex gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        updateForm("isRK", false);
+                                        if (form.bhk < 1) updateForm("bhk", 1);
+                                      }}
+                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                                        !form.isRK
+                                          ? "bg-violet-600 border-violet-600 text-white"
+                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
+                                      }`}
+                                    >
+                                      BHK
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        updateForm("isRK", true);
+                                        updateForm("bhk", 1);
+                                      }}
+                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                                        form.isRK
+                                          ? "bg-violet-600 border-violet-600 text-white"
+                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
+                                      }`}
+                                    >
+                                      1 RK
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                             <div className="flex flex-wrap gap-4 sm:gap-6">
                               <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
                               <CounterBox label="Bathrooms" value={form.bathrooms} onChange={(v) => updateForm("bathrooms", v)} icon={LuBath} min={1} max={10} />
@@ -1720,6 +1926,46 @@ export default function PropertyListingForm() {
                         {/* ── Farm House ── */}
                         {isFarmHouse && !isPG && (
                           <div className="space-y-4">
+                            {/* BHK with RK Toggle */}
+                            {showBHK && (
+                              <div className="flex flex-wrap items-center gap-4">
+                                <div className="flex flex-wrap gap-4 sm:gap-6">
+                                  <CounterBox label={form.isRK ? "RK" : "BHK"} value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                                </div>
+                                {showRK && (
+                                  <div className="flex gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        updateForm("isRK", false);
+                                        if (form.bhk < 1) updateForm("bhk", 1);
+                                      }}
+                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                                        !form.isRK
+                                          ? "bg-violet-600 border-violet-600 text-white"
+                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
+                                      }`}
+                                    >
+                                      BHK
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        updateForm("isRK", true);
+                                        updateForm("bhk", 1);
+                                      }}
+                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                                        form.isRK
+                                          ? "bg-violet-600 border-violet-600 text-white"
+                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
+                                      }`}
+                                    >
+                                      1 RK
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                             <div className="flex flex-wrap gap-4 sm:gap-6">
                               <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
                               <CounterBox label="Bathrooms" value={form.bathrooms} onChange={(v) => updateForm("bathrooms", v)} icon={LuBath} min={1} max={10} />
@@ -1735,6 +1981,46 @@ export default function PropertyListingForm() {
                         {/* ── Independent House ── */}
                         {isIndependentHouse && !isPG && (
                           <div className="space-y-4">
+                            {/* BHK with RK Toggle */}
+                            {showBHK && (
+                              <div className="flex flex-wrap items-center gap-4">
+                                <div className="flex flex-wrap gap-4 sm:gap-6">
+                                  <CounterBox label={form.isRK ? "RK" : "BHK"} value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                                </div>
+                                {showRK && (
+                                  <div className="flex gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        updateForm("isRK", false);
+                                        if (form.bhk < 1) updateForm("bhk", 1);
+                                      }}
+                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                                        !form.isRK
+                                          ? "bg-violet-600 border-violet-600 text-white"
+                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
+                                      }`}
+                                    >
+                                      BHK
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        updateForm("isRK", true);
+                                        updateForm("bhk", 1);
+                                      }}
+                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                                        form.isRK
+                                          ? "bg-violet-600 border-violet-600 text-white"
+                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
+                                      }`}
+                                    >
+                                      1 RK
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                             <div className="flex flex-wrap gap-4 sm:gap-6">
                               <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
                               <CounterBox label="Bathrooms" value={form.bathrooms} onChange={(v) => updateForm("bathrooms", v)} icon={LuBath} min={1} max={10} />
@@ -1751,6 +2037,46 @@ export default function PropertyListingForm() {
                         {/* ── Independent Floor / Builder Floor ── */}
                         {(isIndependentFloor || isBuilderFloor) && !isPG && (
                           <div className="space-y-4">
+                            {/* BHK with RK Toggle */}
+                            {showBHK && (
+                              <div className="flex flex-wrap items-center gap-4">
+                                <div className="flex flex-wrap gap-4 sm:gap-6">
+                                  <CounterBox label={form.isRK ? "RK" : "BHK"} value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                                </div>
+                                {showRK && (
+                                  <div className="flex gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        updateForm("isRK", false);
+                                        if (form.bhk < 1) updateForm("bhk", 1);
+                                      }}
+                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                                        !form.isRK
+                                          ? "bg-violet-600 border-violet-600 text-white"
+                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
+                                      }`}
+                                    >
+                                      BHK
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        updateForm("isRK", true);
+                                        updateForm("bhk", 1);
+                                      }}
+                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                                        form.isRK
+                                          ? "bg-violet-600 border-violet-600 text-white"
+                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
+                                      }`}
+                                    >
+                                      1 RK
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                             <div className="flex flex-wrap gap-4 sm:gap-6">
                               <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
                               <CounterBox label="Bathrooms" value={form.bathrooms} onChange={(v) => updateForm("bathrooms", v)} icon={LuBath} min={1} max={10} />
@@ -2851,7 +3177,7 @@ export default function PropertyListingForm() {
                       <PreviewSection title="Basic Details" icon={FiInfo}>
                         <div className="grid grid-cols-2 gap-3">
                           <InfoItem label="Title" value={form.title} />
-                          {showBHK && <InfoItem label="BHK" value={`${form.bhk} BHK`} />}
+                          {showBHK && <InfoItem label="BHK" value={form.isRK ? `1 RK` : `${form.bhk} BHK`} />}
                           {showBathrooms && !isPlot && <InfoItem label="Bathrooms" value={form.bathrooms} />}
                           {isOffice && form.commercialCabins > 0 && <InfoItem label="Cabins" value={form.commercialCabins} />}
                           {isOffice && form.commercialWorkstations > 0 && <InfoItem label="Workstations" value={form.commercialWorkstations} />}
