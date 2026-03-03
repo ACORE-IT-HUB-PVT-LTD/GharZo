@@ -6,7 +6,7 @@ import {
   FiChevronLeft, FiPlus, FiMinus, FiX, FiUpload, FiPhone, FiMail,
   FiUser, FiDollarSign, FiLayers, FiShield, FiZap, FiDroplet,
   FiWifi, FiTruck, FiStar, FiInfo, FiAlertCircle, FiCheck,
-  FiSearch, FiLoader, FiGrid, FiBriefcase, FiKey, FiClock,
+  FiSearch, FiLoader, FiGrid, FiBriefcase, FiKey, FiClock, FiUsers,
   FiCalendar, FiAward, FiTool, FiPackage, FiSun, FiWind, FiMenu
 } from "react-icons/fi";
 import {
