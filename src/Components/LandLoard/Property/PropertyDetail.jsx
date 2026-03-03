@@ -118,9 +118,13 @@ const PropertyDetail = () => {
           }
         }
 
-        // Fallback to public API
-        const res = await axios.get(`${baseurl}api/public/property/${id}`);
-        setProperty(res.data.property);
+        // Fallback to v2 public endpoint
+        const res = await axios.get(`${baseurl}api/v2/properties/${id}`);
+        if (res.data?.data) {
+          setProperty(res.data.data);
+        } else if (res.data?.property) {
+          setProperty(res.data.property);
+        }
       } catch (error) {
         console.error("Error fetching property:", error);
       } finally {

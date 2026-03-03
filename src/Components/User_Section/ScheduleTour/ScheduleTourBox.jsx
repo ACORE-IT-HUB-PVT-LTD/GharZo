@@ -46,14 +46,50 @@ const ScheduleTourBox = () => {
 
       try {
         setFetchingProperty(true);
+        
+        // Try authenticated v2 details endpoint first (token from localStorage)
+        let token = localStorage.getItem("usertoken") || localStorage.getItem("authToken") || localStorage.getItem("access_token");
+        
+        if (token) {
+          try {
+            const response = await fetch(
+              `${baseurl}api/v2/properties/${id}/details`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+            const data = await response.json();
+            
+            if (data.success && data.data) {
+              const property = data.data;
+              const number = property.landlordDetails?.contactInfo?.phone || property.contactInfo?.phone;
+              
+              if (number && number.length === 10) {
+                setLandlordNumber(number);
+              } else {
+                setLandlordNumber("");
+              }
+              setFetchingProperty(false);
+              return;
+            }
+          } catch (e) {
+            console.warn("Authenticated v2 details fetch failed:", e);
+          }
+        }
+        
+        // Fallback to v2 public endpoint
         const response = await fetch(
-          `${baseurl}api/public/property/${id}?_=${Date.now()}`
+          `${baseurl}api/v2/properties/${id}`
         );
         const data = await response.json();
         console.log(data);
 
-        if (data.success && data.property) {
-          const number = data.property?.landlord?.contactNumber;
+        if (data.success && data.data) {
+          const property = data.data;
+          const number = property.landlordDetails?.contactInfo?.phone || property.contactInfo?.phone;
 
           if (number && number.length === 10) {
             setLandlordNumber(number);

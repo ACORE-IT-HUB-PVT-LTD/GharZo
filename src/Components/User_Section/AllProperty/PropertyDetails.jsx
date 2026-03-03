@@ -147,17 +147,16 @@ function PropertyDetails() {
           }
         }
 
-        // Fallback to public API
-        const timestamp = new Date().getTime();
+        // Fallback to v2 public endpoint
         const response = await axios.get(
-          `${baseurl}api/public/properties/${id}?_=${timestamp}`,
+          `${baseurl}api/v2/properties/${id}`,
           {
             headers: {
               "Content-Type": "application/json",
             },
           }
         );
-        const found = response.data?.data?.property;
+        const found = response.data?.data || response.data?.property;
 
         if (!found) {
           console.error("No property found in response");
@@ -518,6 +517,13 @@ function PropertyDetails() {
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               className="bg-white/95 backdrop-blur-md rounded-full p-3 shadow-2xl hover:shadow-3xl transition-all"
+              onClick={() => {
+                const propertyId = property._id || property.id;
+                if (propertyId) {
+                  // Share property link - opens in same tab
+                  window.location.href = `https://gharzoreality.com/property/${propertyId}`;
+                }
+              }}
             >
               <Share2 size={20} className="text-gray-800" />
             </motion.button>

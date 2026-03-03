@@ -103,28 +103,66 @@ const PropertyDetails = () => {
     const fetchProperty = async () => {
       setLoading(true);
       try {
+        // Try authenticated v2 details endpoint first
+        let token = localStorage.getItem("usertoken") || localStorage.getItem("authToken");
+        
+        if (token) {
+          try {
+            const resV2 = await fetch(
+              `${API_BASE}/v2/properties/${decodeURIComponent(name)}/details`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+            const dataV2 = await resV2.json();
+            if (dataV2.success && dataV2.data) {
+              const prop = dataV2.data;
+              setProperty({
+                ...prop,
+                id: prop._id || prop.id,
+                postedDays: Math.floor(
+                  (new Date() - new Date(prop.createdAt)) / (1000 * 60 * 60 * 24)
+                ),
+                location: `${prop.location?.address || ""}, ${prop.location?.city || ""}, ${prop.location?.state || ""}`,
+                manager: {
+                  name: prop.contactInfo?.name || prop.landlordDetails?.name,
+                  contactNumber: prop.contactInfo?.phone,
+                  email: prop.contactInfo?.email,
+                  location: `${prop.location?.city || ""}, ${prop.location?.state || ""}`,
+                },
+              });
+              setLoading(false);
+              return;
+            }
+          } catch (e) {
+            console.warn("Authenticated v2 fetch failed:", e);
+          }
+        }
+        
+        // Fallback to v2 public endpoint
         const res = await fetch(
-          `https://api.drazeapp.com/api/public/property/${decodeURIComponent(
-            name
-          )}`,
+          `${API_BASE}/v2/properties/${decodeURIComponent(name)}`,
           { cache: "no-cache" }
         );
         const data = await res.json();
-        if (data.success && data.property) {
+        if (data.success && data.data) {
+          const prop = data.data;
           setProperty({
-            ...data.property,
+            ...prop,
+            id: prop._id || prop.id,
             postedDays: Math.floor(
-              (new Date() - new Date(data.property.createdAt)) /
-                (1000 * 60 * 60 * 24)
+              (new Date() - new Date(prop.createdAt)) / (1000 * 60 * 60 * 24)
             ),
-            location: `${data.property.location.address}, ${data.property.location.city}, ${data.property.location.state}, ${data.property.location.pinCode}`,
+            location: `${prop.location?.address || ""}, ${prop.location?.city || ""}, ${prop.location?.state || ""}`,
             manager: {
-              name: data.property.landlord.name,
-              contactNumber: data.property.landlord.contactNumber,
-              email: data.property.landlord.email,
-              location: `${data.property.location.city}, ${data.property.location.state}`,
+              name: prop.contactInfo?.name || prop.landlordDetails?.name,
+              contactNumber: prop.contactInfo?.phone,
+              email: prop.contactInfo?.email,
+              location: `${prop.location?.city || ""}, ${prop.location?.state || ""}`,
             },
-            lowestPrice: data.property.pricing.rooms.min,
           });
         } else {
           setProperty(null);
@@ -229,7 +267,7 @@ const PropertyDetails = () => {
         // Fetch property details to get ratings from ratingsAndReviews
         try {
           const propertyResponse = await axios.get(
-            `${API_BASE}/properties/${propertyId}`
+            `${API_BASE}/v2/properties/${propertyId}`
           );
           
           if (propertyResponse.data?.success && propertyResponse.data.data?.ratingsAndReviews) {
@@ -718,7 +756,16 @@ const PropertyDetails = () => {
               fill={liked ? "red" : "none"}
             />
           </button>
-          <button className="bg-white rounded-full p-2 shadow animate-pulse">
+          <button 
+            className="bg-white rounded-full p-2 shadow animate-pulse"
+            onClick={() => {
+              // Get property ID from the property object
+              const propertyId = property.id || property._id;
+              if (propertyId) {
+                window.location.href = `https://gharzoreality.com/property/${propertyId}`;
+              }
+            }}
+          >
             <Share2 size={18} className="text-gray-600" />
           </button>
           <button
