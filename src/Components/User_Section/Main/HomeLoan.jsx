@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FaHome, 
@@ -19,6 +20,7 @@ import baseurl from '../../../../BaseUrl';
 import { toast, ToastContainer } from 'react-toastify';
 
 const HomeLoanCalculator = () => {
+  const navigate = useNavigate();
   const [selectedBank, setSelectedBank] = useState('');
   const [loanAmount, setLoanAmount] = useState(5000000);
   const [tenure, setTenure] = useState(10);
@@ -190,28 +192,38 @@ const HomeLoanCalculator = () => {
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-between flex-wrap gap-4"
+            className="flex flex-col gap-4"
           >
-            <div className="flex items-center gap-4">
-              <div className="text-4xl font-bold">
-                <span className="text-blue-100">G</span>
-                <span className="text-orange-400">harZo</span>
-              </div>
-              <div className="hidden sm:block w-px h-8 bg-white/30"></div>
-              <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-                <FaHome className="text-orange-400" />
-                Home Loan EMI Calculator
-              </h1>
-            </div>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setShowInquiry(true)}
-              className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold px-6 py-3 rounded-xl shadow-lg transition-all flex items-center gap-2"
+            {/* Back Button */}
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 text-white rounded-lg hover:bg-white/20 transition-colors text-sm w-fit backdrop-blur-sm"
             >
-              <FaHome />
-              Apply Home Loan
-            </motion.button>
+              ← Back
+            </button>
+            
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-4">
+                <div className="text-4xl font-bold">
+                  <span className="text-blue-100">G</span>
+                  <span className="text-orange-400">harZo</span>
+                </div>
+                <div className="hidden sm:block w-px h-8 bg-white/30"></div>
+                <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+                  <FaHome className="text-orange-400" />
+                  Home Loan EMI Calculator
+                </h1>
+              </div>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowInquiry(true)}
+                className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold px-6 py-3 rounded-xl shadow-lg transition-all flex items-center gap-2"
+              >
+                <FaHome />
+                Apply Home Loan
+              </motion.button>
+            </div>
           </motion.div>
         </div>
       </div>

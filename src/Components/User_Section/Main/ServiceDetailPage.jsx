@@ -457,12 +457,7 @@ const ServiceDetailPage = () => {
               className="w-full h-full object-cover"
             />
             <div className="absolute top-4 right-4 flex gap-2">
-              <button className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors">
-                <Heart size={20} className="text-gray-600" />
-              </button>
-              <button className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors">
-                <Share2 size={20} className="text-gray-600" />
-              </button>
+              
             </div>
             <div className="absolute top-4 left-4 flex gap-2">
               {service.isVerified && (

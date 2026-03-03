@@ -32,16 +32,29 @@ const AdsCarousel = () => {
         // Filter only banner type ads and format them
         const bannerAds = (data.data || [])
           .filter((ad) => ad.adType === 'banner' || ad.adType === 'video')
-          .map((ad) => ({
-            id: ad.id,
-            title: ad.title,
-            description: ad.title, // Using title as description since API doesn't provide it
-            image: window.innerWidth < 768 ? ad.media.mobileImage.url : ad.media.desktopImage.url,
-            cta: 'View Details',
-            badge: ad.priority ? `Priority: ${ad.priority}` : 'Featured',
-            clickUrl: ad.clickAction?.url,
-            openInNewTab: ad.clickAction?.openInNewTab || true
-          }));
+          .map((ad) => {
+            // Get the best available image - prefer mobile for mobile, desktop for desktop
+            // If mobile is not available, use desktop for both
+            const isMobile = window.innerWidth < 768;
+            const mobileUrl = ad.media?.mobileImage?.url;
+            const desktopUrl = ad.media?.desktopImage?.url;
+            
+            // Use mobile if available, otherwise fallback to desktop, otherwise use placeholder
+            const imageUrl = isMobile 
+              ? (mobileUrl || desktopUrl) 
+              : (desktopUrl || mobileUrl);
+            
+            return {
+              id: ad.id,
+              title: ad.title,
+              description: ad.title, // Using title as description since API doesn't provide it
+              image: imageUrl,
+              cta: 'View Details',
+              badge: ad.priority ? `Priority: ${ad.priority}` : 'Featured',
+              clickUrl: ad.clickAction?.url,
+              openInNewTab: ad.clickAction?.openInNewTab || true
+            };
+          });
 
         if (bannerAds.length === 0) {
           throw new Error('No banner ads available');

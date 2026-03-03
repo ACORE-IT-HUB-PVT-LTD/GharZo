@@ -10,14 +10,23 @@ import {
   Star,
   CheckCircle2,
   Trash2,
+  Flag,
+  ThumbsUp,
+  ThumbsDown,
 } from "lucide-react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination } from "swiper/modules";
 import axios from "axios";
+import { jwtDecode } from "jwt-decode";
+import { toast, ToastContainer } from "react-toastify";
 
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
+
+const API_BASE = "https://api.gharzoreality.com/api";
+
+const getToken = () => localStorage.getItem("usertoken") || localStorage.getItem("authToken");
 
 const PropertyDetails = () => {
   const { name } = useParams();
@@ -164,24 +173,36 @@ const PropertyDetails = () => {
     }
   }, [property]);
 
-  // RatingAndComments Component
+  // RatingAndComments Component with new API
   function RatingAndComments({ propertyId }) {
     const [rating, setRating] = useState(0);
-    const [comment, setComment] = useState("");
-    const [comments, setComments] = useState([]);
+    const [locationRating, setLocationRating] = useState(0);
+    const [cleanlinessRating, setCleanlinessRating] = useState(0);
+    const [amenitiesRating, setAmenitiesRating] = useState(0);
+    const [reviewTitle, setReviewTitle] = useState("");
+    const [reviewDescription, setReviewDescription] = useState("");
+    const [pros, setPros] = useState("");
+    const [cons, setCons] = useState("");
+    const [tags, setTags] = useState([]);
+    const [wouldRecommend, setWouldRecommend] = useState(true);
+    const [recommendedFor, setRecommendedFor] = useState([]);
+    const [reviews, setReviews] = useState([]);
     const [stats, setStats] = useState(null);
     const [error, setError] = useState(null);
     const [showTokenInput, setShowTokenInput] = useState(false);
+    const [newToken, setNewToken] = useState("");
     const [currentUser, setCurrentUser] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
 
     // Get token from localStorage
-    const getToken = () => localStorage.getItem("usertoken");
+    const getToken = () => localStorage.getItem("usertoken") || localStorage.getItem("authToken");
 
     // Create axios instance with dynamic token
     const createAxiosInstance = () => {
       const token = getToken();
       return axios.create({
-        baseURL: "https://api.drazeapp.com/api",
+        baseURL: API_BASE,
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -189,422 +210,445 @@ const PropertyDetails = () => {
       });
     };
 
-    // Fetch ratings, comments, and stats
-    useEffect(() => {
-      const fetchData = async () => {
-        try {
-          setError(null);
-          const axiosInstance = createAxiosInstance();
-
-          // Fetch stats (public, no auth required)
-          const statsResponse = await axios.get(
-            `https://api.drazeapp.com/api/public/ratings/property/${propertyId}/rating-stats`
-          );
-          if (statsResponse.data.success) {
-            setStats(statsResponse.data.stats);
-          } else {
-            setError("Failed to fetch rating stats.");
-          }
-
-          // Fetch ratings
-          try {
-            const ratingsResponse = await axiosInstance.get(
-              `/property/${propertyId}/ratings`
-            );
-            const ratingList = ratingsResponse.data.success
-              ? ratingsResponse.data.ratings.map((r) => ({
-                  id: r._id,
-                  username: r.userName || r.fullName || r.userId,
-                  profilePic: r.profilePic || userProfile.profilePic,
-                  text: r.review,
-                  rating: r.rating,
-                  createdAt: r.createdAt,
-                  type: "rating",
-                }))
-              : [];
-
-            // Fetch comments
-            const commentsResponse = await axiosInstance.get(
-              `/property/${propertyId}/comments?page=1&limit=10`
-            );
-            const commentList = commentsResponse.data.success
-              ? commentsResponse.data.comments.map((c) => ({
-                  id: c._id,
-                  username: c.userName || c.fullName || c.userId,
-                  profilePic: c.profilePic || userProfile.profilePic,
-                  text: c.comment,
-                  createdAt: c.createdAt,
-                  type: "comment",
-                }))
-              : [];
-
-            // Combine and sort by createdAt descending
-            const combinedList = [...ratingList, ...commentList].sort(
-              (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-            );
-            setComments(combinedList);
-
-            // Set current user from token
-            const token = getToken();
-            if (token) {
-              try {
-                const decoded = jwtDecode(token);
-                setCurrentUser(
-                  decoded.userName || decoded.fullName || decoded.id
-                );
-              } catch (err) {
-                console.error("Error decoding token:", err);
-              }
-            }
-          } catch (err) {
-            if (err.response?.status === 401) {
-              setError(
-                "Unauthorized: Invalid or expired token. Please enter a new token."
-              );
-              setShowTokenInput(true);
-            } else {
-              setError("Error fetching ratings or comments. Please try again.");
-            }
-          }
-        } catch (err) {
-          console.error("Error fetching data:", err);
-          setError("Error fetching data. Please check your connection or token.");
-          setShowTokenInput(true);
+    // Fetch reviews using new API
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Fetch reviews for this property
+        const reviewsResponse = await axios.get(
+          `${API_BASE}/property-reviews/property/${propertyId}`
+        );
+        
+        if (reviewsResponse.data?.success) {
+          const reviewsList = reviewsResponse.data.data || [];
+          setReviews(reviewsList);
         }
-      };
 
-      if (getToken()) {
-        fetchData();
-      } else {
-        setError("No token provided. Please enter a new token to proceed.");
-        setShowTokenInput(true);
+        // Fetch property details to get ratings from ratingsAndReviews
+        try {
+          const propertyResponse = await axios.get(
+            `${API_BASE}/properties/${propertyId}`
+          );
+          
+          if (propertyResponse.data?.success && propertyResponse.data.data?.ratingsAndReviews) {
+            const ratingsData = propertyResponse.data.data.ratingsAndReviews;
+            setStats({
+              averageRating: ratingsData.averageRating || 0,
+              totalRatings: ratingsData.totalReviews || 0,
+              recommendationRate: ratingsData.recommendationRate || 0,
+              ratings: ratingsData.ratings || {}
+            });
+          }
+        } catch (propErr) {
+          console.error("Error fetching property for ratings:", propErr);
+        }
+
+        // Get current user from token
+        const token = getToken();
+        if (token) {
+          try {
+            const decoded = jwtDecode(token);
+            setCurrentUser(decoded.userName || decoded.fullName || decoded.id || decoded._id);
+          } catch (err) {
+            console.error("Error decoding token:", err);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching data:", err);
+        setError("Error loading reviews.");
+      } finally {
+        setLoading(false);
       }
+    };
+
+    useEffect(() => {
+      fetchData();
     }, [propertyId]);
 
-    const handleAddComment = async () => {
-      if (!comment.trim()) {
-        setError("Comment cannot be empty.");
+    const handleSubmitReview = async () => {
+      if (!getToken()) {
+        setError("Please login to post a review.");
+        setShowTokenInput(true);
+        return;
+      }
+
+      if (!reviewTitle.trim() || !reviewDescription.trim()) {
+        setError("Please provide a title and description for your review.");
+        return;
+      }
+
+      if (rating === 0) {
+        setError("Please provide an overall rating.");
         return;
       }
 
       try {
+        setSubmitting(true);
         setError(null);
         const axiosInstance = createAxiosInstance();
 
-        if (rating > 0) {
-          // Post to ratings API
-          const response = await axiosInstance.post(
-            `/property/${propertyId}/ratings`,
-            {
-              rating,
-              review: comment,
-            }
-          );
-          if (response.data.success) {
-            const newRating = {
-              id: response.data.rating._id,
-              username:
-                response.data.rating.userName ||
-                response.data.rating.fullName ||
-                response.data.rating.userId,
-              profilePic: response.data.rating.profilePic || userProfile.profilePic,
-              text: response.data.rating.review,
-              rating: response.data.rating.rating,
-              createdAt: response.data.rating.createdAt,
-              type: "rating",
-            };
+        const requestBody = {
+          propertyId: propertyId,
+          ratings: {
+            overall: rating,
+            location: locationRating || rating,
+            cleanliness: cleanlinessRating || rating,
+            amenities: amenitiesRating || rating
+          },
+          review: {
+            title: reviewTitle,
+            description: reviewDescription
+          },
+          pros: pros ? pros.split(",").map(s => s.trim()).filter(Boolean) : [],
+          cons: cons ? cons.split(",").map(s => s.trim()).filter(Boolean) : [],
+          tags: tags,
+          wouldRecommend: wouldRecommend,
+          recommendedFor: recommendedFor
+        };
 
-            // Refetch stats
-            const statsResponse = await axios.get(
-              `https://api.drazeapp.com/api/public/ratings/property/${propertyId}/rating-stats`
-            );
-            if (statsResponse.data.success) {
-              setStats(statsResponse.data.stats);
-            }
+        const response = await axiosInstance.post(
+          `${API_BASE}/property-reviews/create`,
+          requestBody
+        );
 
-            // Refetch ratings
-            const ratingsResponse = await axiosInstance.get(
-              `/property/${propertyId}/ratings`
-            );
-            const ratingList = ratingsResponse.data.success
-              ? ratingsResponse.data.ratings.map((r) => ({
-                  id: r._id,
-                  username: r.userName || r.fullName || r.userId,
-                  profilePic: r.profilePic || userProfile.profilePic,
-                  text: r.review,
-                  rating: r.rating,
-                  createdAt: r.createdAt,
-                  type: "rating",
-                }))
-              : [];
-
-            // Fetch comments
-            const commentsResponse = await axiosInstance.get(
-              `/property/${propertyId}/comments?page=1&limit=10`
-            );
-            const commentList = commentsResponse.data.success
-              ? commentsResponse.data.comments.map((c) => ({
-                  id: c._id,
-                  username: c.userName || c.fullName || c.userId,
-                  profilePic: c.profilePic || userProfile.profilePic,
-                  text: c.comment,
-                  createdAt: c.createdAt,
-                  type: "comment",
-                }))
-              : [];
-
-            const combinedList = [...ratingList, ...commentList].sort(
-              (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-            );
-            setComments(combinedList);
-          } else {
-            setError("Failed to submit rating.");
-          }
+        if (response.data?.success) {
+          // Refresh reviews
+          await fetchData();
+          
+          // Reset form
+          setRating(0);
+          setLocationRating(0);
+          setCleanlinessRating(0);
+          setAmenitiesRating(0);
+          setReviewTitle("");
+          setReviewDescription("");
+          setPros("");
+          setCons("");
+          setTags([]);
+          setWouldRecommend(true);
+          setRecommendedFor([]);
+          
+          toast.success(response.data.message || "Review submitted successfully!");
         } else {
-          // Post to comments API
-          const response = await axiosInstance.post(
-            `/property/${propertyId}/comments`,
-            {
-              comment,
-            }
-          );
-          if (response.data.success) {
-            const newComment = {
-              id: response.data.comment._id,
-              username:
-                response.data.comment.userName ||
-                response.data.comment.fullName ||
-                response.data.comment.userId,
-              profilePic: response.data.comment.profilePic || userProfile.profilePic,
-              text: response.data.comment.comment,
-              createdAt: response.data.comment.createdAt,
-              type: "comment",
-            };
-
-            // Refetch ratings
-            const ratingsResponse = await axiosInstance.get(
-              `/property/${propertyId}/ratings`
-            );
-            const ratingList = ratingsResponse.data.success
-              ? ratingsResponse.data.ratings.map((r) => ({
-                  id: r._id,
-                  username: r.userName || r.fullName || r.userId,
-                  profilePic: r.profilePic || userProfile.profilePic,
-                  text: r.review,
-                  rating: r.rating,
-                  createdAt: r.createdAt,
-                  type: "rating",
-                }))
-              : [];
-
-            // Refetch comments
-            const commentsResponse = await axiosInstance.get(
-              `/property/${propertyId}/comments?page=1&limit=10`
-            );
-            const commentList = commentsResponse.data.success
-              ? commentsResponse.data.comments.map((c) => ({
-                  id: c._id,
-                  username: c.userName || c.fullName || c.userId,
-                  profilePic: c.profilePic || userProfile.profilePic,
-                  text: c.comment,
-                  createdAt: c.createdAt,
-                  type: "comment",
-                }))
-              : [];
-
-            const combinedList = [...ratingList, ...commentList].sort(
-              (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-            );
-            setComments(combinedList);
-          } else {
-            setError("Failed to submit comment.");
-          }
+          throw new Error(response.data?.message || "Failed to submit review");
         }
-        setComment("");
-        setRating(0);
       } catch (err) {
-        console.error("Error submitting:", err);
+        console.error("Error submitting review:", err);
         if (err.response?.status === 401) {
-          setError(
-            "Unauthorized: Invalid or expired token. Please enter a new token."
-          );
+          setError("Session expired. Please login again.");
           setShowTokenInput(true);
         } else {
-          setError("Error submitting rating or comment. Please try again.");
+          setError(err.response?.data?.message || "Failed to submit review. Please try again.");
         }
+      } finally {
+        setSubmitting(false);
       }
     };
 
-    const handleDelete = async (id, type) => {
+    const handleVote = async (reviewId, voteType) => {
+      if (!getToken()) {
+        setError("Please login to vote.");
+        setShowTokenInput(true);
+        return;
+      }
+
       try {
-        setError(null);
         const axiosInstance = createAxiosInstance();
+        const response = await axiosInstance.post(
+          `${API_BASE}/property-reviews/${reviewId}/vote`,
+          { voteType }
+        );
 
-        // Delete rating or comment
-        const endpoint = type === "rating" ? `/ratings/${id}` : `/comments/${id}`;
-        const response = await axiosInstance.delete(endpoint);
-
-        if (response.data.success) {
-          // Refetch stats
-          const statsResponse = await axios.get(
-            `https://api.drazeapp.com/api/public/ratings/property/${propertyId}/rating-stats`
-          );
-          if (statsResponse.data.success) {
-            setStats(statsResponse.data.stats);
-          }
-
-          // Refetch ratings
-          const ratingsResponse = await axiosInstance.get(
-            `/property/${propertyId}/ratings`
-          );
-          const ratingList = ratingsResponse.data.success
-            ? ratingsResponse.data.ratings.map((r) => ({
-                id: r._id,
-                username: r.userName || r.fullName || r.userId,
-                profilePic: r.profilePic || userProfile.profilePic,
-                text: r.review,
-                rating: r.rating,
-                createdAt: r.createdAt,
-                type: "rating",
-              }))
-            : [];
-
-          // Refetch comments
-          const commentsResponse = await axiosInstance.get(
-            `/property/${propertyId}/comments?page=1&limit=10`
-          );
-          const commentList = commentsResponse.data.success
-            ? commentsResponse.data.comments.map((c) => ({
-                id: c._id,
-                username: c.userName || c.fullName || c.userId,
-                profilePic: c.profilePic || userProfile.profilePic,
-                text: c.comment,
-                createdAt: c.createdAt,
-                type: "comment",
-              }))
-            : [];
-
-          const combinedList = [...ratingList, ...commentList].sort(
-            (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-          );
-          setComments(combinedList);
-        } else {
-          setError(
-            `Failed to delete ${type}: ${
-              response.data.message || "Unknown error"
-            }`
-          );
+        if (response.data?.success) {
+          await fetchData();
+          toast.success("Vote recorded!");
         }
       } catch (err) {
-        console.error(`Error deleting ${type}:`, err);
-        if (err.response?.status === 401) {
-          setError(
-            "Unauthorized: Invalid or expired token. Please enter a new token."
-          );
-          setShowTokenInput(true);
-        } else if (err.response?.status === 403) {
-          setError("You are not authorized to delete this item.");
-        } else if (err.response?.status === 404) {
-          setError(`${type.charAt(0).toUpperCase() + type.slice(1)} not found.`);
-        } else {
-          setError(
-            `Error deleting ${type}: ${
-              err.response?.data?.message || "Please try again"
-            }`
-          );
-        }
+        console.error("Error voting:", err);
+        toast.error(err.response?.data?.message || "Failed to record vote");
       }
+    };
+
+    const handleFlag = async (reviewId, reason) => {
+      if (!getToken()) {
+        setError("Please login to flag.");
+        setShowTokenInput(true);
+        return;
+      }
+
+      try {
+        const axiosInstance = createAxiosInstance();
+        const response = await axiosInstance.post(
+          `${API_BASE}/property-reviews/${reviewId}/flag`,
+          { reason }
+        );
+
+        if (response.data?.success) {
+          toast.success("Review flagged successfully!");
+        }
+      } catch (err) {
+        console.error("Error flagging:", err);
+        toast.error(err.response?.data?.message || "Failed to flag review");
+      }
+    };
+
+    const handleTokenSubmit = () => {
+      if (newToken.trim()) {
+        localStorage.setItem("usertoken", newToken);
+        setShowTokenInput(false);
+        setNewToken("");
+        setError(null);
+        fetchData();
+      }
+    };
+
+    const getReviewerInfo = (review) => {
+      return {
+        name: review.reviewerInfo?.name || review.reviewerId?.name || "Anonymous",
+        role: review.reviewerInfo?.role || "user",
+        isVerified: review.verification?.isVerified || false
+      };
+    };
+
+    const formatDate = (dateStr) => {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
     };
 
     return (
-      <div className="mt-8 bg-white p-6 border rounded-lg shadow animate-scale">
+      <div className="mt-8 bg-white p-4 sm:p-6 border rounded-lg shadow animate-scale">
+        <ToastContainer position="top-right" />
         <h4 className="text-xl font-semibold mb-4">Rate & Comment</h4>
 
-        {error && <div className="mb-4 text-red-500 text-sm">{error}</div>}
+        {error && (
+          <div className="mb-4 text-red-500 text-sm p-3 bg-red-50 rounded-lg">{error}</div>
+        )}
 
-        {stats && (
-          <div className="mb-4">
-            <p className="text-gray-600 text-sm sm:text-base">
-              Average Rating: {stats.averageRating.toFixed(1)} (
-              {stats.totalRatings} reviews)
-            </p>
+        {showTokenInput && (
+          <div className="flex flex-col sm:flex-row gap-2 mb-4">
+            <input
+              type="text"
+              placeholder="Enter authentication token"
+              value={newToken}
+              onChange={(e) => setNewToken(e.target.value)}
+              className="flex-1 border px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <button
+              onClick={handleTokenSubmit}
+              className="bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400 text-white px-4 py-2 rounded-lg text-sm"
+            >
+              Submit
+            </button>
           </div>
         )}
 
-        {/* Star Rating */}
-        <div className="flex space-x-1 mb-4">
-          {[...Array(5)].map((_, i) => {
-            const starValue = i + 1;
-            return (
-              <span
-                key={i}
-                onClick={() => setRating(starValue)}
-                className={`cursor-pointer text-2xl animate-scale ${
-                  starValue <= rating ? "text-yellow-400" : "text-gray-300"
-                }`}
-              >
-                ★
-              </span>
-            );
-          })}
-        </div>
-
-        {/* Comment Input */}
-        <div className="flex gap-2 mb-4">
-          <input
-            type="text"
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder="Add a comment..."
-            className="flex-1 border px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
-          <button
-            onClick={handleAddComment}
-            className="bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400 text-white px-4 py-2 rounded-lg text-sm animate-scale"
-          >
-            Post
-          </button>
-        </div>
-
-        {/* Comments List */}
-        <div className="space-y-4">
-          {comments.map((c) => (
-            <div key={c.id} className="flex items-start gap-3">
-              <img
-                src={c.profilePic}
-                alt={c.username}
-                className="w-10 h-10 rounded-full border border-black p-0.5 object-cover"
-              />
-              <div className="flex-1">
-                <div className="flex justify-between items-center">
-                  <p className="font-semibold text-sm">
-                    {c.username || "Unknown User"}
-                  </p>
-                  {currentUser && c.username === currentUser && (
-                    <button
-                      onClick={() => handleDelete(c.id, c.type)}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  )}
+        {stats && (
+          <div className="mb-4 p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg">
+            <div className="flex items-center gap-4">
+              <div className="text-4xl font-bold text-orange-600">
+                {stats.averageRating?.toFixed(1) || "0.0"}
+              </div>
+              <div>
+                <div className="flex text-amber-400 mb-1">
+                  {[...Array(5)].map((_, i) => (
+                    <Star 
+                      key={i} 
+                      size={18} 
+                      fill={i < Math.round(stats.averageRating || 0) ? "currentColor" : "none"} 
+                      className={i < Math.round(stats.averageRating || 0) ? "text-amber-400" : "text-gray-300"}
+                    />
+                  ))}
                 </div>
-                <p className="text-gray-700 text-sm">{c.text}</p>
-                {c.rating && (
-                  <div className="flex space-x-1 mt-1">
-                    {[...Array(c.rating)].map((_, i) => (
-                      <span key={i} className="text-yellow-400 text-sm">
-                        ★
-                      </span>
-                    ))}
-                  </div>
-                )}
-                <p className="text-gray-500 text-xs">
-                  {new Date(c.createdAt).toLocaleDateString()}
+                <p className="text-gray-600 text-sm">
+                  Based on {stats.totalRatings || 0} reviews
                 </p>
               </div>
             </div>
-          ))}
+          </div>
+        )}
+
+        {/* Review Form */}
+        {getToken() ? (
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+            <h5 className="font-semibold mb-3">Write a Review</h5>
+            
+            {/* Overall Rating */}
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Overall Rating *</label>
+              <div className="flex gap-1">
+                {[...Array(5)].map((_, i) => {
+                  const starValue = i + 1;
+                  return (
+                    <span
+                      key={i}
+                      onClick={() => setRating(starValue)}
+                      className={`cursor-pointer text-2xl ${starValue <= rating ? "text-yellow-400" : "text-gray-300"}`}
+                    >
+                      ★
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Review Title */}
+            <div className="mb-3">
+              <input
+                type="text"
+                value={reviewTitle}
+                onChange={(e) => setReviewTitle(e.target.value)}
+                placeholder="Review title..."
+                className="w-full border px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
+
+            {/* Review Description */}
+            <div className="mb-3">
+              <textarea
+                value={reviewDescription}
+                onChange={(e) => setReviewDescription(e.target.value)}
+                placeholder="Your experience..."
+                rows={2}
+                className="w-full border px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+              />
+            </div>
+
+            {/* Pros & Cons */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+              <input
+                type="text"
+                value={pros}
+                onChange={(e) => setPros(e.target.value)}
+                placeholder="Pros (comma separated)"
+                className="border px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+              <input
+                type="text"
+                value={cons}
+                onChange={(e) => setCons(e.target.value)}
+                placeholder="Cons (comma separated)"
+                className="border px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
+
+            {/* Would Recommend */}
+            <div className="mb-3">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={wouldRecommend}
+                  onChange={(e) => setWouldRecommend(e.target.checked)}
+                  className="w-4 h-4"
+                />
+                Would recommend this property
+              </label>
+            </div>
+
+            <button
+              onClick={handleSubmitReview}
+              disabled={submitting || !rating || !reviewTitle.trim() || !reviewDescription.trim()}
+              className="w-full bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400 text-white px-4 py-2 rounded-lg text-sm disabled:opacity-50"
+            >
+              {submitting ? 'Submitting...' : 'Submit Review'}
+            </button>
+          </div>
+        ) : (
+          <div className="mb-6 p-4 bg-blue-50 rounded-lg text-center">
+            <p className="text-gray-600 mb-2">Please login to write a review</p>
+            <button
+              onClick={() => navigate('/user/login')}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm"
+            >
+              Login to Review
+            </button>
+          </div>
+        )}
+
+        {/* Reviews List */}
+        <div className="space-y-4">
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            </div>
+          ) : reviews.length > 0 ? (
+            reviews.map((review, index) => {
+              const reviewer = getReviewerInfo(review);
+              return (
+                <div key={review._id || index} className="border rounded-lg p-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 flex items-center justify-center text-white font-bold text-sm">
+                        {reviewer.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm">{reviewer.name}</p>
+                        <p className="text-xs text-gray-500">
+                          {formatDate(review.reviewDate || review.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {[...Array(5)].map((_, i) => (
+                        <Star 
+                          key={i} 
+                          size={12} 
+                          fill={i < (review.ratings?.overall || 0) ? "currentColor" : "none"} 
+                          className={i < (review.ratings?.overall || 0) ? "text-yellow-400" : "text-gray-300"}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {review.review?.title && (
+                    <h5 className="font-semibold text-sm mb-1">{review.review.title}</h5>
+                  )}
+                  {review.review?.description && (
+                    <p className="text-gray-700 text-sm mb-2">{review.review.description}</p>
+                  )}
+
+                  {/* Pros & Cons */}
+                  {(review.review?.pros?.length > 0 || review.review?.cons?.length > 0) && (
+                    <div className="flex flex-wrap gap-3 mb-2 text-xs">
+                      {review.review?.pros?.length > 0 && (
+                        <span className="text-emerald-600">✓ {review.review.pros.join(', ')}</span>
+                      )}
+                      {review.review?.cons?.length > 0 && (
+                        <span className="text-red-500">✗ {review.review.cons.join(', ')}</span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-4 mt-2 pt-2 border-t">
+                    <button
+                      onClick={() => handleVote(review._id, 'helpful')}
+                      className="flex items-center gap-1 text-xs text-gray-500 hover:text-green-600"
+                    >
+                      <ThumbsUp size={12} />
+                      <span>({review.helpfulVotes?.helpful || 0})</span>
+                    </button>
+                    <button
+                      onClick={() => handleVote(review._id, 'notHelpful')}
+                      className="flex items-center gap-1 text-xs text-gray-500 hover:text-red-600"
+                    >
+                      <ThumbsDown size={12} />
+                      <span>({review.helpfulVotes?.notHelpful || 0})</span>
+                    </button>
+                    <button
+                      onClick={() => handleFlag(review._id, 'Offensive content')}
+                      className="text-xs text-gray-500 hover:text-red-600 ml-auto"
+                    >
+                      <Flag size={12} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <p className="text-gray-500 text-center py-8">No reviews yet. Be the first to share your thoughts!</p>
+          )}
         </div>
       </div>
     );

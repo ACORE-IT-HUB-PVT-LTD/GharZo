@@ -28,7 +28,8 @@ import {
   FaClock,
   FaPhone,
   FaUser,
-  FaSpinner
+  FaSpinner,
+  FaChartLine
 } from 'react-icons/fa';
 import Wishlist from './Wishlist';
 
@@ -194,7 +195,7 @@ const ProfileTabs = ({ role }) => {
   const tabs = [
     { id: 'listings', label: 'My Listings', icon: <FaBuilding style={{ color: 'orange' }} /> },
     { id: 'reels', label: 'My Reels', icon: <FaVideo style={{ color: 'blue' }} /> },
-    { id: 'visits', label: 'My Visits', icon: <FaClipboardList /> },
+    { id: 'visits', label: 'My Leads', icon: <FaClipboardList /> },
     { id: 'wishlist', label: 'Wishlist', icon: <FaHeart style={{ color: 'red' }} /> },
     { id: 'subscriptions', label: 'Subscriptions', icon: <FaCrown style={{ color: '#FFD700' }} /> }
   ];
@@ -703,82 +704,47 @@ const ProfileTabs = ({ role }) => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
-            className="grid grid-cols-1 md:grid-cols-2 gap-6"
           >
-            {myVisits.map((visit) => (
-              <div 
-                key={visit.id} 
-                className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-blue-200"
-              >
-                <div className="relative h-48">
-                  <img 
-                    src={visit.image} 
-                    alt={visit.propertyTitle} 
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute top-3 right-3">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(visit.status)}`}>
-                      {visit.status}
-                    </span>
-                  </div>
-                  <div className="absolute bottom-3 left-3">
-                    <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
-                      {visit.propertyType}
-                    </span>
-                  </div>
+            {/* Subscription Required Message */}
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-8 text-center">
+                <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <FaCrown className="text-4xl text-white" />
                 </div>
-
-                <div className="p-5">
-                  <h3 className="font-bold text-xl text-gray-800 mb-2">{visit.propertyTitle}</h3>
-                  
-                  <div className="flex items-center text-gray-600 text-sm mb-3">
-                    <FaMapMarkerAlt className="mr-1 text-blue-500" />
-                    <span>{visit.location}</span>
-                  </div>
-
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center gap-2 text-sm text-gray-700">
-                      <FaCalendar className="text-purple-500" />
-                      <span className="font-medium">{visit.visitDate}</span>
-                      <FaClock className="text-orange-500 ml-2" />
-                      <span>{visit.visitTime}</span>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-sm text-gray-700">
-                      <FaUser className="text-green-500" />
-                      <span>{visit.agentName}</span>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-sm text-gray-700">
-                      <FaPhone className="text-blue-500" />
-                      <span>{visit.agentPhone}</span>
-                    </div>
-                  </div>
-
-                  {visit.rating && (
-                    <div className="mb-3">
-                      <div className="flex items-center gap-1 mb-2">
-                        {[...Array(5)].map((_, i) => (
-                          <FaStar 
-                            key={i} 
-                            className={i < visit.rating ? 'text-yellow-500' : 'text-gray-300'} 
-                          />
-                        ))}
-                      </div>
-                      {visit.feedback && (
-                        <p className="text-sm text-gray-600 italic">"{visit.feedback}"</p>
-                      )}
-                    </div>
-                  )}
-
-                  {visit.status === 'Scheduled' && (
-                    <button className="w-full mt-3 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300">
-                      View Details
-                    </button>
-                  )}
-                </div>
+                <h3 className="text-2xl font-bold text-white mb-2">Upgrade to Premium</h3>
+                <p className="text-blue-100">Get access to leads and grow your business</p>
               </div>
-            ))}
+              
+              <div className="p-8 text-center">
+                <p className="text-gray-600 mb-6">
+                  You need an active subscription to view your leads and inquiries.
+                  <br />
+                  <span className="font-semibold text-orange-500">Upgrade now</span> to unlock full access!
+                </p>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                  <div className="p-4 bg-blue-50 rounded-xl">
+                    <FaUser className="text-2xl text-blue-600 mx-auto mb-2" />
+                    <p className="font-bold text-gray-800">View Leads</p>
+                    <p className="text-xs text-gray-500">See who's interested</p>
+                  </div>
+                  <div className="p-4 bg-purple-50 rounded-xl">
+                    <FaPhone className="text-2xl text-purple-600 mx-auto mb-2" />
+                    <p className="font-bold text-gray-800">Contact Info</p>
+                    <p className="text-xs text-gray-500">Get buyer details</p>
+                  </div>
+                  <div className="p-4 bg-green-50 rounded-xl">
+                    <FaChartLine className="text-2xl text-green-600 mx-auto mb-2" />
+                    <p className="font-bold text-gray-800">Analytics</p>
+                    <p className="text-xs text-gray-500">Track performance</p>
+                  </div>
+                </div>
+                
+                <button className="px-8 py-4 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300">
+                  Subscribe Now
+                </button>
+              </div>
+            </div>
           </motion.div>
         )}
 

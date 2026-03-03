@@ -61,6 +61,7 @@ function Navbar() {
   const { visitCount } = useVisitCount();
 
   const moreMenuRef = useRef(null);
+  const userMenuRef = useRef(null);
 
   const navItems = [
     { text: "Home", to: "/", icon: <Home size={18} /> },
@@ -83,6 +84,9 @@ function Navbar() {
     const handleClickOutside = (event) => {
       if (moreMenuRef.current && !moreMenuRef.current.contains(event.target)) {
         setShowMoreMenu(false);
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setShowUserMenu(false);
       }
     };
 
@@ -251,7 +255,7 @@ function Navbar() {
                 {/* User Menu Dropdown */}
                 <AnimatePresence>
                   {hasToken && showUserMenu && (
-                    <div className="absolute top-full right-0 mt-3 bg-white rounded-3xl shadow-2xl py-3 w-60 z-50 border-2 border-purple-100 overflow-hidden">
+                    <div ref={userMenuRef} className="absolute top-full right-0 mt-3 bg-white rounded-3xl shadow-2xl py-3 w-60 z-50 border-2 border-purple-100 overflow-hidden">
                       <button
                         onClick={handleProfileClick}
                         className="w-full text-left px-6 py-4 text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all flex items-center gap-3 group"

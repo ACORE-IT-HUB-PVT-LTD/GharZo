@@ -69,11 +69,11 @@ function Toast({ msg, type, onClose }) {
   }, [msg]);
   if (!msg) return null;
   return (
-    <div className={`fixed top-5 right-5 z-[999] flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl text-white text-sm font-semibold max-w-sm ${type === "error" ? "bg-red-500" : "bg-emerald-500"}`}
+    <div className={`fixed top-4 right-4 left-4 sm:left-auto z-[999] flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 sm:py-4 rounded-xl sm:rounded-2xl shadow-2xl text-white text-xs sm:text-sm font-semibold max-w-sm ${type === "error" ? "bg-red-500" : "bg-emerald-500"}`}
       style={{ animation: "toastIn .3s ease" }}>
-      {type === "error" ? <AlertCircle size={20} className="flex-shrink-0" /> : <CheckCircle size={20} className="flex-shrink-0" />}
+      {type === "error" ? <AlertCircle size={18} className="flex-shrink-0" /> : <CheckCircle size={18} className="flex-shrink-0" />}
       <span className="flex-1 leading-snug">{msg}</span>
-      <button onClick={onClose} className="text-white/60 hover:text-white"><X size={16} /></button>
+      <button onClick={onClose} className="text-white/60 hover:text-white flex-shrink-0"><X size={14} /></button>
     </div>
   );
 }
@@ -82,18 +82,18 @@ function Toast({ msg, type, onClose }) {
 function Modal({ open, onClose, title, wide, children }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[500] flex items-center justify-center p-3">
+    <div className="fixed inset-0 z-[500] flex items-center justify-center p-2 sm:p-3">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className={`relative bg-white rounded-3xl shadow-2xl w-full flex flex-col overflow-hidden ${wide ? "max-w-2xl" : "max-w-md"}`}
-        style={{ maxHeight: "93vh", animation: "modalIn .25s ease" }}>
-        <div className="flex items-center justify-between px-6 py-4 flex-shrink-0"
+      <div className={`relative bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full flex flex-col overflow-hidden ${wide ? "max-w-lg sm:max-w-2xl" : "max-w-sm sm:max-w-md"}`}
+        style={{ maxHeight: "95vh", animation: "modalIn .25s ease" }}>
+        <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 flex-shrink-0"
           style={{ background: "linear-gradient(135deg,#0f172a,#1e3a5f)" }}>
-          <h3 className="text-lg font-black text-white">{title}</h3>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center text-white transition">
+          <h3 className="text-base sm:text-lg font-black text-white truncate">{title}</h3>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center text-white transition flex-shrink-0 ml-2">
             <X size={16} />
           </button>
         </div>
-        <div className="overflow-y-auto flex-1 px-6 py-5">{children}</div>
+        <div className="overflow-y-auto flex-1 px-4 py-4 sm:px-6 sm:py-5">{children}</div>
       </div>
     </div>
   );
@@ -168,31 +168,31 @@ function Lightbox({ media, index, onClose }) {
   if (!item) return null;
   return (
     <div className="fixed inset-0 z-[900] bg-black/95 flex flex-col items-center justify-center" onClick={onClose}>
-      <button className="absolute top-4 right-4 w-11 h-11 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors">
-        <X size={20} />
+      <button className="absolute top-3 sm:top-4 right-3 sm:right-4 w-10 h-10 sm:w-11 sm:h-11 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors">
+        <X size={18} />
       </button>
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 text-white/60 text-sm bg-black/40 px-4 py-1.5 rounded-full">
+      <div className="absolute top-3 sm:top-4 left-1/2 -translate-x-1/2 text-white/60 text-xs sm:text-sm bg-black/40 px-3 sm:px-4 py-1.5 rounded-full">
         {idx + 1} / {media.length}
       </div>
-      <div className="flex-1 flex items-center justify-center w-full px-16 py-8" onClick={(e) => e.stopPropagation()}>
+      <div className="flex-1 flex items-center justify-center w-full px-4 sm:px-16 py-8" onClick={(e) => e.stopPropagation()}>
         {item.type === "video" ? (
-          <video src={item.src} controls autoPlay className="max-w-full max-h-full rounded-2xl shadow-2xl" style={{ maxHeight: "calc(100vh - 120px)" }} />
+          <video src={item.src} controls autoPlay className="max-w-full max-h-full rounded-xl sm:rounded-2xl shadow-2xl" style={{ maxHeight: "calc(100vh - 120px)" }} />
         ) : (
-          <img src={item.src} alt={item.label || ""} className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl" style={{ maxHeight: "calc(100vh - 120px)" }} />
+          <img src={item.src} alt={item.label || ""} className="max-w-full max-h-full object-contain rounded-xl sm:rounded-2xl shadow-2xl" style={{ maxHeight: "calc(100vh - 120px)" }} />
         )}
       </div>
       {item.label && (
-        <div className="absolute bottom-5 left-1/2 -translate-x-1/2 text-white/70 text-sm bg-black/50 px-4 py-2 rounded-full backdrop-blur-sm flex items-center gap-2">
+        <div className="absolute bottom-4 sm:bottom-5 left-1/2 -translate-x-1/2 text-white/70 text-xs sm:text-sm bg-black/50 px-3 sm:px-4 py-2 rounded-full backdrop-blur-sm flex items-center gap-2">
           {item.type === "video" && <Play size={12} />}{item.label}
         </div>
       )}
       {media.length > 1 && (
         <>
-          <button onClick={(e) => { e.stopPropagation(); prev(); }} className="absolute left-4 top-1/2 -translate-y-1/2 w-11 h-11 bg-white/15 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors">
-            <ChevronLeft size={22} />
+          <button onClick={(e) => { e.stopPropagation(); prev(); }} className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-11 sm:h-11 bg-white/15 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors">
+            <ChevronLeft size={20} />
           </button>
-          <button onClick={(e) => { e.stopPropagation(); next(); }} className="absolute right-4 top-1/2 -translate-y-1/2 w-11 h-11 bg-white/15 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors">
-            <ChevronRight size={22} />
+          <button onClick={(e) => { e.stopPropagation(); next(); }} className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-11 sm:h-11 bg-white/15 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors">
+            <ChevronRight size={20} />
           </button>
         </>
       )}
@@ -359,18 +359,18 @@ function EnquiryModal({ open, onClose, project, toast }) {
   return (
     <Modal open={open} onClose={onClose} title={`Enquire — ${project?.projectName || ""}`} wide>
       {project && (
-        <div className="space-y-5">
-          <div className="flex items-center gap-3 p-3.5 rounded-2xl border border-orange-100" style={{ background: "linear-gradient(135deg,#fff7ed,#eff6ff)" }}>
+        <div className="space-y-4 sm:space-y-5">
+          <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border border-orange-100" style={{ background: "linear-gradient(135deg,#fff7ed,#eff6ff)" }}>
             {primaryImg(project) && (
-              <img src={primaryImg(project)} className="w-14 h-14 rounded-xl object-cover flex-shrink-0 shadow-sm border border-white" alt="" />
+              <img src={primaryImg(project)} className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg sm:rounded-xl object-cover flex-shrink-0 shadow-sm border border-white" alt="" />
             )}
             <div className="min-w-0">
-              <p className="font-black text-slate-800 truncate text-base">{project.projectName}</p>
-              <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1"><MapPin size={11} />{project.location?.locality}, {project.location?.city}</p>
-              <p className="text-sm font-bold text-orange-600 mt-0.5">{fmtCr(project.pricing?.priceRange?.min)} – {fmtCr(project.pricing?.priceRange?.max)}</p>
+              <p className="font-black text-slate-800 truncate text-sm sm:text-base">{project.projectName}</p>
+              <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 flex items-center gap-1"><MapPin size={11} className="sm:size-11" />{project.location?.locality}, {project.location?.city}</p>
+              <p className="text-xs sm:text-sm font-bold text-orange-600 mt-0.5">{fmtCr(project.pricing?.priceRange?.min)} – {fmtCr(project.pricing?.priceRange?.max)}</p>
             </div>
           </div>
-          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3">
+          <div className="p-3 sm:p-4 bg-slate-50 rounded-xl sm:rounded-2xl border border-slate-100 space-y-3">
             <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Your Contact Details</p>
             <Field label="Full Name" required error={errors.name}>
               <input value={form.name} onChange={(e) => set("name")(e.target.value)} placeholder="e.g. Amit Kumar" className={InpCls} />
@@ -407,7 +407,7 @@ function EnquiryModal({ open, onClose, project, toast }) {
             <textarea value={form.message} onChange={(e) => set("message")(e.target.value)} rows={3}
               placeholder="Tell us more about what you're looking for..." className={`${InpCls} resize-none`} />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Preferred Contact Method">
               <select value={form.preferredContactMethod} onChange={(e) => set("preferredContactMethod")(e.target.value)} className={SelCls}>
                 {CONTACTS.map((m) => <option key={m}>{m}</option>)}
@@ -419,15 +419,15 @@ function EnquiryModal({ open, onClose, project, toast }) {
               </select>
             </Field>
           </div>
-          <label className="flex items-start gap-3 p-4 rounded-2xl border border-orange-100 cursor-pointer hover:border-orange-300 transition-colors" style={{ background: "linear-gradient(135deg,#fff7ed,#fffbeb)" }}>
+          <label className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-orange-100 cursor-pointer hover:border-orange-300 transition-colors" style={{ background: "linear-gradient(135deg,#fff7ed,#fffbeb)" }}>
             <input type="checkbox" checked={form.siteVisitRequested} onChange={(e) => setForm((p) => ({ ...p, siteVisitRequested: e.target.checked }))} className="w-5 h-5 mt-0.5 accent-orange-500 flex-shrink-0" />
             <div>
-              <p className="font-bold text-slate-800 flex items-center gap-2"><Building size={15} className="text-orange-500" />Request a Free Site Visit</p>
-              <p className="text-xs text-slate-500 mt-0.5">Our executive will personally take you on a guided tour</p>
+              <p className="font-bold text-slate-800 flex items-center gap-2 text-sm sm:text-base"><Building size={15} className="text-orange-500" />Request a Free Site Visit</p>
+              <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5">Our executive will personally take you on a guided tour</p>
             </div>
           </label>
           {form.siteVisitRequested && (
-            <div className="grid grid-cols-2 gap-3 p-4 bg-orange-50/80 rounded-2xl border border-orange-100">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 sm:p-4 bg-orange-50/80 rounded-xl sm:rounded-2xl border border-orange-100">
               <Field label="Preferred Visit Date">
                 <input type="date" value={form.preferredDate} onChange={(e) => set("preferredDate")(e.target.value)} min={new Date().toISOString().split("T")[0]} className={InpCls} />
               </Field>
@@ -436,7 +436,7 @@ function EnquiryModal({ open, onClose, project, toast }) {
                   {VTIMES.map((t) => <option key={t}>{t}</option>)}
                 </select>
               </Field>
-              <div className="col-span-2">
+              <div className="sm:col-span-2">
                 <Field label="Number of Visitors" hint="Including yourself">
                   <input type="number" min={1} max={10} value={form.numberOfPeople} onChange={(e) => set("numberOfPeople")(e.target.value)} className={InpCls} />
                 </Field>
@@ -444,11 +444,11 @@ function EnquiryModal({ open, onClose, project, toast }) {
             </div>
           )}
           <button onClick={submit} disabled={loading}
-            className="w-full py-4 text-white font-black text-base rounded-2xl transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-lg flex items-center justify-center gap-2"
+            className="w-full py-3 sm:py-4 text-white font-black text-sm sm:text-base rounded-xl sm:rounded-2xl transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-lg flex items-center justify-center gap-2"
             style={{ background: loading ? "#fb923c" : "linear-gradient(135deg,#f97316,#ea580c)" }}>
             {loading ? <><Loader2 size={18} className="animate-spin" />Submitting...</> : <><Send size={18} />Submit Enquiry</>}
           </button>
-          <p className="text-center text-xs text-slate-400 flex items-center justify-center gap-1"><Shield size={12} />Your information is 100% safe and confidential</p>
+          <p className="text-center text-[10px] sm:text-xs text-slate-400 flex items-center justify-center gap-1"><Shield size={12} />Your information is 100% safe and confidential</p>
         </div>
       )}
     </Modal>
@@ -485,11 +485,11 @@ function ReviewModal({ open, onClose, project, toast, onSuccess }) {
   return (
     <Modal open={open} onClose={onClose} title="Write a Review">
       {project && (
-        <div className="space-y-5">
-          <div className="text-center py-5 bg-amber-50 rounded-2xl border border-amber-100">
-            <p className="text-sm text-slate-500 mb-2 font-medium">Rate {project.projectName}</p>
+        <div className="space-y-4 sm:space-y-5">
+          <div className="text-center py-4 sm:py-5 bg-amber-50 rounded-xl sm:rounded-2xl border border-amber-100">
+            <p className="text-xs sm:text-sm text-slate-500 mb-2 font-medium">Rate {project.projectName}</p>
             <Stars value={form.rating} onChange={(v) => setForm((p) => ({ ...p, rating: v }))} size="lg" />
-            {form.rating > 0 && <p className="text-xl font-black text-amber-600 mt-2">{LABELS[form.rating]}</p>}
+            {form.rating > 0 && <p className="text-lg sm:text-xl font-black text-amber-600 mt-2">{LABELS[form.rating]}</p>}
           </div>
           <Field label="You are a">
             <Pills options={TYPES} value={form.reviewType} onChange={(v) => setForm((p) => ({ ...p, reviewType: v }))} accent="blue" />
@@ -498,7 +498,7 @@ function ReviewModal({ open, onClose, project, toast, onSuccess }) {
             <textarea value={form.review} onChange={(e) => setForm((p) => ({ ...p, review: e.target.value }))} rows={4}
               placeholder="Tell others about the project — construction quality, location, amenities..." className={`${InpCls} resize-none`} />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-emerald-600 uppercase tracking-widest mb-1.5 flex items-center gap-1"><ThumbsUp size={11} />Pros</label>
               <input value={form.pros} onChange={(e) => setForm((p) => ({ ...p, pros: e.target.value }))} placeholder="Location, Amenities" className={InpCls} />
@@ -511,8 +511,8 @@ function ReviewModal({ open, onClose, project, toast, onSuccess }) {
             </div>
           </div>
           <button onClick={submit} disabled={loading}
-            className="w-full py-4 text-white font-black text-base rounded-2xl transition-all disabled:opacity-60 shadow-lg flex items-center justify-center gap-2"
-            style={{ background: "linear-gradient(135deg,#1e3a8a,#1e40af)" }}>
+            className="w-full py-3 sm:py-4 text-white font-black text-sm sm:text-base rounded-xl sm:rounded-2xl transition-all disabled:opacity-60 shadow-lg flex items-center justify-center gap-2"
+            style={{ background: loading ? "#1e3a8a" : "linear-gradient(135deg,#1e3a8a,#1e40af)" }}>
             {loading ? <><Loader2 size={18} className="animate-spin" />Submitting...</> : <><Send size={18} />Submit Review</>}
           </button>
         </div>
@@ -545,45 +545,45 @@ function MyEnquiriesModal({ open, onClose }) {
       {loading ? (
         <div className="space-y-3">{[1,2,3].map((i) => <div key={i} className="h-28 bg-slate-100 rounded-2xl animate-pulse" />)}</div>
       ) : list.length === 0 ? (
-        <div className="text-center py-16">
-          <div className="w-20 h-20 bg-slate-100 rounded-3xl flex items-center justify-center mx-auto mb-4">
-            <MessageSquare size={36} className="text-slate-300" />
+        <div className="text-center py-12 px-4">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-100 rounded-2xl sm:rounded-3xl flex items-center justify-center mx-auto mb-4">
+            <MessageSquare size={28} className="sm:size-36 text-slate-300" />
           </div>
-          <p className="font-black text-slate-700 text-xl">No Enquiries Yet</p>
-          <p className="text-slate-400 text-sm mt-2">Submit an enquiry on any project to see it here</p>
+          <p className="font-black text-slate-700 text-lg sm:text-xl">No Enquiries Yet</p>
+          <p className="text-slate-400 text-xs sm:text-sm mt-2">Submit an enquiry on any project to see it here</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
           {list.map((enq) => (
-            <div key={enq._id} className="p-4 rounded-2xl border border-slate-100 hover:border-orange-200 transition-colors bg-white shadow-sm">
-              <div className="flex gap-3 items-start">
+            <div key={enq._id} className="p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-100 hover:border-orange-200 transition-colors bg-white shadow-sm">
+              <div className="flex gap-2 sm:gap-3 items-start">
                 {enq.projectId?.media?.images?.[0]?.url && (
-                  <img src={enq.projectId.media.images[0].url} className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border border-slate-100" alt="" />
+                  <img src={enq.projectId.media.images[0].url} className="w-12 h-12 sm:w-16 sm:h-16 rounded-lg sm:rounded-xl object-cover flex-shrink-0 border border-slate-100" alt="" />
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <span className="text-xs font-mono text-slate-400 bg-slate-50 px-2 py-0.5 rounded-lg">{enq.enquiryNumber}</span>
-                    <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${CHIPS[enq.status] || CHIPS.New}`}>{enq.status}</span>
+                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap mb-1">
+                    <span className="text-[10px] sm:text-xs font-mono text-slate-400 bg-slate-50 px-1.5 sm:px-2 py-0.5 rounded-lg">{enq.enquiryNumber}</span>
+                    <span className={`text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full ${CHIPS[enq.status] || CHIPS.New}`}>{enq.status}</span>
                   </div>
-                  <p className="font-black text-slate-800 truncate">{enq.projectId?.projectName}</p>
-                  <p className="text-xs text-slate-400 flex items-center gap-1"><MapPin size={10} />{enq.projectId?.location?.city} · {fmtDate(enq.createdAt)}</p>
+                  <p className="font-black text-slate-800 truncate text-sm sm:text-base">{enq.projectId?.projectName}</p>
+                  <p className="text-[10px] sm:text-xs text-slate-400 flex items-center gap-1"><MapPin size={10} className="sm:size-10" />{enq.projectId?.location?.city} · {fmtDate(enq.createdAt)}</p>
                 </div>
               </div>
-              <div className="flex gap-2 flex-wrap mt-3">
+              <div className="flex gap-1.5 sm:gap-2 flex-wrap mt-2 sm:mt-3">
                 {enq.interestedIn?.configurationType && (
-                  <span className="text-xs bg-orange-50 text-orange-600 border border-orange-100 px-2.5 py-1 rounded-full font-semibold">{enq.interestedIn.configurationType}</span>
+                  <span className="text-[10px] sm:text-xs bg-orange-50 text-orange-600 border border-orange-100 px-2 py-0.5 sm:py-1 rounded-full font-semibold">{enq.interestedIn.configurationType}</span>
                 )}
                 {enq.interestedIn?.purposeOfBuying && (
-                  <span className="text-xs bg-blue-50 text-blue-600 border border-blue-100 px-2.5 py-1 rounded-full font-semibold">{enq.interestedIn.purposeOfBuying}</span>
+                  <span className="text-[10px] sm:text-xs bg-blue-50 text-blue-600 border border-blue-100 px-2 py-0.5 sm:py-1 rounded-full font-semibold">{enq.interestedIn.purposeOfBuying}</span>
                 )}
                 {enq.preferredContactMethod && (
-                  <span className="text-xs bg-slate-50 text-slate-500 border border-slate-100 px-2.5 py-1 rounded-full">{enq.preferredContactMethod}</span>
+                  <span className="text-[10px] sm:text-xs bg-slate-50 text-slate-500 border border-slate-100 px-2 py-0.5 sm:py-1 rounded-full">{enq.preferredContactMethod}</span>
                 )}
                 {enq.siteVisitRequested && (
-                  <span className="text-xs bg-purple-50 text-purple-600 border border-purple-100 px-2.5 py-1 rounded-full font-semibold flex items-center gap-1"><Calendar size={10} />Site Visit</span>
+                  <span className="text-[10px] sm:text-xs bg-purple-50 text-purple-600 border border-purple-100 px-2 py-0.5 sm:py-1 rounded-full font-semibold flex items-center gap-1"><Calendar size={10} className="sm:size-10" />Site Visit</span>
                 )}
               </div>
-              {enq.message && <p className="text-xs text-slate-400 mt-2 italic line-clamp-2">"{enq.message}"</p>}
+              {enq.message && <p className="text-[10px] sm:text-xs text-slate-400 mt-2 italic line-clamp-2">"{enq.message}"</p>}
             </div>
           ))}
         </div>
@@ -820,14 +820,14 @@ function DetailPage({ project, onBack, onEnquire, onReview }) {
             </div>
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mt-4">
               {[
                 { icon: <Building2 size={16} />, label: "Total Units", value: project.projectSize?.totalUnits ?? "—" },
                 { icon: <Layers size={16} />, label: "Floors", value: project.projectSize?.totalFloors ?? "—" },
                 { icon: <BarChart3 size={16} />, label: "Built", value: `${project.projectStatus?.completionPercentage || 0}%` },
                 { icon: <Calendar size={16} />, label: "Possession", value: fmtMY(project.projectStatus?.possessionDate) },
               ].map((s) => (
-                <div key={s.label} className="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                <div key={s.label} className="bg-slate-50 rounded-xl sm:rounded-2xl p-2.5 sm:p-3 border border-slate-100">
                   <div className="flex items-center gap-1.5 text-orange-500 mb-1">{s.icon}</div>
                   <p className="font-black text-slate-800 text-sm">{s.value}</p>
                   <p className="text-xs text-slate-400">{s.label}</p>
@@ -908,17 +908,17 @@ function DetailPage({ project, onBack, onEnquire, onReview }) {
         </div>
 
         {/* ── TABS ── */}
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="flex border-b border-slate-100 overflow-x-auto scrollbar-hide">
             {TABS.map((t) => (
               <button key={t.key} onClick={() => setTab(t.key)}
-                className={`flex items-center gap-2 px-5 py-4 text-sm font-bold whitespace-nowrap border-b-2 transition-all flex-shrink-0 ${tab === t.key ? "border-orange-500 text-orange-600 bg-orange-50/60" : "border-transparent text-slate-400 hover:text-slate-600"}`}>
-                {t.icon} {t.label}
+                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-3 sm:py-4 text-xs sm:text-sm font-bold whitespace-nowrap border-b-2 transition-all flex-shrink-0 ${tab === t.key ? "border-orange-500 text-orange-600 bg-orange-50/60" : "border-transparent text-slate-400 hover:text-slate-600"}`}>
+                {t.icon} <span className="hidden xs:inline">{t.label}</span>
               </button>
             ))}
           </div>
 
-          <div className="p-6 space-y-6">
+          <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
             {/* ── OVERVIEW ── */}
             {tab === "overview" && (
               <>
@@ -1576,6 +1576,13 @@ export default function Projects() {
           <div className="absolute -bottom-10 right-10 w-96 h-96 rounded-full opacity-5" style={{ background: "#3b82f6", filter: "blur(80px)" }} />
         </div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 relative">
+          {/* Back Button */}
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 px-4 py-2 mb-4 bg-white/10 border border-white/20 text-white rounded-lg hover:bg-white/20 transition-colors text-sm w-fit backdrop-blur-sm"
+          >
+            ← Back
+          </button>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
             <div>
               

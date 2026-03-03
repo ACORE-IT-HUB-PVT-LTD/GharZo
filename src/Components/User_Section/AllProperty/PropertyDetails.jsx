@@ -1742,8 +1742,17 @@ function ImageModal({ selectedImages, initialSlide, closeImageModal }) {
 /* ====================== Rating & Comments Component ====================== */
 function RatingAndComments({ propertyId }) {
   const [rating, setRating] = useState(0);
-  const [comment, setComment] = useState("");
-  const [comments, setComments] = useState([]);
+  const [locationRating, setLocationRating] = useState(0);
+  const [cleanlinessRating, setCleanlinessRating] = useState(0);
+  const [amenitiesRating, setAmenitiesRating] = useState(0);
+  const [reviewTitle, setReviewTitle] = useState("");
+  const [reviewDescription, setReviewDescription] = useState("");
+  const [pros, setPros] = useState("");
+  const [cons, setCons] = useState("");
+  const [tags, setTags] = useState([]);
+  const [wouldRecommend, setWouldRecommend] = useState(true);
+  const [recommendedFor, setRecommendedFor] = useState([]);
+  const [reviews, setReviews] = useState([]);
   const [stats, setStats] = useState(null);
   const [error, setError] = useState(null);
   const [showTokenInput, setShowTokenInput] = useState(false);
@@ -1751,6 +1760,8 @@ function RatingAndComments({ propertyId }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [replyingTo, setReplyingTo] = useState(null);
   const [replyText, setReplyText] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const getToken = () => localStorage.getItem("usertoken");
 
@@ -1765,78 +1776,53 @@ function RatingAndComments({ propertyId }) {
     });
   };
 
+  // Fetch reviews and stats using new API
   const fetchData = async () => {
     try {
+      setLoading(true);
       setError(null);
-      const timestamp = new Date().getTime();
       
-      // Fetch rating stats (public endpoint)
-      const statsResponse = await axios.get(
-        `${baseurl}api/public/ratings/property/${propertyId}/rating-stats?_=${timestamp}`
+      // Fetch reviews for this property
+      const reviewsResponse = await axios.get(
+        `${baseurl}api/property-reviews/property/${propertyId}`
       );
-      if (statsResponse.data.success) {
-        setStats(statsResponse.data.stats);
+      
+      if (reviewsResponse.data?.success) {
+        const reviewsList = reviewsResponse.data.data || [];
+        setReviews(reviewsList);
       }
 
-      // Fetch ratings and comments if token exists
-      if (getToken()) {
+      // Fetch property details to get ratings from ratingsAndReviews
+      const propertyResponse = await axios.get(
+        `${baseurl}api/properties/${propertyId}`
+      );
+      
+      if (propertyResponse.data?.success && propertyResponse.data.data?.ratingsAndReviews) {
+        const ratingsData = propertyResponse.data.data.ratingsAndReviews;
+        setStats({
+          averageRating: ratingsData.averageRating || 0,
+          totalRatings: ratingsData.totalReviews || 0,
+          recommendationRate: ratingsData.recommendationRate || 0,
+          ratingDistribution: ratingsData.ratingDistribution || {},
+          ratings: ratingsData.ratings || {}
+        });
+      }
+
+      // Get current user from token
+      const token = getToken();
+      if (token) {
         try {
-          const axiosInstance = createAxiosInstance();
-          
-          const ratingsResponse = await axiosInstance.get(
-            `property/${propertyId}/ratings`
-          );
-          const ratingList = ratingsResponse.data.success
-            ? ratingsResponse.data.ratings.map((r) => ({
-                id: r._id,
-                username: r.userName || r.fullName || r.userId || "Anonymous",
-                profilePic: r.profilePic || user,
-                text: r.review,
-                rating: r.rating,
-                createdAt: r.createdAt,
-                type: "rating",
-              }))
-            : [];
-
-          const commentsResponse = await axiosInstance.get(
-            `property/${propertyId}/comments?page=1&limit=10`
-          );
-          const commentList = commentsResponse.data.success
-            ? commentsResponse.data.comments.map((c) => ({
-                id: c._id,
-                username: c.userName || c.fullName || c.userId || "Anonymous",
-                profilePic: c.profilePic || user,
-                text: c.comment,
-                createdAt: c.createdAt,
-                type: "comment",
-                replies: c.replies || [],
-              }))
-            : [];
-
-          const combinedList = [...ratingList, ...commentList].sort(
-            (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-          );
-          setComments(combinedList);
-
-          const token = getToken();
-          if (token) {
-            try {
-              const decoded = jwtDecode(token);
-              setCurrentUser(decoded.userName || decoded.fullName || decoded.id);
-            } catch (err) {
-              console.error("Error decoding token:", err);
-            }
-          }
+          const decoded = jwtDecode(token);
+          setCurrentUser(decoded.userName || decoded.fullName || decoded.id || decoded._id);
         } catch (err) {
-          if (err.response?.status === 401) {
-            setError("Session expired. Please login again.");
-            setShowTokenInput(true);
-          }
+          console.error("Error decoding token:", err);
         }
       }
     } catch (err) {
       console.error("Error fetching data:", err);
       setError("Error loading reviews.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1844,100 +1830,131 @@ function RatingAndComments({ propertyId }) {
     fetchData();
   }, [propertyId]);
 
-  const handleAddComment = async () => {
-    if (!comment.trim()) {
-      setError("Comment cannot be empty.");
-      return;
-    }
-
+  const handleSubmitReview = async () => {
     if (!getToken()) {
       setError("Please login to post a review.");
       setShowTokenInput(true);
       return;
     }
 
+    if (!reviewTitle.trim() || !reviewDescription.trim()) {
+      setError("Please provide a title and description for your review.");
+      return;
+    }
+
+    if (rating === 0) {
+      setError("Please provide an overall rating.");
+      return;
+    }
+
     try {
+      setSubmitting(true);
       setError(null);
       const axiosInstance = createAxiosInstance();
 
-      let newItem;
-      if (rating > 0) {
-        const response = await axiosInstance.post(
-          `property/${propertyId}/ratings`,
-          { rating, review: comment }
-        );
-        if (response.data.success) {
-          newItem = {
-            id: response.data.rating._id,
-            username: response.data.rating.userName || "You",
-            profilePic: response.data.rating.profilePic || user,
-            text: response.data.rating.review,
-            rating: response.data.rating.rating,
-            createdAt: response.data.rating.createdAt,
-            type: "rating",
-          };
-        }
-      } else {
-        const response = await axiosInstance.post(
-          `property/${propertyId}/comments`,
-          { comment }
-        );
-        if (response.data.success) {
-          newItem = {
-            id: response.data.comment._id,
-            username: response.data.comment.userName || "You",
-            profilePic: response.data.comment.profilePic || user,
-            text: response.data.comment.comment,
-            createdAt: response.data.comment.createdAt,
-            type: "comment",
-            replies: [],
-          };
-        }
-      }
+      const requestBody = {
+        propertyId: propertyId,
+        ratings: {
+          overall: rating,
+          location: locationRating || rating,
+          cleanliness: cleanlinessRating || rating,
+          amenities: amenitiesRating || rating
+        },
+        review: {
+          title: reviewTitle,
+          description: reviewDescription
+        },
+        pros: pros ? pros.split(",").map(s => s.trim()).filter(Boolean) : [],
+        cons: cons ? cons.split(",").map(s => s.trim()).filter(Boolean) : [],
+        tags: tags,
+        wouldRecommend: wouldRecommend,
+        recommendedFor: recommendedFor
+      };
 
-      setComments((prev) => [newItem, ...prev]);
-      setComment("");
-      setRating(0);
-      
-      // Refresh stats
-      const timestamp = new Date().getTime();
-      const statsResponse = await axios.get(
-        `${baseurl}api/public/ratings/property/${propertyId}/rating-stats?_=${timestamp}`
+      const response = await axiosInstance.post(
+        `api/property-reviews/create`,
+        requestBody
       );
-      if (statsResponse.data.success) {
-        setStats(statsResponse.data.stats);
+
+      if (response.data?.success) {
+        // Refresh reviews
+        await fetchData();
+        
+        // Reset form
+        setRating(0);
+        setLocationRating(0);
+        setCleanlinessRating(0);
+        setAmenitiesRating(0);
+        setReviewTitle("");
+        setReviewDescription("");
+        setPros("");
+        setCons("");
+        setTags([]);
+        setWouldRecommend(true);
+        setRecommendedFor([]);
+        
+        toast.success(response.data.message || "Review submitted successfully!");
+      } else {
+        throw new Error(response.data?.message || "Failed to submit review");
       }
     } catch (err) {
-      console.error("Error submitting:", err);
+      console.error("Error submitting review:", err);
       if (err.response?.status === 401) {
         setError("Session expired. Please login again.");
         setShowTokenInput(true);
       } else {
-        setError(err.response?.data?.message || "Failed to post review.");
+        setError(err.response?.data?.message || "Failed to submit review. Please try again.");
       }
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const handleDelete = async (id, type) => {
+  const handleVote = async (reviewId, voteType) => {
+    if (!getToken()) {
+      setError("Please login to vote.");
+      setShowTokenInput(true);
+      return;
+    }
+
     try {
-      setError(null);
       const axiosInstance = createAxiosInstance();
-      const endpoint = type === "rating" ? `ratings/${id}` : `comments/${id}`;
-      
-      await axiosInstance.delete(endpoint);
-      setComments((prev) => prev.filter((item) => item.id !== id));
-      
-      // Refresh stats
-      const timestamp = new Date().getTime();
-      const statsResponse = await axios.get(
-        `${baseurl}api/public/ratings/property/${propertyId}/rating-stats?_=${timestamp}`
+      const response = await axiosInstance.post(
+        `api/property-reviews/${reviewId}/vote`,
+        { voteType }
       );
-      if (statsResponse.data.success) {
-        setStats(statsResponse.data.stats);
+
+      if (response.data?.success) {
+        // Refresh reviews to get updated vote counts
+        await fetchData();
+        toast.success("Vote recorded!");
       }
     } catch (err) {
-      console.error("Error deleting:", err);
-      setError(err.response?.data?.message || "Failed to delete.");
+      console.error("Error voting:", err);
+      toast.error(err.response?.data?.message || "Failed to record vote");
+    }
+  };
+
+  const handleFlag = async (reviewId, reason) => {
+    if (!getToken()) {
+      setError("Please login to flag.");
+      setShowTokenInput(true);
+      return;
+    }
+
+    try {
+      const axiosInstance = createAxiosInstance();
+      const response = await axiosInstance.post(
+        `api/property-reviews/${reviewId}/flag`,
+        { reason }
+      );
+
+      if (response.data?.success) {
+        toast.success("Review flagged successfully!");
+      }
+    } catch (err) {
+      console.error("Error flagging:", err);
+      toast.error(err.response?.data?.message || "Failed to flag review");
     }
   };
 
@@ -1950,17 +1967,14 @@ function RatingAndComments({ propertyId }) {
     try {
       setError(null);
       const axiosInstance = createAxiosInstance();
+      // Note: The new API might have a different endpoint for replies
       const response = await axiosInstance.post(
-        `comments/${commentId}/replies`,
-        { text: replyText }
+        `api/property-reviews/${commentId}/reply`,
+        { response: replyText }
       );
 
-      if (response.data.success) {
-        setComments(prev => prev.map(c => 
-          c.id === commentId 
-            ? { ...c, replies: [...(c.replies || []), response.data.comment.replies.slice(-1)[0]] }
-            : c
-        ));
+      if (response.data?.success) {
+        await fetchData();
         setReplyText("");
         setReplyingTo(null);
       }
@@ -1978,6 +1992,23 @@ function RatingAndComments({ propertyId }) {
       setError(null);
       fetchData();
     }
+  };
+
+  const tagSuggestions = ["Clean", "Great Location", "Good Amenities", "Value for Money", "Peaceful", "Noise Free", "Well Maintained", "Owner Responsive"];
+  const recommendedForOptions = ["Working Professionals", "Students", "Families", "Couples", "Singles"];
+
+  const getReviewerInfo = (review) => {
+    return {
+      name: review.reviewerInfo?.name || review.reviewerId?.name || "Anonymous",
+      role: review.reviewerInfo?.role || "user",
+      isVerified: review.verification?.isVerified || false,
+      stayDuration: review.reviewerInfo?.stayDuration
+    };
+  };
+
+  const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
   };
 
   return (
@@ -2015,7 +2046,7 @@ function RatingAndComments({ propertyId }) {
         <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-6 mb-6 border border-amber-200">
           <div className="flex items-center gap-4">
             <div className="text-5xl font-display font-bold text-orange-600">
-              {stats.averageRating.toFixed(1)}
+              {stats.averageRating?.toFixed(1) || "0.0"}
             </div>
             <div>
               <div className="flex text-amber-400 mb-2">
@@ -2023,178 +2054,402 @@ function RatingAndComments({ propertyId }) {
                   <Star 
                     key={i} 
                     size={20} 
-                    fill={i < Math.round(stats.averageRating) ? "currentColor" : "none"} 
-                    className={i < Math.round(stats.averageRating) ? "text-amber-400" : "text-gray-300"}
+                    fill={i < Math.round(stats.averageRating || 0) ? "currentColor" : "none"} 
+                    className={i < Math.round(stats.averageRating || 0) ? "text-amber-400" : "text-gray-300"}
                   />
                 ))}
               </div>
               <p className="text-sm text-gray-600 font-medium">
-                Based on {stats.totalRatings} reviews
+                Based on {stats.totalRatings || 0} reviews
               </p>
+              {stats.recommendationRate > 0 && (
+                <p className="text-xs text-emerald-600 font-medium mt-1">
+                  {stats.recommendationRate}% recommend this property
+                </p>
+              )}
             </div>
           </div>
+          
+          {/* Rating Breakdown */}
+          {stats.ratings && Object.keys(stats.ratings).length > 0 && (
+            <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { key: 'location', label: 'Location' },
+                { key: 'cleanliness', label: 'Cleanliness' },
+                { key: 'amenities', label: 'Amenities' },
+                { key: 'overall', label: 'Overall' }
+              ].map(item => (
+                stats.ratings[item.key] > 0 && (
+                  <div key={item.key} className="bg-white rounded-lg p-2 text-center">
+                    <p className="text-xs text-gray-500">{item.label}</p>
+                    <p className="font-bold text-indigo-600">{stats.ratings[item.key].toFixed(1)}</p>
+                  </div>
+                )
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Rating Input */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">Your Rating:</label>
-        <div className="flex gap-1">
-          {[...Array(5)].map((_, i) => {
-            const starValue = i + 1;
-            return (
-              <motion.span
-                key={i}
-                whileHover={{ scale: 1.2 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => setRating(starValue)}
-                className={`cursor-pointer text-4xl transition-colors ${
-                  starValue <= rating ? "text-amber-400" : "text-gray-300"
-                }`}
-              >
-                ★
-              </motion.span>
-            );
-          })}
-        </div>
-      </div>
+      {/* Review Form */}
+      {getToken() ? (
+        <div className="bg-white rounded-2xl p-6 border border-gray-200 mb-6">
+          <h4 className="text-lg font-bold text-gray-900 mb-4">Write a Review</h4>
+          
+          {/* Overall Rating */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Overall Rating *</label>
+            <div className="flex gap-1">
+              {[...Array(5)].map((_, i) => {
+                const starValue = i + 1;
+                return (
+                  <motion.span
+                    key={i}
+                    whileHover={{ scale: 1.2 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setRating(starValue)}
+                    className={`cursor-pointer text-3xl transition-colors ${
+                      starValue <= rating ? "text-amber-400" : "text-gray-300"
+                    }`}
+                  >
+                    ★
+                  </motion.span>
+                );
+              })}
+              <span className="ml-2 text-sm text-gray-500 self-center">
+                {rating > 0 ? `${rating} star${rating > 1 ? 's' : ''}` : 'Select rating'}
+              </span>
+            </div>
+          </div>
 
-      {/* Comment Input */}
-      <div className="flex gap-2 mb-6">
-        <input
-          type="text"
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          placeholder="Share your experience..."
-          className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-600 transition-colors"
-          onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
-        />
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={handleAddComment}
-          disabled={!getToken()}
-          className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Post
-        </motion.button>
-      </div>
+          {/* Category Ratings */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Location Rating</label>
+              <div className="flex gap-1">
+                {[...Array(5)].map((_, i) => (
+                  <span
+                    key={i}
+                    onClick={() => setLocationRating(i + 1)}
+                    className={`cursor-pointer text-lg ${i < locationRating ? "text-amber-400" : "text-gray-300"}`}
+                  >★</span>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Cleanliness</label>
+              <div className="flex gap-1">
+                {[...Array(5)].map((_, i) => (
+                  <span
+                    key={i}
+                    onClick={() => setCleanlinessRating(i + 1)}
+                    className={`cursor-pointer text-lg ${i < cleanlinessRating ? "text-amber-400" : "text-gray-300"}`}
+                  >★</span>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Amenities</label>
+              <div className="flex gap-1">
+                {[...Array(5)].map((_, i) => (
+                  <span
+                    key={i}
+                    onClick={() => setAmenitiesRating(i + 1)}
+                    className={`cursor-pointer text-lg ${i < amenitiesRating ? "text-amber-400" : "text-gray-300"}`}
+                  >★</span>
+                ))}
+              </div>
+            </div>
+          </div>
 
-      {/* Comments List */}
-      <div className="space-y-4">
-        {comments.length > 0 ? (
-          comments.map((c, index) => (
-            <motion.div
-              key={c.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="bg-white rounded-2xl p-6 border border-gray-200 hover:shadow-lg transition-shadow"
-            >
-              <div className="flex items-start gap-4">
-                <img
-                  src={c.profilePic}
-                  alt={c.username}
-                  className="w-12 h-12 rounded-full border-2 border-gray-200 object-cover flex-shrink-0"
+          {/* Review Title */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Review Title *</label>
+            <input
+              type="text"
+              value={reviewTitle}
+              onChange={(e) => setReviewTitle(e.target.value)}
+              placeholder="e.g., Great property with excellent amenities"
+              className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-600 transition-colors"
+            />
+          </div>
+
+          {/* Review Description */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Your Experience *</label>
+            <textarea
+              value={reviewDescription}
+              onChange={(e) => setReviewDescription(e.target.value)}
+              placeholder="Tell others about your experience with this property..."
+              rows={3}
+              className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-600 transition-colors resize-none"
+            />
+          </div>
+
+          {/* Pros */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Pros (comma separated)</label>
+            <input
+              type="text"
+              value={pros}
+              onChange={(e) => setPros(e.target.value)}
+              placeholder="e.g., Good location, Clean property, Helpful owner"
+              className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-600 transition-colors"
+            />
+          </div>
+
+          {/* Cons */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Cons (comma separated)</label>
+            <input
+              type="text"
+              value={cons}
+              onChange={(e) => setCons(e.target.value)}
+              placeholder="e.g., Slightly expensive, Parking issues"
+              className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-600 transition-colors"
+            />
+          </div>
+
+          {/* Tags */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Tags</label>
+            <div className="flex flex-wrap gap-2">
+              {tagSuggestions.map(tag => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => setTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                    tags.includes(tag) 
+                      ? 'bg-indigo-600 text-white' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Would Recommend */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Would you recommend this property?</label>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="recommend"
+                  checked={wouldRecommend === true}
+                  onChange={() => setWouldRecommend(true)}
+                  className="w-4 h-4 text-indigo-600"
                 />
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <p className="font-bold text-gray-900">{c.username}</p>
-                      <p className="text-xs text-gray-500">
-                        {new Date(c.createdAt).toLocaleDateString()} at{" "}
-                        {new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
+                <span className="text-sm text-gray-700">Yes</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="recommend"
+                  checked={wouldRecommend === false}
+                  onChange={() => setWouldRecommend(false)}
+                  className="w-4 h-4 text-indigo-600"
+                />
+                <span className="text-sm text-gray-700">No</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Recommended For */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Recommended For</label>
+            <div className="flex flex-wrap gap-2">
+              {recommendedForOptions.map(option => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => setRecommendedFor(prev => prev.includes(option) ? prev.filter(o => o !== option) : [...prev, option])}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                    recommendedFor.includes(option) 
+                      ? 'bg-emerald-600 text-white' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleSubmitReview}
+            disabled={submitting || !rating || !reviewTitle.trim() || !reviewDescription.trim()}
+            className="w-full px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {submitting ? 'Submitting...' : 'Submit Review'}
+          </motion.button>
+        </div>
+      ) : (
+        <div className="bg-gradient-to-r from-indigo-50 to-violet-50 rounded-2xl p-6 border border-indigo-200 mb-6 text-center">
+          <p className="text-gray-600 mb-3">Please login to write a review</p>
+          <button
+            onClick={() => navigate('/user/login')}
+            className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-colors"
+          >
+            Login to Review
+          </button>
+        </div>
+      )}
+
+      {/* Reviews List */}
+      <div className="space-y-4">
+        {loading ? (
+          <div className="text-center py-8">
+            <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <p className="text-gray-500 mt-2">Loading reviews...</p>
+          </div>
+        ) : reviews.length > 0 ? (
+          reviews.map((review, index) => {
+            const reviewer = getReviewerInfo(review);
+            return (
+              <motion.div
+                key={review._id || index}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className="bg-white rounded-2xl p-6 border border-gray-200 hover:shadow-lg transition-shadow"
+              >
+                {/* Review Header */}
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 flex items-center justify-center text-white font-bold text-lg">
+                      {reviewer.name.charAt(0).toUpperCase()}
                     </div>
-                    <div className="flex items-center gap-2">
-                      {currentUser && c.username === currentUser && (
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => handleDelete(c.id, c.type)}
-                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                        >
-                          <FaTrash size={14} />
-                        </motion.button>
-                      )}
-                      {getToken() && c.type === "comment" && (
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => setReplyingTo(replyingTo === c.id ? null : c.id)}
-                          className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                        >
-                          <FaReply size={14} />
-                        </motion.button>
-                      )}
+                    <div>
+                      <p className="font-bold text-gray-900">{reviewer.name}</p>
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <span className="capitalize">{reviewer.role}</span>
+                        {reviewer.isVerified && (
+                          <span className="flex items-center gap-1 text-emerald-600">
+                            <FaCheckCircle size={10} /> Verified
+                          </span>
+                        )}
+                        <span>•</span>
+                        <span>{formatDate(review.reviewDate || review.createdAt)}</span>
+                      </div>
                     </div>
                   </div>
-
-                  {c.rating && (
-                    <div className="flex text-amber-400 mb-2">
-                      {[...Array(c.rating)].map((_, i) => (
-                        <span key={i} className="text-lg">★</span>
-                      ))}
-                    </div>
-                  )}
-
-                  <p className="text-gray-700 mb-2">{c.text}</p>
-
-                  {/* Reply Input */}
-                  {replyingTo === c.id && (
-                    <div className="mt-3 flex gap-2">
-                      <input
-                        type="text"
-                        value={replyText}
-                        onChange={(e) => setReplyText(e.target.value)}
-                        placeholder="Write a reply..."
-                        className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-indigo-600 text-sm"
-                        onKeyPress={(e) => e.key === 'Enter' && handleReply(c.id)}
+                  
+                  {/* Rating Display */}
+                  <div className="flex items-center gap-1">
+                    {[...Array(5)].map((_, i) => (
+                      <Star 
+                        key={i} 
+                        size={14} 
+                        fill={i < (review.ratings?.overall || 0) ? "currentColor" : "none"} 
+                        className={i < (review.ratings?.overall || 0) ? "text-amber-400" : "text-gray-300"}
                       />
-                      <button
-                        onClick={() => handleReply(c.id)}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors"
-                      >
-                        Send
-                      </button>
-                      <button
-                        onClick={() => {
-                          setReplyingTo(null);
-                          setReplyText("");
-                        }}
-                        className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm transition-colors"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Display Replies */}
-                  {c.replies && c.replies.length > 0 && (
-                    <div className="mt-4 ml-4 space-y-3 border-l-2 border-indigo-100 pl-4">
-                      {c.replies.map((reply, idx) => (
-                        <div key={idx} className="bg-indigo-50 rounded-lg p-3">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-semibold text-sm text-indigo-700">
-                              {reply.userName}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              ({reply.userType === "landlord" ? "Landlord" : "User"})
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-700 mb-1">{reply.text}</p>
-                          <p className="text-xs text-gray-500">
-                            {new Date(reply.createdAt).toLocaleDateString()} at{" "}
-                            {new Date(reply.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                    ))}
+                    <span className="ml-1 text-sm font-bold text-gray-700">
+                      {review.ratings?.overall || 0}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          ))
+
+                {/* Review Content */}
+                {review.review?.title && (
+                  <h4 className="font-bold text-gray-900 mb-1">{review.review.title}</h4>
+                )}
+                {review.review?.description && (
+                  <p className="text-gray-700 mb-3">{review.review.description}</p>
+                )}
+
+                {/* Pros & Cons */}
+                {(review.review?.pros?.length > 0 || review.review?.cons?.length > 0) && (
+                  <div className="flex flex-wrap gap-4 mb-3 text-sm">
+                    {review.review?.pros?.length > 0 && (
+                      <div className="flex items-start gap-2">
+                        <FaCheckCircle className="text-emerald-500 mt-0.5" size={14} />
+                        <div>
+                          <span className="font-medium text-emerald-700">Pros: </span>
+                          <span className="text-gray-600">{review.review.pros.join(', ')}</span>
+                        </div>
+                      </div>
+                    )}
+                    {review.review?.cons?.length > 0 && (
+                      <div className="flex items-start gap-2">
+                        <FaTimesCircle className="text-red-500 mt-0.5" size={14} />
+                        <div>
+                          <span className="font-medium text-red-700">Cons: </span>
+                          <span className="text-gray-600">{review.review.cons.join(', ')}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Tags */}
+                {review.review?.tags?.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {review.review.tags.map((tag, idx) => (
+                      <span key={idx} className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Recommendation */}
+                {review.wouldRecommend !== undefined && (
+                  <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium mb-3 ${
+                    review.wouldRecommend 
+                      ? 'bg-emerald-100 text-emerald-700' 
+                      : 'bg-red-100 text-red-700'
+                  }`}>
+                    {review.wouldRecommend ? (
+                      <><FaCheckCircle size={12} /> Recommended</>
+                    ) : (
+                      <><FaTimesCircle size={12} /> Not Recommended</>
+                    )}
+                  </div>
+                )}
+
+                {/* Landlord Response */}
+                {review.landlordResponse?.responded && (
+                  <div className="mt-3 ml-4 pl-4 border-l-2 border-indigo-200">
+                    <p className="text-xs font-medium text-indigo-600 mb-1">
+                      Owner Response
+                    </p>
+                    <p className="text-sm text-gray-700">{review.landlordResponse.response}</p>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex items-center gap-4 mt-4 pt-3 border-t border-gray-100">
+                  <button
+                    onClick={() => handleVote(review._id, 'helpful')}
+                    className="flex items-center gap-1 text-sm text-gray-500 hover:text-emerald-600 transition-colors"
+                  >
+                    <FaCheckCircle size={14} />
+                    <span>Helpful ({review.helpfulVotes?.helpful || 0})</span>
+                  </button>
+                  <button
+                    onClick={() => handleVote(review._id, 'notHelpful')}
+                    className="flex items-center gap-1 text-sm text-gray-500 hover:text-red-600 transition-colors"
+                  >
+                    <FaTimesCircle size={14} />
+                    <span>Not Helpful ({review.helpfulVotes?.notHelpful || 0})</span>
+                  </button>
+                  <button
+                    onClick={() => handleFlag(review._id, 'Offensive content')}
+                    className="text-sm text-gray-500 hover:text-red-600 transition-colors ml-auto"
+                  >
+                    Flag
+                  </button>
+                </div>
+              </motion.div>
+            );
+          })
         ) : (
           <div className="text-center py-16">
             <div className="w-20 h-20 bg-gradient-to-r from-indigo-100 to-violet-100 rounded-full flex items-center justify-center mx-auto mb-4">
