@@ -28,6 +28,7 @@ const ScheduleTourBox = () => {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [landlordNumber, setLandlordNumber] = useState("");
   const [fetchingProperty, setFetchingProperty] = useState(true);
   const { id } = useParams();
@@ -132,7 +133,13 @@ const ScheduleTourBox = () => {
   // Update visitor detail
   const updateVisitor = (index, field, value) => {
     const updated = [...visitorDetails];
-    updated[index][field] = value;
+    if (field === 'phone') {
+      // Only allow numbers and limit to 10 digits
+      const numericValue = value.replace(/\D/g, '').slice(0, 10);
+      updated[index][field] = numericValue;
+    } else {
+      updated[index][field] = value;
+    }
     setVisitorDetails(updated);
   };
 
@@ -153,13 +160,27 @@ const ScheduleTourBox = () => {
       setError("Please select a purpose");
       return false;
     }
+    // Name validation - only letters and spaces allowed
+    const nameRegex = /^[a-zA-Z\s]+$/;
     for (let i = 0; i < visitorDetails.length; i++) {
       const visitor = visitorDetails[i];
       if (!visitor.name.trim()) {
         setError(`Please enter name for visitor ${i + 1}`);
         return false;
       }
-      if (!visitor.phone.trim() || visitor.phone.length !== 10) {
+      if (!nameRegex.test(visitor.name.trim())) {
+        setError(`Name should only contain letters for visitor ${i + 1}`);
+        return false;
+      }
+      if (!visitor.phone.trim()) {
+        setError(`Please enter phone number for visitor ${i + 1}`);
+        return false;
+      }
+      if (visitor.phone.length > 10) {
+        setError(`Phone number should not exceed 10 digits for visitor ${i + 1}`);
+        return false;
+      }
+      if (visitor.phone.length !== 10) {
         setError(`Please enter valid 10-digit phone for visitor ${i + 1}`);
         return false;
       }
@@ -217,11 +238,8 @@ const ScheduleTourBox = () => {
 
       if (response.ok && data.success) {
         const successMessage = data.message || "Visit successfully scheduled!";
-        toast.success(successMessage, {
-          position: "top-right",
-          autoClose: 5000,
-          pauseOnHover: true,
-        });
+        // Show success modal instead of toast
+        setShowSuccessModal(true);
         setSuccess(true);
         // Dispatch custom event to notify navbar to refetch visit count
         window.dispatchEvent(new Event('visitBooked'));
@@ -438,7 +456,11 @@ const ScheduleTourBox = () => {
                   <input
                     type="text"
                     value={visitor.name}
-                    onChange={(e) => updateVisitor(index, "name", e.target.value)}
+                    onChange={(e) => {
+                      // Only allow letters and spaces
+                      const value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                      updateVisitor(index, "name", value);
+                    }}
                     placeholder="Full Name"
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#FF6B00] focus:ring-2 focus:ring-orange-100 transition-all"
                     required
@@ -456,13 +478,19 @@ const ScheduleTourBox = () => {
                       <option value="Agent">Agent</option>
                     </select>
                     <input
-                      type="number"
+                      type="tel"
                       value={visitor.phone}
                       onChange={(e) => updateVisitor(index, "phone", e.target.value)}
                       placeholder="10-digit Phone"
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#FF6B00] focus:ring-2 focus:ring-orange-100 transition-all"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#FF6B00] focus:ring-2 focus:ring-orange-100 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       required
-                      pattern="[0-9]{10}"
+                      min="0"
+                      maxLength="10"
+                      onKeyDown={(e) => {
+                        if (e.key === '-' || e.key === 'e' || e.key === 'E') {
+                          e.preventDefault();
+                        }
+                      }}
                     />
                   </div>
                 </div>
@@ -590,6 +618,45 @@ const ScheduleTourBox = () => {
           </div>
         </div>
       </div>
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowSuccessModal(false)}
+          />
+          <motion.div 
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 z-10 text-center"
+          >
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FaCalendarAlt className="text-green-600 text-4xl" />
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">Visit Scheduled!</h3>
+            <p className="text-gray-600 mb-6">
+              Your visit has been successfully scheduled. Our team will contact you shortly.
+            </p>
+            <button
+              onClick={() => {
+                setShowSuccessModal(false);
+                setSuccess(false);
+                setPreferredDate("");
+                setPreferredTimeSlot("Morning (9AM-12PM)");
+                setVisitType("Physical");
+                setNumberOfVisitors(1);
+                setPurpose("Rent");
+                setMessage("");
+                setVisitorDetails([{ name: "", relation: "Self", phone: "" }]);
+              }}
+              className="w-full py-3 bg-gradient-to-r from-green-500 to-green-600 text-white font-bold rounded-xl hover:shadow-lg transition-all"
+            >
+              Done
+            </button>
+          </motion.div>
+        </div>
+      )}
     </motion.div>
   );
 };

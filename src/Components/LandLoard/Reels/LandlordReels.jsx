@@ -21,6 +21,7 @@ import {
 } from 'react-icons/fa';
 
 const ReelsManagement = () => {
+  const [isSidebarHovered, setIsSidebarHovered] = useState(false);
   const [myReels, setMyReels] = useState([]);
   const [loadingReels, setLoadingReels] = useState(false);
   const [reelsError, setReelsError] = useState(null);
@@ -78,6 +79,19 @@ const ReelsManagement = () => {
   // Fetch reels
   useEffect(() => {
     fetchMyReels();
+  }, []);
+
+  useEffect(() => {
+    const sidebar = document.querySelector(".sidebar");
+    if (!sidebar) return undefined;
+    const onEnter = () => setIsSidebarHovered(true);
+    const onLeave = () => setIsSidebarHovered(false);
+    sidebar.addEventListener("mouseenter", onEnter);
+    sidebar.addEventListener("mouseleave", onLeave);
+    return () => {
+      sidebar.removeEventListener("mouseenter", onEnter);
+      sidebar.removeEventListener("mouseleave", onLeave);
+    };
   }, []);
 
   const fetchMyReels = async () => {
@@ -229,16 +243,24 @@ const ReelsManagement = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 py-8 px-4 sm:px-6 lg:px-8">
+    <div
+      className={`min-h-screen py-8 px-4 sm:px-6 lg:px-8 transition-all duration-500 ${
+        isSidebarHovered ? "md:ml-[256px] md:w-[calc(100%-256px)]" : "md:ml-[64px] md:w-[calc(100%-64px)]"
+      }`}
+      style={{
+        background:
+          "radial-gradient(circle at 10% 12%, rgba(245, 124, 0, 0.08), transparent 35%), radial-gradient(circle at 88% 85%, rgba(13, 47, 82, 0.08), transparent 35%), #f8fafc",
+      }}
+    >
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
+              <h1 className="text-3xl sm:text-4xl font-bold text-[#0d2f52] mb-2">
                 My Reels
               </h1>
-              <p className="text-orange-200 text-sm sm:text-base">
+              <p className="text-slate-500 text-sm sm:text-base">
                 Manage and showcase your property videos
               </p>
             </div>
@@ -300,11 +322,11 @@ const ReelsManagement = () => {
           <div className="flex justify-center items-center py-20">
             <div className="text-center">
               <FaSpinner className="animate-spin text-6xl text-orange-500 mx-auto mb-4" />
-              <p className="text-white text-xl">Loading your reels...</p>
+              <p className="text-slate-600 text-xl">Loading your reels...</p>
             </div>
           </div>
         ) : reelsError ? (
-          <div className="bg-red-500/10 border-2 border-red-500 rounded-2xl p-8 text-center backdrop-blur-sm">
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
             <FaExclamationCircle className="text-red-500 text-5xl mx-auto mb-4" />
             <p className="text-red-400 font-medium text-lg mb-6">{reelsError}</p>
             <div className="flex gap-4 justify-center flex-wrap">
@@ -326,12 +348,12 @@ const ReelsManagement = () => {
             </div>
           </div>
         ) : myReels.length === 0 ? (
-          <div className="text-center py-20 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10">
+          <div className="text-center py-20 bg-white rounded-2xl border border-slate-200 shadow-sm">
             <div className="bg-orange-500/20 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
               <FaVideo className="text-orange-500 text-5xl" />
             </div>
-            <h3 className="text-2xl font-bold text-white mb-3">No Reels Yet</h3>
-            <p className="text-gray-300 mb-8 max-w-md mx-auto">
+            <h3 className="text-2xl font-bold text-[#0d2f52] mb-3">No Reels Yet</h3>
+            <p className="text-slate-500 mb-8 max-w-md mx-auto">
               Start showcasing your properties with engaging video reels. Upload your first reel now!
             </p>
             <button 
@@ -350,7 +372,7 @@ const ReelsManagement = () => {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.3 }}
                 onClick={() => setSelectedReel(reel)}
-                className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl overflow-hidden cursor-pointer hover:shadow-2xl hover:shadow-orange-500/20 transition-all duration-300 border border-white/10 hover:border-orange-500/50 transform hover:scale-105 group"
+                className="bg-white rounded-2xl overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-300 border border-slate-200 hover:border-orange-300 transform hover:scale-[1.02] group"
               >
                 {/* Thumbnail */}
                 <div className="relative aspect-[9/16] overflow-hidden">
@@ -391,12 +413,12 @@ const ReelsManagement = () => {
                 
                 {/* Content */}
                 <div className="p-4">
-                  <h3 className="font-bold text-lg text-white mb-2 line-clamp-2 group-hover:text-orange-400 transition-colors">
+                  <h3 className="font-bold text-lg text-[#0d2f52] mb-2 line-clamp-2 group-hover:text-orange-500 transition-colors">
                     {reel.caption || 'Untitled Reel'}
                   </h3>
                   
                   {reel.location && (
-                    <div className="flex items-center text-gray-400 text-sm mb-3">
+                    <div className="flex items-center text-slate-500 text-sm mb-3">
                       <FaMapMarkerAlt className="mr-1 text-orange-500 flex-shrink-0" />
                       <span className="line-clamp-1">
                         {reel.location.locality || reel.location.city || 'Location'}
@@ -405,7 +427,7 @@ const ReelsManagement = () => {
                   )}
 
                   {/* Stats */}
-                  <div className="flex justify-between items-center text-sm text-gray-400 mb-3 pb-3 border-b border-white/10">
+                  <div className="flex justify-between items-center text-sm text-slate-500 mb-3 pb-3 border-b border-slate-200">
                     <div className="flex gap-4">
                       <span className="flex items-center gap-1 hover:text-pink-400 transition-colors">
                         <FaHeart className="text-pink-500" /> 
@@ -419,7 +441,7 @@ const ReelsManagement = () => {
                   </div>
 
                   {/* Date */}
-                  <div className="flex items-center text-xs text-gray-500">
+                  <div className="flex items-center text-xs text-slate-500">
                     <FaCalendar className="mr-1 text-blue-400" />
                     {formatDate(reel.createdAt)}
                   </div>
@@ -445,7 +467,7 @@ const ReelsManagement = () => {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
               transition={{ duration: 0.3 }}
-              className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl w-full max-w-2xl shadow-2xl border border-white/10 my-4"
+              className="bg-white rounded-2xl w-full max-w-2xl shadow-xl border border-slate-200 my-4"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
@@ -470,7 +492,7 @@ const ReelsManagement = () => {
               
               {/* Video Preview */}
               {reelForm.file && (
-                <div className="px-6 py-4 bg-slate-900/50 border-b border-white/10">
+                <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
                   <div className="relative aspect-video bg-black rounded-xl overflow-hidden shadow-lg">
                     <video 
                       src={URL.createObjectURL(reelForm.file)} 
@@ -485,9 +507,9 @@ const ReelsManagement = () => {
                       <FaTimes size={16} />
                     </button>
                   </div>
-                  <p className="text-sm text-gray-400 mt-3 flex items-center gap-2">
+                  <p className="text-sm text-slate-500 mt-3 flex items-center gap-2">
                     <FaCheckCircle className="text-green-500" />
-                    <span className="font-medium text-white">Selected:</span> 
+                    <span className="font-medium text-[#0d2f52]">Selected:</span> 
                     <span className="truncate">{reelForm.file.name}</span>
                   </p>
                 </div>
@@ -496,14 +518,14 @@ const ReelsManagement = () => {
               <form onSubmit={handleReelUpload} className="p-6 space-y-5 max-h-[60vh] overflow-y-auto">
                 {/* Property Selection */}
                 <div>
-                  <label className="block text-sm font-semibold text-orange-400 mb-2">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
                     Select Property *
                   </label>
                   <select
                     value={reelForm.propertyId}
                     onChange={(e) => setReelForm({...reelForm, propertyId: e.target.value})}
                     disabled={uploadingReel}
-                    className="w-full px-4 py-3 bg-slate-900 border-2 border-white/10 rounded-xl focus:border-orange-500 focus:outline-none transition-colors text-white disabled:opacity-50"
+                    className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:border-orange-500 focus:outline-none transition-colors text-slate-700 disabled:opacity-50"
                     required
                   >
                     <option value="">Choose a property</option>
@@ -517,7 +539,7 @@ const ReelsManagement = () => {
                 
                 {/* Caption */}
                 <div>
-                  <label className="block text-sm font-semibold text-orange-400 mb-2">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
                     Caption *
                   </label>
                   <textarea
@@ -525,7 +547,7 @@ const ReelsManagement = () => {
                     onChange={(e) => setReelForm({...reelForm, caption: e.target.value})}
                     disabled={uploadingReel}
                     rows="3"
-                    className="w-full px-4 py-3 bg-slate-900 border-2 border-white/10 rounded-xl focus:border-orange-500 focus:outline-none transition-colors resize-none text-white placeholder-gray-500 disabled:opacity-50"
+                    className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:border-orange-500 focus:outline-none transition-colors resize-none text-slate-700 placeholder-slate-400 disabled:opacity-50"
                     placeholder="Describe your property video..."
                     required
                   />
@@ -652,17 +674,17 @@ const ReelsManagement = () => {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
               transition={{ duration: 0.3 }}
-              className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 max-w-4xl w-full shadow-2xl border border-white/10 my-4"
+              className="bg-white rounded-2xl p-6 max-w-4xl w-full shadow-xl border border-slate-200 my-4"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
               <div className="flex justify-between items-start mb-6">
                 <div className="flex-1">
-                  <h3 className="text-2xl font-bold text-white mb-2">
+                  <h3 className="text-2xl font-bold text-[#0d2f52] mb-2">
                     {selectedReel.caption || 'Reel Preview'}
                   </h3>
                   {selectedReel.location && (
-                    <div className="flex items-center text-gray-400 text-sm">
+                    <div className="flex items-center text-slate-500 text-sm">
                       <FaMapMarkerAlt className="mr-2 text-orange-500" />
                       {selectedReel.location.locality && `${selectedReel.location.locality}, `}
                       {selectedReel.location.city}

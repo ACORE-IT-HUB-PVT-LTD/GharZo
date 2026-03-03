@@ -10,14 +10,17 @@ const LandlordLayoutContent = () => {
   const hideSidebar = location.pathname === "/landlord/add-property" || location.pathname.includes("/landlord/property/edit/");
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-[#f8fafc]">
       {/* Sidebar */}
       {!hideSidebar && <Sidebar setSidebarWidth={setSidebarWidth} />}
 
       {/* Main content */}
       <div 
-        className={`flex-1 overflow-y-auto bg-gray-50 ml-0 sm:ml-0 ${hideSidebar ? 'w-full' : ''}`}
-        style={{ background: 'radial-gradient(circle at center bottom, rgba(245, 124, 0, 0.35), transparent 60%), linear-gradient(rgb(7, 26, 47) 0%, rgb(13, 47, 82) 45%, rgb(18, 62, 107) 75%, rgb(11, 42, 74) 100%)' }}
+        className={`flex-1 overflow-y-auto ml-0 sm:ml-0 ${hideSidebar ? 'w-full' : ''}`}
+        style={{
+          background:
+            "radial-gradient(circle at 10% 15%, rgba(245, 124, 0, 0.08), transparent 38%), radial-gradient(circle at 90% 85%, rgba(13, 47, 82, 0.08), transparent 36%), #f8fafc",
+        }}
       >
         <Outlet />
       </div>

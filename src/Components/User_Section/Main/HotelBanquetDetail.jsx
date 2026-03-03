@@ -277,7 +277,13 @@ const EnquiryForm = ({ property, isHotel, onClose }) => {
                       onChange={handleChange}
                       placeholder="9876543210"
                       maxLength={10}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent focus:bg-white transition-all text-sm"
+                      inputMode="numeric"
+                      onKeyDown={(e) => {
+                        if (e.key === '-' || e.key === 'e' || e.key === 'E') {
+                          e.preventDefault();
+                        }
+                      }}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent focus:bg-white transition-all text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </div>
 
@@ -1617,7 +1623,13 @@ const EnquiryFormInline = ({ property, isHotel }) => {
               onChange={handleChange}
               placeholder="9876543210"
               maxLength={10}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent focus:bg-white transition-all text-sm"
+              inputMode="numeric"
+              onKeyDown={(e) => {
+                if (e.key === '-' || e.key === 'e' || e.key === 'E') {
+                  e.preventDefault();
+                }
+              }}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent focus:bg-white transition-all text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
           </div>
 

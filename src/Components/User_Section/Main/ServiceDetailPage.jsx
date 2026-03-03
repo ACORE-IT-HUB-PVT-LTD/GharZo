@@ -141,7 +141,14 @@ const EnquiryFormModal = ({ isOpen, onClose, service, onSubmit, submitting, resu
                     onChange={handleChange}
                     required
                     placeholder="10-digit mobile"
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    maxLength={10}
+                    inputMode="numeric"
+                    onKeyDown={(e) => {
+                      if (e.key === '-' || e.key === 'e' || e.key === 'E') {
+                        e.preventDefault();
+                      }
+                    }}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                 </div>
               </div>

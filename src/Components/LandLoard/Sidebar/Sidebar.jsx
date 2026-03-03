@@ -1,38 +1,104 @@
 import React, { useState, useEffect } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
-import { useParams } from "react-router-dom";
-import { motion } from "framer-motion";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   FaTachometerAlt,
   FaPlus,
   FaBuilding,
   FaUser,
   FaSignOutAlt,
-  FaTimes,
-  FaBars,
   FaVideo,
   FaUserCircle,
   FaExchangeAlt,
   FaUserPlus,
-  FaBoxOpen,
   FaMoneyBillWave,
-  FaFileInvoice,
-  FaShoppingBasket,
   FaDiagnoses,
   FaComments,
   FaMoneyBill,
 } from "react-icons/fa";
-import { Home, BadgeCheck } from "lucide-react";
+import {
+  FiMenu,
+  FiX,
+  FiChevronRight as FiChevronRightIcon,
+} from "react-icons/fi";
 import logo from "../../../assets/logo/logo.png";
-import dd from "../../../assets/logo/dd.png";
 import { useAuth } from "../../User_Section/Context/AuthContext";
+
+const NavItem = ({ to, icon: Icon, label, onClick, badge, isExpanded }) => (
+  <NavLink
+    to={to}
+    onClick={onClick}
+    end={to === "/landlord"}
+    title={!isExpanded ? label : ""}
+    className={({ isActive }) =>
+      `group relative flex items-center ${isExpanded ? "gap-3 px-3" : "justify-center px-2"} py-2.5 rounded-xl text-sm font-medium transition-all duration-200 overflow-hidden ${
+        isActive
+          ? "gharzo-nav-active text-white shadow-md"
+          : "text-slate-600 hover:bg-orange-50 hover:text-[#E07B1A]"
+      }`
+    }
+  >
+    {({ isActive }) => (
+      <>
+        <div
+          className={`flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 ${
+            isActive
+              ? "bg-white/20"
+              : "bg-slate-100 group-hover:bg-orange-100"
+          }`}
+        >
+          <Icon
+            size={15}
+            className={isActive ? "text-white" : "text-[#1B2A4A] group-hover:text-[#E07B1A]"}
+          />
+        </div>
+        {isExpanded && (
+          <span className="truncate flex-1 text-sm tracking-wide">{label}</span>
+        )}
+        {isExpanded && badge && (
+          <span className="flex-shrink-0 px-1.5 py-0.5 text-[10px] font-bold bg-[#E07B1A] text-white rounded-full">
+            {badge}
+          </span>
+        )}
+        {isExpanded && !isActive && (
+          <FiChevronRightIcon
+            size={13}
+            className="flex-shrink-0 opacity-0 group-hover:opacity-40 transition-opacity duration-200 text-[#E07B1A]"
+          />
+        )}
+      </>
+    )}
+  </NavLink>
+);
+
+const SectionDivider = ({ label, isExpanded }) => (
+  <div className="flex items-center gap-2 px-3 pt-5 pb-2">
+    {isExpanded && (
+      <span className="text-[9px] font-black text-[#1B2A4A]/40 uppercase tracking-[0.15em] whitespace-nowrap">
+        {label}
+      </span>
+    )}
+    <div
+      className="flex-1 h-px"
+      style={{
+        background: isExpanded
+          ? "linear-gradient(90deg, #E07B1A33, #1B2A4A22, transparent)"
+          : "#e2e8f0",
+      }}
+    />
+  </div>
+);
 
 const Sidebar = ({ propertyId, setSidebarWidth }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
   const navigate = useNavigate();
+  const location = useLocation();
   const { landlordlogout } = useAuth();
-  const id = propertyId || useParams().id;
+
+  const isPropertyPage =
+    location.pathname.includes("/property/") &&
+    !location.pathname.includes("/add-property");
 
   const handleLogout = async () => {
     localStorage.removeItem("addedDues");
@@ -42,303 +108,256 @@ const Sidebar = ({ propertyId, setSidebarWidth }) => {
     localStorage.removeItem("landlordId");
     localStorage.removeItem("linkedLandord");
     localStorage.removeItem("propertyId");
-
     try {
       await landlordlogout();
       navigate("/");
     } catch (error) {
       console.error("Logout error:", error);
       localStorage.removeItem("landlordId");
-      console.log("Force cleared 'landlordId' in catch. Now:", localStorage.getItem("landlordId"));
       navigate("/");
     }
     setIsMobileOpen(false);
   };
 
   useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 1024);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  useEffect(() => {
     if (window.innerWidth < 768) {
       setSidebarWidth(0);
     } else {
-      setSidebarWidth(isHovered ? 224 : 80);
+      setSidebarWidth(isHovered ? 256 : 80);
     }
-  }, [isHovered, setSidebarWidth]);
+  }, [isHovered, setSidebarWidth, isPropertyPage]);
 
-  const handleNavLinkClick = () => {
-    if (window.innerWidth < 768) {
-      setIsMobileOpen(false);
-    }
-  };
-
-  const linkClass =
-    "flex items-center gap-3 py-2 px-3 rounded-md hover:bg-indigo-600 hover:text-white transition-all duration-300";
-  const activeClass = "bg-indigo-700 text-white shadow-lg";
-
-  const Colorful3DIcon = ({ icon: Icon, gradient, size = 20 }) => (
-    <motion.div
-      className={`relative p-2 rounded-full shadow-lg transform hover:scale-110 hover:rotate-6 transition-all duration-300 perspective-1000`}
-      style={{ transformStyle: "preserve-3d" }}
-      whileHover={{ y: -2 }}
-    >
-      <div
-        className={`bg-gradient-to-br ${gradient} rounded-full p-1 shadow-md`}
-      >
-        <Icon size={size} className="text-white drop-shadow-lg" />
-      </div>
-      <div className="absolute inset-0 bg-white/20 rounded-full blur opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
-    </motion.div>
-  );
-
-  const links = [
-    // {
-    //   to: "/",
-    //   icon: Home,
-    //   label: "Home",
-    //   exact: true,
-    //   gradient: "from-blue-400 to-indigo-500",
-    // },
-    {
-      to: "/landlord",
-      icon: FaTachometerAlt,
-      label: "Dashboard",
-      exact: true,
-      gradient: "from-orange-600 to-blue-500",
-    },
-    //   { 
-    //   to: "police-verification", 
-    //   icon: BadgeCheck, 
-    //   label: "Police Verification",
-    //   gradient: "from-blue-600 to-orange-500",
-    // },
-    { 
-      to: "/landlord/property", 
-      icon: FaBuilding, 
-      label: "Properties",
-      gradient: "from-orange-600 to-blue-500",
-    },
-    { 
-      to: "/landlord/add-property", 
-      icon: FaPlus, 
-      label: "Add Property",
-      gradient: "from-blue-600 to-orange-500",
-    },
-    {
-      to: `/landlord/tenant-form`,
-      icon: FaUserPlus,
-      label: "Add Tenant",
-      gradient: "from-orange-600 to-blue-500",
-    },
-    {
-      to: "/landlord/room-switch",
-      icon: FaExchangeAlt,
-      label: "Room Switch",
-      gradient: "from-purple-600 to-pink-500",
-    },
-    {
-      to: "/landlord/workers",
-      icon: FaUser,
-      label: "Workers",
-      gradient: "from-blue-600 to-indigo-500",
-    },
-    // {
-    //   to: `/landlord/duespackages`,
-    //   icon: FaBoxOpen,
-    //   label: "Dues Packages",
-    //   gradient: "from-blue-600 to-orange-500",
-    // },
-    {
-      to: `/landlord/expenses`,
-      icon: FaMoneyBillWave,
-      label: "Expenses",
-      gradient: "from-orange-600 to-blue-500",
-    },
-    // {
-    //   to: `/landlord/dues`,
-    //   icon: FaFileInvoice,
-    //   label: "Dues",
-    //   gradient: "from-blue-600 to-orange-500",
-    // },
-    // {
-    //   to: `/landlord/switch-requests`,
-    //   icon: FaExchangeAlt,
-    //   label: "Switch Requests",
-    //   gradient: "from-blue-600 to-orange-500",
-    // },
-    { 
-      to: "/landlord/allComplaints", 
-      icon: FaComments, 
-      label: "All Complaints",
-      gradient: "from-blue-600 to-orange-500",
-    },
-    { 
-      to: "/landlord/payments", 
-      icon: FaMoneyBill, 
-      label: "Payments",
-      gradient: "from-blue-600 to-orange-500",
-    },
-    { 
-      to: "/landlord/landlord_reels", 
-      icon: FaVideo, 
-      label: "Reels",
-      gradient: "from-blue-600 to-orange-500",
-    },
-    {
-      to: "/landlord/landlord_subadmin",
-      icon: FaUserCircle,
-      label: "SubOwner",
-      gradient: "from-blue-600 to-orange-500",
-    },
-    {
-      to: "/landlord/announcement",
-      icon: FaDiagnoses,
-      label: "Announcements",
-      gradient: "from-orange-600 to-blue-500",
-    },
-  ];
+  const toggleSidebar = () => setIsMobileOpen(!isMobileOpen);
+  const closeSidebar = () => setIsMobileOpen(false);
+  const isExpanded = !isDesktop || isHovered;
 
   return (
     <>
-      {/* Mobile Hamburger Button */}
-      {!isMobileOpen && (
-        <div className="md:hidden fixed top-4 left-4 z-[10000]">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setIsMobileOpen(true)}
-            className="p-2 bg-blue-900 text-white rounded-md shadow-lg"
+      {/* Mobile Toggle */}
+      <button
+        className="lg:hidden fixed top-4 left-4 z-50 w-10 h-10 bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 border border-slate-200 flex items-center justify-center active:scale-95"
+        onClick={toggleSidebar}
+      >
+        {isMobileOpen ? (
+          <FiX size={20} className="text-[#1B2A4A]" />
+        ) : (
+          <FiMenu size={20} className="text-[#1B2A4A]" />
+        )}
+      </button>
+
+      {/* Sidebar */}
+      <aside
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        className={`sidebar
+          fixed top-0 left-0 h-screen w-72 ${isHovered ? "lg:w-64" : "lg:w-[72px]"}
+          bg-white z-40
+          transform transition-all duration-300 ease-in-out
+          ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
+          lg:translate-x-0
+          flex flex-col
+          gharzo-sidebar
+        `}
+      >
+        {/* Decorative top accent line */}
+        <div
+          className="h-[3px] w-full flex-shrink-0"
+          style={{
+            background: "linear-gradient(90deg, #E07B1A 0%, #1B2A4A 60%, #E07B1A 100%)",
+          }}
+        />
+
+        {/* Logo Area */}
+        <div
+          className="flex-shrink-0 flex flex-col items-center justify-center px-3 pt-5 pb-4 border-b border-slate-100"
+          style={{
+            background:
+              "linear-gradient(160deg, #fff9f4 0%, #ffffff 60%, #f0f4ff 100%)",
+          }}
+        >
+          <div
+            className={`transition-all duration-300 ${
+              isExpanded ? "w-32" : "w-10"
+            } overflow-hidden flex items-center justify-center`}
           >
-            <FaBars size={22} />
-          </motion.button>
+            <img
+              src={logo}
+              alt="Gharzo Realty"
+              className="w-full h-auto object-contain"
+            />
+          </div>
+          {isExpanded && (
+            <>
+              <p className="mt-2 text-[10px] font-bold tracking-[0.2em] text-[#1B2A4A]/40 uppercase">
+                Management Portal
+              </p>
+              <div
+                className="mt-2 w-3/4 h-px rounded-full"
+                style={{
+                  background:
+                    "linear-gradient(90deg, transparent, #E07B1A88, transparent)",
+                }}
+              />
+            </>
+          )}
         </div>
-      )}
+
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto px-2.5 py-2 space-y-0.5 gharzo-scrollbar">
+          <SectionDivider label="Main" isExpanded={isExpanded} />
+          <NavItem to="/landlord" icon={FaTachometerAlt} label="Dashboard" onClick={closeSidebar} isExpanded={isExpanded} />
+          <NavItem to="/landlord/property" icon={FaBuilding} label="Properties" onClick={closeSidebar} isExpanded={isExpanded} />
+          <NavItem to="/landlord/add-property" icon={FaPlus} label="Add Property" onClick={closeSidebar} isExpanded={isExpanded} />
+
+          <SectionDivider label="Management" isExpanded={isExpanded} />
+          <NavItem to="/landlord/tenant-form" icon={FaUserPlus} label="Add Tenant" onClick={closeSidebar} isExpanded={isExpanded} />
+          <NavItem to="/landlord/room-switch" icon={FaExchangeAlt} label="Room Switch" onClick={closeSidebar} isExpanded={isExpanded} />
+          <NavItem to="/landlord/workers" icon={FaUser} label="Workers" onClick={closeSidebar} isExpanded={isExpanded} />
+          <NavItem to="/landlord/expenses" icon={FaMoneyBillWave} label="Expenses" onClick={closeSidebar} isExpanded={isExpanded} />
+
+          <SectionDivider label="Finance & Support" isExpanded={isExpanded} />
+          <NavItem to="/landlord/allComplaints" icon={FaComments} label="All Complaints" onClick={closeSidebar} isExpanded={isExpanded} />
+          <NavItem to="/landlord/payments" icon={FaMoneyBill} label="Payments" onClick={closeSidebar} isExpanded={isExpanded} />
+          <NavItem to="/landlord/announcement" icon={FaDiagnoses} label="Announcements" onClick={closeSidebar} isExpanded={isExpanded} />
+
+          <SectionDivider label="Content" isExpanded={isExpanded} />
+          <NavItem to="/landlord/landlord_reels" icon={FaVideo} label="Reels" onClick={closeSidebar} isExpanded={isExpanded} />
+          <NavItem to="/landlord/landlord_subadmin" icon={FaUserCircle} label="SubOwner" onClick={closeSidebar} isExpanded={isExpanded} />
+
+          <div className="h-4" />
+        </nav>
+
+        {/* Footer */}
+        <div
+          className="flex-shrink-0 px-2.5 py-3 border-t border-slate-100"
+          style={{ background: "#f8fafc" }}
+        >
+          {/* Logout */}
+          <button
+            onClick={handleLogout}
+            className={`w-full flex items-center ${
+              isExpanded ? "gap-2.5 px-3" : "justify-center px-2"
+            } py-2.5 rounded-xl border transition-all duration-200 cursor-pointer gharzo-logout-btn`}
+          >
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-red-50">
+              <FaSignOutAlt className="text-sm text-red-500" />
+            </div>
+            {isExpanded && (
+              <span className="text-xs font-bold text-red-500 tracking-wide">
+                Logout
+              </span>
+            )}
+          </button>
+
+          {/* Status */}
+          {isExpanded && (
+            <div className="flex items-center justify-between px-3 py-2 gharzo-status-card rounded-xl mt-2">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                </span>
+                <span className="text-xs font-semibold text-[#1B2A4A]/70">
+                  System Active
+                </span>
+              </div>
+              <span
+                className="text-[10px] font-black px-2 py-0.5 rounded-lg tracking-wide"
+                style={{
+                  background: "linear-gradient(135deg, #E07B1A22, #1B2A4A11)",
+                  color: "#E07B1A",
+                  border: "1px solid #E07B1A33",
+                }}
+              >
+                v2.0.1
+              </span>
+            </div>
+          )}
+        </div>
+      </aside>
 
       {/* Mobile Overlay */}
       {isMobileOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="fixed inset-0 bg-black bg-opacity-50 z-[9998]"
-          onClick={() => setIsMobileOpen(false)}
-        ></motion.div>
+        <div
+          className="fixed inset-0 bg-[#1B2A4A]/50 backdrop-blur-sm z-30 lg:hidden"
+          onClick={closeSidebar}
+        />
       )}
 
-      {/* Sidebar */}
-      <motion.div
-        initial={{ x: -300 }}
-        animate={{ x: 0 }}
-        onMouseEnter={() => window.innerWidth >= 768 && setIsHovered(true)}
-        onMouseLeave={() => window.innerWidth >= 768 && setIsHovered(false)}
-        style={{
-        background: `
-          radial-gradient(circle at bottom, rgba(245,124,0,0.35), transparent 60%),
-          linear-gradient(180deg, #071a2f 0%, #0d2f52 45%, #123e6b 75%, #0b2a4a 100%)
-        `,
-      }}
-        className={`
-          sidebar fixed top-0 left-0 h-screen text-white shadow-2xl transition-all duration-500 ease-in-out z-[9999]
-          ${
-            isMobileOpen
-              ? "translate-x-0 w-64"
-              : "-translate-x-full w-0 md:translate-x-0"
-          }
-          ${isHovered ? "md:w-56" : "md:w-20"}
-          flex flex-col overflow-y-auto [&::-webkit-scrollbar]:hidden
-        `}
-      >
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className=""
-        >
-          <img
-            src={isHovered || isMobileOpen ? logo : logo}
-            alt="Logo"
-            onClick={() => navigate("/")}
-            className={`transition-all duration-500 ease-in-out object-contain cursor-pointer ${
-  isHovered || isMobileOpen
-    ? "w-60 h-16"
-    : "w-80 h-10"
-}`}
+      <style>{`
+        /* Gharzo Brand Colors:
+           Navy Blue: #1B2A4A
+           Orange/Gold: #E07B1A
+           White bg: #FFFFFF
+        */
 
-          />
-          {(isHovered || isMobileOpen) && (
-            <motion.h2 
-              className="text-xl font-bold tracking-wide bg-gradient-to-r from-white to-gray-200 bg-clip-text text-transparent"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-            >
-              
-            </motion.h2>
-          )}
-        </motion.div>
+        .gharzo-sidebar {
+          border-right: 1px solid #e8edf5;
+          box-shadow: 4px 0 24px rgba(27, 42, 74, 0.06);
+        }
 
-        {/* Navigation Links */}
-        <div className="flex-1 flex flex-col justify-between px-2 py-6 relative">
-          <ul className="space-y-2 pb-16">
-            {links.map(({ to, icon: Icon, label, gradient }) => (
-              <li key={label} className="z-0">
-                <NavLink
-                  to={to}
-                  end={to === "/landlord"}
-                  onClick={(e) => {
-                    // If this is the SubOwner link, navigate directly to avoid unintended guard redirects
-                    if (to === "/landlord/landlord_subadmin") {
-                      e.preventDefault();
-                      navigate(to);
-                      handleNavLinkClick();
-                      return;
-                    }
-                    handleNavLinkClick();
-                  }}
-                  className={({ isActive }) =>
-                    `${linkClass} ${
-                      isActive ? activeClass : ""
-                    } ${
-                      isHovered || isMobileOpen
-                        ? "gap-4 px-4 py-3 justify-start"
-                        : "justify-center py-3"
-                    }`
-                  }
-                >
-                  <Colorful3DIcon
-                    icon={Icon}
-                    gradient={gradient}
-                  />
-                  {(isHovered || isMobileOpen) && (
-                    <span className="text-sm sm:text-base font-medium">
-                      {label}
-                    </span>
-                  )}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
+        /* Active nav item — navy to deep navy with subtle orange glow */
+        .gharzo-nav-active {
+          background: linear-gradient(135deg, #1B2A4A 0%, #243660 100%);
+          box-shadow:
+            0 4px 15px rgba(27, 42, 74, 0.25),
+            inset 0 1px 0 rgba(255,255,255,0.08);
+          position: relative;
+        }
 
-          {/* Logout Button - Fixed at Bottom, No Red BG */}
-          <div className="sticky bottom-0 left-0 w-full bg-transparent z-10 py-2 px-2">
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleLogout}
-              className={`
-                w-full flex items-center transition-all duration-300 rounded-lg
-                ${isHovered || isMobileOpen ? "gap-4 px-4 py-3 justify-start" : "justify-center py-3"}
-                hover:bg-white/20 backdrop-blur-sm border border-white/30
-              `}
-            >
-              <Colorful3DIcon
-                icon={FaSignOutAlt}
-                gradient="from-gray-400 to-gray-600"
-              />
-              {(isHovered || isMobileOpen) && (
-                <span className="text-sm sm:text-base font-medium">Logout</span>
-              )}
-            </motion.button>
-          </div>
-        </div>
-      </motion.div>
+        .gharzo-nav-active::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 20%;
+          bottom: 20%;
+          width: 3px;
+          background: linear-gradient(180deg, #E07B1A, #f5a623);
+          border-radius: 0 4px 4px 0;
+        }
+
+        /* Scrollbar */
+        .gharzo-scrollbar::-webkit-scrollbar {
+          width: 3px;
+        }
+        .gharzo-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .gharzo-scrollbar::-webkit-scrollbar-thumb {
+          background: linear-gradient(180deg, #E07B1A44, #1B2A4A33);
+          border-radius: 10px;
+        }
+        .gharzo-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(180deg, #E07B1A88, #1B2A4A66);
+        }
+
+        /* Logout button */
+        .gharzo-logout-btn {
+          background: #fff5f5;
+          border: 1px solid #fecdd3;
+        }
+        .gharzo-logout-btn:hover {
+          background: #fee2e2;
+          border-color: #fca5a5;
+        }
+
+        /* Status card */
+        .gharzo-status-card {
+          background: linear-gradient(135deg, #f8fafc, #fff9f4);
+          border: 1px solid #e8edf5;
+        }
+
+        /* Hover state for nav items */
+        .group:hover .group-hover\\:bg-orange-100 {
+          background: #fff3e0 !important;
+        }
+      `}</style>
     </>
   );
 };

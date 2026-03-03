@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ChevronDown, Send, Trash2, Edit3, Pin, PinOff, Eye, FileText, Upload, X, Check, AlertCircle, Calendar, Users, Settings, Home } from 'lucide-react';
 
 const AnnouncementManagementSystem = () => {
+  const [isSidebarHovered, setIsSidebarHovered] = useState(false);
   const [activeTab, setActiveTab] = useState('create');
   const [properties, setProperties] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
@@ -257,6 +258,19 @@ const AnnouncementManagementSystem = () => {
     fetchAnnouncements();
   }, []);
 
+  useEffect(() => {
+    const sidebar = document.querySelector(".sidebar");
+    if (!sidebar) return undefined;
+    const onEnter = () => setIsSidebarHovered(true);
+    const onLeave = () => setIsSidebarHovered(false);
+    sidebar.addEventListener("mouseenter", onEnter);
+    sidebar.addEventListener("mouseleave", onLeave);
+    return () => {
+      sidebar.removeEventListener("mouseenter", onEnter);
+      sidebar.removeEventListener("mouseleave", onLeave);
+    };
+  }, []);
+
   // Get Priority Color
   const getPriorityColor = (priority) => {
     const colors = {
@@ -283,7 +297,15 @@ const AnnouncementManagementSystem = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900">
+    <div
+      className={`min-h-screen transition-all duration-500 ${
+        isSidebarHovered ? "md:ml-[256px] md:w-[calc(100%-256px)]" : "md:ml-[64px] md:w-[calc(100%-64px)]"
+      }`}
+      style={{
+        background:
+          "radial-gradient(circle at 10% 15%, rgba(245,124,0,0.08), transparent 35%), radial-gradient(circle at 90% 85%, rgba(13,47,82,0.08), transparent 35%), #f8fafc",
+      }}
+    >
       {/* Background decorative elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 right-0 w-96 h-96 bg-orange-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse"></div>
@@ -291,7 +313,7 @@ const AnnouncementManagementSystem = () => {
       </div>
 
       {/* Header */}
-      <header className="sticky top-0 z-40 backdrop-blur-lg border-b border-orange-500/20 bg-slate-900/40">
+      <header className="sticky top-0 z-40 backdrop-blur-lg border-b border-slate-200 bg-white/90">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -299,10 +321,10 @@ const AnnouncementManagementSystem = () => {
                 <FileText className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">
+                <h1 className="text-2xl font-bold text-[#0d2f52]">
                   Announcements Hub
                 </h1>
-                <p className="text-xs text-slate-400">Landlord Management System</p>
+                <p className="text-xs text-slate-500">Landlord Management System</p>
               </div>
             </div>
           </div>
@@ -326,7 +348,7 @@ const AnnouncementManagementSystem = () => {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
         {/* Tab Navigation */}
-        <div className="flex gap-2 mb-8 bg-slate-800/50 p-2 rounded-xl border border-slate-700/50 backdrop-blur-sm w-fit">
+        <div className="flex gap-2 mb-8 bg-white p-2 rounded-xl border border-slate-200 shadow-sm w-fit">
           {[
             { id: 'create', label: 'Create Announcement', icon: Send },
             { id: 'view', label: 'View All', icon: Eye }
@@ -342,7 +364,7 @@ const AnnouncementManagementSystem = () => {
                 className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-300 ${
                   activeTab === tab.id
                     ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/20'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-700/30'
+                    : 'text-slate-600 hover:text-[#0d2f52] hover:bg-slate-100'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -354,8 +376,8 @@ const AnnouncementManagementSystem = () => {
 
         {/* Create Tab */}
         {activeTab === 'create' && (
-          <div className="bg-slate-800/50 backdrop-blur-lg border border-slate-700/50 rounded-2xl p-8 shadow-2xl">
-            <h2 className="text-2xl font-bold text-white mb-8 flex items-center gap-3">
+          <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm">
+            <h2 className="text-2xl font-bold text-[#0d2f52] mb-8 flex items-center gap-3">
               <div className="w-1 h-8 bg-gradient-to-b from-orange-400 to-orange-600 rounded-full"></div>
               {editingId ? 'Edit Announcement' : 'Create New Announcement'}
             </h2>
@@ -363,7 +385,7 @@ const AnnouncementManagementSystem = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Title */}
               <div>
-                <label className="block text-sm font-semibold text-slate-200 mb-3">
+                <label className="block text-sm font-semibold text-slate-700 mb-3">
                   Title <span className="text-orange-400">*</span>
                 </label>
                 <input
@@ -371,13 +393,13 @@ const AnnouncementManagementSystem = () => {
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   placeholder="e.g., Monthly Maintenance Notice"
-                  className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 text-white placeholder-slate-500 transition-all"
+                  className="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 text-slate-700 placeholder-slate-400 transition-all"
                 />
               </div>
 
               {/* Message */}
               <div>
-                <label className="block text-sm font-semibold text-slate-200 mb-3">
+                <label className="block text-sm font-semibold text-slate-700 mb-3">
                   Message <span className="text-orange-400">*</span>
                 </label>
                 <textarea
@@ -385,13 +407,13 @@ const AnnouncementManagementSystem = () => {
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                   placeholder="Write your announcement message here..."
                   rows="5"
-                  className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 text-white placeholder-slate-500 resize-none transition-all"
+                  className="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 text-slate-700 placeholder-slate-400 resize-none transition-all"
                 />
               </div>
 
               {/* Target Audience */}
               <div>
-                <label className="block text-sm font-semibold text-slate-200 mb-3">
+                <label className="block text-sm font-semibold text-slate-700 mb-3">
                   Target Audience <span className="text-orange-400">*</span>
                 </label>
                 <div className="relative">
@@ -402,7 +424,7 @@ const AnnouncementManagementSystem = () => {
                       setSelectedProperties([]);
                       setSelectedTenants([]);
                     }}
-                    className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 text-white appearance-none cursor-pointer transition-all"
+                    className="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 text-slate-700 appearance-none cursor-pointer transition-all"
                   >
                     {audienceOptions.map((option) => (
                       <option key={option} value={option} className="bg-slate-900">
@@ -416,13 +438,13 @@ const AnnouncementManagementSystem = () => {
 
               {/* Properties Selection */}
               {formData.targetAudience === 'Specific Properties' && (
-                <div className="bg-slate-700/30 border border-orange-500/20 rounded-lg p-5">
+                <div className="bg-slate-50 border border-orange-500/20 rounded-lg p-5">
                   <label className="block text-sm font-semibold text-slate-200 mb-3">
                     Select Properties
                   </label>
                   <div className="max-h-48 overflow-y-auto space-y-2">
                     {properties.map((property) => (
-                      <label key={property._id} className="flex items-center gap-3 p-3 hover:bg-slate-700/50 rounded-lg cursor-pointer transition-all">
+                      <label key={property._id} className="flex items-center gap-3 p-3 hover:bg-white rounded-lg cursor-pointer transition-all">
                         <input
                           type="checkbox"
                           checked={selectedProperties.includes(property._id)}
@@ -455,7 +477,7 @@ const AnnouncementManagementSystem = () => {
                     <select
                       value={formData.type}
                       onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                      className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 text-white appearance-none cursor-pointer transition-all"
+                      className="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 text-slate-700 appearance-none cursor-pointer transition-all"
                     >
                       {typeOptions.map((option) => (
                         <option key={option} value={option} className="bg-slate-900">
@@ -475,7 +497,7 @@ const AnnouncementManagementSystem = () => {
                     <select
                       value={formData.priority}
                       onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                      className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 text-white appearance-none cursor-pointer transition-all"
+                      className="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 text-slate-700 appearance-none cursor-pointer transition-all"
                     >
                       {priorityOptions.map((option) => (
                         <option key={option} value={option} className="bg-slate-900">
@@ -499,7 +521,7 @@ const AnnouncementManagementSystem = () => {
                     type="date"
                     value={formData.expiresAt}
                     onChange={(e) => setFormData({ ...formData, expiresAt: e.target.value })}
-                    className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 text-white transition-all"
+                    className="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 text-slate-700 transition-all"
                   />
                 </div>
 
@@ -512,7 +534,7 @@ const AnnouncementManagementSystem = () => {
                     type="datetime-local"
                     value={formData.scheduledFor}
                     onChange={(e) => setFormData({ ...formData, scheduledFor: e.target.value })}
-                    className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 text-white transition-all"
+                    className="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 text-slate-700 transition-all"
                   />
                 </div>
               </div>
@@ -523,7 +545,7 @@ const AnnouncementManagementSystem = () => {
                   <div className={`relative w-10 h-6 transition-colors ${formData.isPinned ? 'bg-orange-500' : 'bg-slate-600'} rounded-full`}>
                     <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${formData.isPinned ? 'translate-x-4' : ''}`}></div>
                   </div>
-                  <span className="text-sm font-medium text-slate-300">Pin this announcement</span>
+                  <span className="text-sm font-medium text-slate-600">Pin this announcement</span>
                   <input
                     type="checkbox"
                     checked={formData.isPinned}
@@ -536,7 +558,7 @@ const AnnouncementManagementSystem = () => {
                   <div className={`relative w-10 h-6 transition-colors ${formData.visibleToLandlord ? 'bg-orange-500' : 'bg-slate-600'} rounded-full`}>
                     <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${formData.visibleToLandlord ? 'translate-x-4' : ''}`}></div>
                   </div>
-                  <span className="text-sm font-medium text-slate-300">Visible to landlord</span>
+                  <span className="text-sm font-medium text-slate-600">Visible to landlord</span>
                   <input
                     type="checkbox"
                     checked={formData.visibleToLandlord}
@@ -552,7 +574,7 @@ const AnnouncementManagementSystem = () => {
                   <Upload className="w-4 h-4" />
                   Attachments (Max 5 files, 10MB each)
                 </label>
-                <div className="border-2 border-dashed border-slate-600/50 rounded-lg p-6 text-center hover:border-orange-500/50 transition-colors">
+                <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-orange-500/50 transition-colors">
                   <input
                     type="file"
                     multiple
@@ -563,7 +585,7 @@ const AnnouncementManagementSystem = () => {
                   <label htmlFor="file-upload" className="cursor-pointer">
                     <div className="flex flex-col items-center gap-2">
                       <Upload className="w-8 h-8 text-slate-400" />
-                      <span className="text-sm text-slate-300">Click to upload files</span>
+                      <span className="text-sm text-slate-600">Click to upload files</span>
                     </div>
                   </label>
                 </div>
@@ -571,7 +593,7 @@ const AnnouncementManagementSystem = () => {
                 {uploadedFiles.length > 0 && (
                   <div className="mt-4 space-y-2">
                     {uploadedFiles.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between bg-slate-700/30 p-3 rounded-lg border border-orange-500/20">
+                      <div key={index} className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-orange-500/20">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           <FileText className="w-4 h-4 text-orange-400 flex-shrink-0" />
                           <div className="min-w-0">
@@ -610,7 +632,7 @@ const AnnouncementManagementSystem = () => {
                       resetForm();
                       setEditingId(null);
                     }}
-                    className="px-6 py-3 bg-slate-700/50 hover:bg-slate-700 text-slate-200 font-semibold rounded-lg transition-all border border-slate-600/50"
+                    className="px-6 py-3 bg-white hover:bg-slate-700 text-slate-200 font-semibold rounded-lg transition-all border border-slate-300"
                   >
                     Cancel Edit
                   </button>
@@ -623,7 +645,7 @@ const AnnouncementManagementSystem = () => {
         {/* View Tab */}
         {activeTab === 'view' && (
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-white flex items-center gap-3 mb-8">
+            <h2 className="text-2xl font-bold text-[#0d2f52] flex items-center gap-3 mb-8">
               <div className="w-1 h-8 bg-gradient-to-b from-orange-400 to-orange-600 rounded-full"></div>
               All Announcements ({announcements.length})
             </h2>
@@ -632,13 +654,13 @@ const AnnouncementManagementSystem = () => {
               <div className="flex items-center justify-center py-12">
                 <div className="text-center">
                   <div className="w-12 h-12 rounded-full border-4 border-slate-700 border-t-orange-500 animate-spin mx-auto mb-4"></div>
-                  <p className="text-slate-300">Loading announcements...</p>
+                  <p className="text-slate-600">Loading announcements...</p>
                 </div>
               </div>
             ) : announcements.length === 0 ? (
-              <div className="text-center py-12 bg-slate-800/30 border border-slate-700/50 rounded-xl">
+              <div className="text-center py-12 bg-white border border-slate-200 rounded-xl">
                 <FileText className="w-12 h-12 text-slate-500 mx-auto mb-3 opacity-50" />
-                <p className="text-slate-300 text-lg">No announcements yet</p>
+                <p className="text-slate-600 text-lg">No announcements yet</p>
                 <p className="text-slate-400 text-sm">Create your first announcement to get started</p>
               </div>
             ) : (
@@ -646,18 +668,18 @@ const AnnouncementManagementSystem = () => {
                 {announcements.map((announcement) => (
                   <div
                     key={announcement._id}
-                    className="bg-slate-800/50 backdrop-blur-lg border border-slate-700/50 rounded-xl p-6 hover:border-orange-500/30 transition-all duration-300 group"
+                    className="bg-white backdrop-blur-lg border border-slate-200 rounded-xl p-6 hover:border-orange-500/30 transition-all duration-300 group"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-bold text-white truncate">{announcement.title}</h3>
+                          <h3 className="text-lg font-bold text-[#0d2f52] truncate">{announcement.title}</h3>
                           {announcement.isPinned && (
                             <Pin className="w-5 h-5 text-orange-400 flex-shrink-0" />
                           )}
                         </div>
 
-                        <p className="text-slate-300 text-sm mb-4 line-clamp-2">{announcement.message}</p>
+                        <p className="text-slate-600 text-sm mb-4 line-clamp-2">{announcement.message}</p>
 
                         <div className="flex flex-wrap items-center gap-2 mb-3">
                           <span className={`inline-block text-xs font-semibold px-3 py-1 rounded-full border ${getTypeColor(announcement.type)}`}>
@@ -669,7 +691,7 @@ const AnnouncementManagementSystem = () => {
                           <span className={`inline-block text-xs font-semibold px-2 py-1 rounded-full ${
                             announcement.status === 'Published' ? 'bg-green-500/20 text-green-300 border border-green-500/30' :
                             announcement.status === 'Scheduled' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
-                            'bg-slate-500/20 text-slate-300 border border-slate-500/30'
+                            'bg-slate-500/20 text-slate-600 border border-slate-500/30'
                           }`}>
                             {announcement.status}
                           </span>
@@ -699,7 +721,7 @@ const AnnouncementManagementSystem = () => {
                       <div className="flex flex-col gap-2 flex-shrink-0">
                         <button
                           onClick={() => handleTogglePin(announcement._id)}
-                          className="p-3 bg-slate-700/50 hover:bg-slate-700 text-slate-300 hover:text-orange-400 rounded-lg transition-all"
+                          className="p-3 bg-white hover:bg-slate-700 text-slate-600 hover:text-orange-400 rounded-lg transition-all"
                           title={announcement.isPinned ? 'Unpin' : 'Pin'}
                         >
                           {announcement.isPinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
@@ -707,7 +729,7 @@ const AnnouncementManagementSystem = () => {
 
                         <button
                           onClick={() => handleEdit(announcement)}
-                          className="p-3 bg-slate-700/50 hover:bg-slate-700 text-slate-300 hover:text-blue-400 rounded-lg transition-all"
+                          className="p-3 bg-white hover:bg-slate-700 text-slate-600 hover:text-blue-400 rounded-lg transition-all"
                           title="Edit"
                         >
                           <Edit3 className="w-4 h-4" />
@@ -715,7 +737,7 @@ const AnnouncementManagementSystem = () => {
 
                         <button
                           onClick={() => setShowDeleteConfirm(announcement._id)}
-                          className="p-3 bg-slate-700/50 hover:bg-red-600/20 text-slate-300 hover:text-red-400 rounded-lg transition-all"
+                          className="p-3 bg-white hover:bg-red-600/20 text-slate-600 hover:text-red-400 rounded-lg transition-all"
                           title="Delete"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -725,7 +747,7 @@ const AnnouncementManagementSystem = () => {
 
                     {/* Delete Confirmation */}
                     {showDeleteConfirm === announcement._id && (
-                      <div className="mt-4 pt-4 border-t border-slate-600/50 bg-red-500/10 rounded-lg p-4 flex items-center justify-between gap-4">
+                      <div className="mt-4 pt-4 border-t border-slate-300 bg-red-500/10 rounded-lg p-4 flex items-center justify-between gap-4">
                         <p className="text-sm text-red-300">Are you sure? This action cannot be undone.</p>
                         <div className="flex gap-2">
                           <button
@@ -755,3 +777,4 @@ const AnnouncementManagementSystem = () => {
 };
 
 export default AnnouncementManagementSystem;
+

@@ -522,7 +522,12 @@ const PropertyInquiryPage = () => {
                         placeholder="Enter 10-digit phone number"
                         maxLength="10"
                         inputMode="numeric"
-                        className="w-full px-6 py-3.5 bg-slate-700/50 border-2 border-slate-600/50 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all duration-300 backdrop-blur-sm"
+                        onKeyDown={(e) => {
+                          if (e.key === '-' || e.key === 'e' || e.key === 'E') {
+                            e.preventDefault();
+                          }
+                        }}
+                        className="w-full px-6 py-3.5 bg-slate-700/50 border-2 border-slate-600/50 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all duration-300 backdrop-blur-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
                       <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-orange-500">
                         <svg

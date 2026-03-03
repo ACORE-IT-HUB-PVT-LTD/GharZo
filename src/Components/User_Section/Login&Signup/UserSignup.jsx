@@ -594,7 +594,13 @@ function UserSignup() {
                             value={form.phone}
                             onChange={handlePhoneChange}
                             maxLength="10"
-                            className={`flex-1 px-4 py-3 bg-gray-50 border-2 rounded-r-xl focus:outline-none transition-all duration-300 ${
+                            inputMode="numeric"
+                            onKeyDown={(e) => {
+                              if (e.key === '-' || e.key === 'e' || e.key === 'E') {
+                                e.preventDefault();
+                              }
+                            }}
+                            className={`flex-1 px-4 py-3 bg-gray-50 border-2 rounded-r-xl focus:outline-none transition-all duration-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none] ${
                               fieldErrors.phone
                                 ? "border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100"
                                 : "border-gray-200 focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"

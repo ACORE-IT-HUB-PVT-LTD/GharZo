@@ -19,6 +19,7 @@ import {
 
 const LandlordRoomSwitch = () => {
   const navigate = useNavigate();
+  const [isSidebarHovered, setIsSidebarHovered] = useState(false);
   const [switches, setSwitches] = useState([]);
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
@@ -72,6 +73,19 @@ const LandlordRoomSwitch = () => {
   useEffect(() => {
     fetchSwitches();
   }, [navigate]);
+
+  useEffect(() => {
+    const sidebar = document.querySelector(".sidebar");
+    if (!sidebar) return undefined;
+    const onEnter = () => setIsSidebarHovered(true);
+    const onLeave = () => setIsSidebarHovered(false);
+    sidebar.addEventListener("mouseenter", onEnter);
+    sidebar.addEventListener("mouseleave", onLeave);
+    return () => {
+      sidebar.removeEventListener("mouseenter", onEnter);
+      sidebar.removeEventListener("mouseleave", onLeave);
+    };
+  }, []);
 
   // Filter switches
   const filteredSwitches = switches.filter((s) => {
@@ -227,9 +241,12 @@ const LandlordRoomSwitch = () => {
   };
 
   return (
-    <div className="min-h-screen p-4 md:p-6" 
+    <div className={`min-h-screen p-4 md:p-6 transition-all duration-500 ${
+      isSidebarHovered ? "md:ml-[256px] md:w-[calc(100%-256px)]" : "md:ml-[64px] md:w-[calc(100%-64px)]"
+    }`} 
       style={{
-        background: `radial-gradient(circle at center bottom, rgba(245, 124, 0, 0.35), transparent 60%), linear-gradient(rgb(7, 26, 47) 0%, rgb(13, 47, 82) 45%, rgb(18, 62, 107) 75%, rgb(11, 42, 74) 100%)`
+        background:
+          "radial-gradient(circle at 10% 15%, rgba(245, 124, 0, 0.08), transparent 35%), radial-gradient(circle at 90% 85%, rgba(13, 47, 82, 0.08), transparent 35%), #f8fafc",
       }}
     >
       <ToastContainer position="top-center" />
@@ -237,11 +254,11 @@ const LandlordRoomSwitch = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-white mb-2 flex items-center justify-center gap-3">
+          <h1 className="text-2xl md:text-3xl font-bold text-[#0d2f52] mb-2 flex items-center justify-center gap-3">
             <FaExchangeAlt className="text-orange-500" />
             Room Switch Requests
           </h1>
-          <p className="text-slate-400">Manage tenant room switch requests</p>
+          <p className="text-slate-500">Manage tenant room switch requests</p>
         </div>
 
         {/* Stats Cards */}
@@ -270,7 +287,7 @@ const LandlordRoomSwitch = () => {
               className={`px-4 py-2 rounded-full font-medium transition-all ${
                 filter === f
                   ? "bg-orange-500 text-white"
-                  : "bg-white/10 text-slate-300 hover:bg-white/20"
+                  : "bg-white text-slate-700 border border-slate-200 hover:border-orange-300"
               }`}
             >
               {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1).replace(/([A-Z])/g, " ")}
@@ -282,11 +299,11 @@ const LandlordRoomSwitch = () => {
         {loading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="animate-pulse bg-white/10 rounded-2xl h-48"></div>
+              <div key={i} className="animate-pulse bg-white rounded-2xl h-48 border border-slate-200"></div>
             ))}
           </div>
         ) : filteredSwitches.length === 0 ? (
-          <div className="text-center py-16 text-slate-400">
+          <div className="text-center py-16 text-slate-500">
             <FaExchangeAlt className="text-5xl mx-auto mb-4 opacity-50" />
             <p>No switch requests found</p>
           </div>
@@ -295,15 +312,15 @@ const LandlordRoomSwitch = () => {
             {filteredSwitches.map((switchItem) => (
               <div
                 key={switchItem._id}
-                className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 p-6"
+                className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm"
               >
                 {/* Header */}
                 <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
                   <div>
-                    <div className="text-white font-bold text-lg">
+                    <div className="text-[#0d2f52] font-bold text-lg">
                       {switchItem.switchNumber}
                     </div>
-                    <div className="text-slate-400 text-sm">
+                    <div className="text-slate-500 text-sm">
                       Requested on {formatDate(switchItem.createdAt)}
                     </div>
                   </div>
@@ -313,14 +330,14 @@ const LandlordRoomSwitch = () => {
                 </div>
 
                 {/* Tenant Info */}
-                <div className="bg-white/5 rounded-xl p-4 mb-4">
-                  <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
+                <div className="bg-slate-50 rounded-xl p-4 mb-4 border border-slate-200">
+                  <div className="flex items-center gap-2 text-slate-500 text-sm mb-2">
                     <FaUser /> Tenant Details
                   </div>
-                  <div className="text-white font-semibold">
+                  <div className="text-[#0d2f52] font-semibold">
                     {switchItem.tenantId?.name || "N/A"}
                   </div>
-                  <div className="text-slate-400 text-sm">
+                  <div className="text-slate-500 text-sm">
                     {switchItem.tenantId?.phone || "No phone"}
                   </div>
                 </div>
@@ -330,25 +347,25 @@ const LandlordRoomSwitch = () => {
                   {/* From Room */}
                   <div className="bg-red-500/10 rounded-xl p-4 border border-red-500/20">
                     <div className="text-red-400 text-xs font-semibold mb-2">FROM ROOM</div>
-                    <div className="text-white font-bold">{switchItem.fromRoom?.roomNumber}</div>
+                    <div className="text-[#0d2f52] font-bold">{switchItem.fromRoom?.roomNumber}</div>
                     <div className="text-slate-400 text-sm">{switchItem.fromRoom?.roomType}</div>
-                    <div className="text-slate-400 text-sm">₹{switchItem.fromRoom?.monthlyRent}/mo</div>
+                    <div className="text-slate-600 text-sm">Rs {switchItem.fromRoom?.monthlyRent}/mo</div>
                   </div>
 
                   {/* To Room */}
                   <div className="bg-green-500/10 rounded-xl p-4 border border-green-500/20">
                     <div className="text-green-400 text-xs font-semibold mb-2">TO ROOM</div>
-                    <div className="text-white font-bold">{switchItem.toRoom?.roomNumber}</div>
+                    <div className="text-[#0d2f52] font-bold">{switchItem.toRoom?.roomNumber}</div>
                     <div className="text-slate-400 text-sm">{switchItem.toRoom?.roomType}</div>
-                    <div className="text-slate-400 text-sm">₹{switchItem.toRoom?.monthlyRent}/mo</div>
+                    <div className="text-slate-600 text-sm">Rs {switchItem.toRoom?.monthlyRent}/mo</div>
                   </div>
                 </div>
 
                 {/* Rent Change */}
                 {switchItem.rentChange && (
-                  <div className="bg-white/5 rounded-xl p-4 mb-4">
+                  <div className="bg-slate-50 rounded-xl p-4 mb-4 border border-slate-200">
                     <div className="flex items-center justify-between">
-                      <div className="text-slate-400 text-sm">Rent Change</div>
+                      <div className="text-slate-500 text-sm">Rent Change</div>
                       <div className={`font-bold ${
                         switchItem.rentChange.difference > 0 
                           ? "text-red-400" 
@@ -357,9 +374,9 @@ const LandlordRoomSwitch = () => {
                             : "text-slate-400"
                       }`}>
                         {switchItem.rentChange.difference > 0 
-                          ? `+₹${switchItem.rentChange.difference}` 
+                          ? `+Rs ${switchItem.rentChange.difference}` 
                           : switchItem.rentChange.difference < 0 
-                            ? `₹${switchItem.rentChange.difference}` 
+                            ? `Rs ${switchItem.rentChange.difference}` 
                             : "No change"}
                       </div>
                     </div>
@@ -372,7 +389,7 @@ const LandlordRoomSwitch = () => {
                 )}
 
                 {/* Reason & Date */}
-                <div className="text-slate-300 text-sm mb-4">
+                <div className="text-slate-700 text-sm mb-4">
                   <div className="mb-2">
                     <span className="text-slate-500">Reason:</span> {switchItem.reason}
                   </div>
@@ -417,8 +434,8 @@ const LandlordRoomSwitch = () => {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-800 rounded-2xl p-6 w-full max-w-lg border border-slate-700">
-            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-lg border border-slate-200 shadow-lg">
+            <h3 className="text-xl font-bold text-[#0d2f52] mb-4 flex items-center gap-2">
               {modalType === "approve" && <><FaCheck className="text-green-500" /> Approve Request</>}
               {modalType === "reject" && <><FaTimes className="text-red-500" /> Reject Request</>}
               {modalType === "complete" && <><FaCheckCircle className="text-blue-500" /> Complete Switch</>}
@@ -427,7 +444,7 @@ const LandlordRoomSwitch = () => {
             <form onSubmit={modalType === "complete" ? handleComplete : handleReview}>
               {/* Remarks */}
               <div className="mb-4">
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
                   Remarks {modalType !== "complete" && <span className="text-red-400">*</span>}
                 </label>
                 <textarea
@@ -435,7 +452,7 @@ const LandlordRoomSwitch = () => {
                   onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
                   placeholder="Enter your remarks..."
                   rows={3}
-                  className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-orange-500"
+                  className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-700 placeholder-slate-400 focus:outline-none focus:border-orange-500"
                   required={modalType !== "complete"}
                 />
               </div>
@@ -444,7 +461,7 @@ const LandlordRoomSwitch = () => {
               {modalType === "approve" && (
                 <>
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
                       Switch Charges (₹)
                     </label>
                     <input
@@ -452,18 +469,18 @@ const LandlordRoomSwitch = () => {
                       value={formData.switchChargesAmount}
                       onChange={(e) => setFormData({ ...formData, switchChargesAmount: e.target.value })}
                       placeholder="Enter switch charges amount"
-                      className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-orange-500"
+                      className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-700 placeholder-slate-400 focus:outline-none focus:border-orange-500"
                     />
                   </div>
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
                       Confirmed Switch Date
                     </label>
                     <input
                       type="date"
                       value={formData.confirmedSwitchDate}
                       onChange={(e) => setFormData({ ...formData, confirmedSwitchDate: e.target.value })}
-                      className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:outline-none focus:border-orange-500"
+                      className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-700 focus:outline-none focus:border-orange-500"
                     />
                   </div>
                 </>
@@ -473,25 +490,25 @@ const LandlordRoomSwitch = () => {
               {modalType === "complete" && (
                 <>
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
                       Actual Switch Date <span className="text-red-400">*</span>
                     </label>
                     <input
                       type="date"
                       value={formData.actualSwitchDate}
                       onChange={(e) => setFormData({ ...formData, actualSwitchDate: e.target.value })}
-                      className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:outline-none focus:border-orange-500"
+                      className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-700 focus:outline-none focus:border-orange-500"
                       required
                     />
                   </div>
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
                       Old Room Condition
                     </label>
                     <select
                       value={formData.oldRoomCondition}
                       onChange={(e) => setFormData({ ...formData, oldRoomCondition: e.target.value })}
-                      className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:outline-none focus:border-orange-500"
+                      className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-700 focus:outline-none focus:border-orange-500"
                     >
                       <option value="Excellent">Excellent</option>
                       <option value="Good">Good</option>
@@ -500,7 +517,7 @@ const LandlordRoomSwitch = () => {
                     </select>
                   </div>
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
                       Notes
                     </label>
                     <textarea
@@ -508,7 +525,7 @@ const LandlordRoomSwitch = () => {
                       onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                       placeholder="Any additional notes..."
                       rows={2}
-                      className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-orange-500"
+                      className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-700 placeholder-slate-400 focus:outline-none focus:border-orange-500"
                     />
                   </div>
                 </>
@@ -522,7 +539,7 @@ const LandlordRoomSwitch = () => {
                     setShowModal(false);
                     setSelectedSwitch(null);
                   }}
-                  className="flex-1 px-4 py-3 bg-slate-600 hover:bg-slate-500 text-white rounded-xl font-medium transition-colors"
+                  className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium transition-colors"
                 >
                   Cancel
                 </button>

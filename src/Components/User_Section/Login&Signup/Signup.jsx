@@ -147,11 +147,19 @@ function Signup() {
               />
               <input
                 name="phone"
-                placeholder="Phone Number"
+                type="tel"
+                inputMode="numeric"
+                placeholder="10-digit Phone Number"
+                maxLength="10"
                 value={form.phone}
-                onChange={handleChange}
+                onChange={(e) => handleChange({ target: { name: 'phone', value: e.target.value.replace(/\D/g, '').slice(0, 10) } })}
+                onKeyDown={(e) => {
+                  if (e.key === '-' || e.key === 'e' || e.key === 'E') {
+                    e.preventDefault();
+                  }
+                }}
                 required
-                className="p-2 border rounded-lg bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="p-2 border rounded-lg bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
 
