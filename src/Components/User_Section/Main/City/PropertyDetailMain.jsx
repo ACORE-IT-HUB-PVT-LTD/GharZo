@@ -13,7 +13,10 @@ import {
   Flag,
   ThumbsUp,
   ThumbsDown,
+  Copy,
+  X
 } from "lucide-react";
+import { FaFacebook, FaTwitter, FaWhatsapp, FaEnvelope, FaCheckCircle } from "react-icons/fa";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination } from "swiper/modules";
 import axios from "axios";
@@ -42,6 +45,9 @@ const PropertyDetails = () => {
     profilePic:
       "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRpGIEIrBlxuFjJfpK_a6hEbf6sSJK-hnjUMBLsCa3BZfZbbL1GGLQPApvV3PHB88d9g7Q&usqp=CAU",
   });
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [sharePropertyId, setSharePropertyId] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   // Add CSS for 3D animations
   const styles = `
@@ -759,10 +765,10 @@ const PropertyDetails = () => {
           <button 
             className="bg-white rounded-full p-2 shadow animate-pulse"
             onClick={() => {
-              // Get property ID from the property object
               const propertyId = property.id || property._id;
               if (propertyId) {
-                window.location.href = `https://gharzoreality.com/property/${propertyId}`;
+                setSharePropertyId(propertyId);
+                setShowShareModal(true);
               }
             }}
           >
@@ -1044,6 +1050,103 @@ const PropertyDetails = () => {
           I'm Interested
         </button>
       </div>
+
+      {/* Share Modal */}
+      {showShareModal && sharePropertyId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowShareModal(false)}
+          />
+          <div 
+            className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 z-10 animate-[scale_0.2s_ease-out]"
+          >
+            <button 
+              onClick={() => setShowShareModal(false)}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 transition"
+            >
+              <X size={16} />
+            </button>
+            
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <Share2 size={28} className="text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">Share Property</h3>
+              <p className="text-gray-500 text-sm mt-1">Copy the link to share this property</p>
+            </div>
+
+            <div className="bg-gray-50 rounded-xl p-4 mb-4">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Property Link</label>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="text" 
+                  readOnly
+                  value={`https://gharzoreality.com/property/${sharePropertyId}`}
+                  className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(`https://gharzoreality.com/property/${sharePropertyId}`);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 ${
+                    copied 
+                      ? 'bg-green-600 hover:bg-green-700 text-white' 
+                      : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  }`}
+                >
+                  {copied ? (
+                    <>
+                      <FaCheckCircle size={16} />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={16} />
+                      Copy
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex justify-center gap-4">
+              <a 
+                href={`https://www.facebook.com/sharer/sharer.php?u=https://gharzoreality.com/property/${sharePropertyId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-12 h-12 bg-blue-600 hover:bg-blue-700 rounded-full flex items-center justify-center text-white transition transform hover:scale-110"
+              >
+                <FaFacebook size={20} />
+              </a>
+              <a 
+                href={`https://twitter.com/intent/tweet?url=https://gharzoreality.com/property/${sharePropertyId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-12 h-12 bg-sky-500 hover:bg-sky-600 rounded-full flex items-center justify-center text-white transition transform hover:scale-110"
+              >
+                <FaTwitter size={20} />
+              </a>
+              <a 
+                href={`https://wa.me/?text=Check out this property: https://gharzoreality.com/property/${sharePropertyId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-12 h-12 bg-green-500 hover:bg-green-600 rounded-full flex items-center justify-center text-white transition transform hover:scale-110"
+              >
+                <FaWhatsapp size={20} />
+              </a>
+              <a 
+                href={`mailto:?subject=Check out this property&body=Hi, I found this property you might be interested in: https://gharzoreality.com/property/${sharePropertyId}`}
+                className="w-12 h-12 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white transition transform hover:scale-110"
+              >
+                <FaEnvelope size={20} />
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

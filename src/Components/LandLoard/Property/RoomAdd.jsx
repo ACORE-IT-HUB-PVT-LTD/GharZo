@@ -133,7 +133,7 @@ const RoomAdd = () => {
         setToast({ show: true, message: "Authentication required. Please login.", type: "error" });
         return;
       }
-      const res = await axios.get(`${baseurl}api/properties/${propertyId}`, {
+      const res = await axios.get(`https://api.gharzoreality.com/api/v2/properties/${propertyId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.data?.success) {
@@ -157,7 +157,7 @@ const RoomAdd = () => {
       const token = getToken();
       if (!token) throw new Error("No authentication token found");
       const response = await axios.put(
-        `${baseurl}api/properties/${propertyId}`,
+        `https://api.gharzoreality.com/api/v2/properties/${propertyId}`,
         { isRentalManagement: true },
         { headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` } }
       );
