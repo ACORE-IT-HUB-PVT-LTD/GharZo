@@ -47,6 +47,99 @@ const sanitizeArrays = (obj, keys) => {
   return copy;
 };
 
+const getAuthToken = () =>
+  localStorage.token ||
+  localStorage.usertoken ||
+  localStorage.landlordtoken ||
+  sessionStorage.token ||
+  "";
+
+const safeArray = (value) => (Array.isArray(value) ? value : []);
+
+const mapPropertyToFormData = (property = {}) => {
+  const location = property.location || {};
+  const price = property.price || {};
+  const area = property.area || {};
+  const furnishing = property.furnishing || {};
+  const pgDetails = property.pgDetails || {};
+  const roomStats = property.roomStats || {};
+
+  const imageUrls = safeArray(property.images).map((img) =>
+    typeof img === "string" ? img : img?.url
+  );
+
+  return {
+    name: property.name || property.title || "",
+    type: property.type || property.propertyType || "PG",
+    address: property.address || location.address || "",
+    city: property.city || location.city || "",
+    state: property.state || location.state || "",
+    pinCode: property.pinCode || location.pincode || "",
+    totalRooms: property.totalRooms ?? roomStats.totalRooms ?? "",
+    totalBeds: property.totalBeds ?? pgDetails.totalBeds ?? "",
+    rent: property.rent ?? price.amount ?? "",
+    deposit: property.deposit ?? price.securityDeposit ?? "",
+    furnished:
+      typeof property.furnished === "boolean"
+        ? property.furnished
+        : furnishing.type
+          ? furnishing.type !== "Unfurnished"
+          : false,
+    description: property.description || "",
+    amenities: safeArray(property.amenities),
+    rules: safeArray(property.rules),
+    images: imageUrls.filter(Boolean),
+    genderPreference: property.genderPreference || pgDetails.genderPreference || "",
+    mealIncluded:
+      typeof property.mealIncluded === "boolean"
+        ? property.mealIncluded
+        : !!pgDetails.foodIncluded,
+    roomSharing: property.roomSharing || pgDetails.roomType || "",
+    bhk: property.bhk || "",
+    carpetAreaSqft: property.carpetAreaSqft || area.carpet || "",
+    furnishedLevel: property.furnishedLevel || furnishing.type || "",
+    attachedBath:
+      typeof property.attachedBath === "boolean"
+        ? property.attachedBath
+        : !!pgDetails.attachedWashroom,
+    balcony: typeof property.balcony === "boolean" ? property.balcony : !!property.balconies,
+  };
+};
+
+const buildV2Payload = (data) => ({
+  title: data.name?.trim(),
+  propertyType: data.type?.trim(),
+  description: data.description?.trim(),
+  bhk: toNumberOrNull(data.bhk),
+  roomStats: {
+    totalRooms: toNumberOrNull(data.totalRooms) ?? 0,
+    availableRooms: 0,
+  },
+  location: {
+    address: (data.address || "").trim(),
+    city: (data.city || "").trim(),
+    state: (data.state || "").trim(),
+    pincode: (data.pinCode || "").toString().trim(),
+  },
+  price: {
+    amount: toNumberOrNull(data.rent),
+    securityDeposit: toNumberOrNull(data.deposit),
+  },
+  area: {
+    carpet: toNumberOrNull(data.carpetAreaSqft),
+    unit: "sqft",
+  },
+  furnishing: {
+    type: (data.furnishedLevel || (data.furnished ? "Fully Furnished" : "Unfurnished")).trim(),
+  },
+  pgDetails: {
+    totalBeds: toNumberOrNull(data.totalBeds),
+    genderPreference: (data.genderPreference || "").trim(),
+    foodIncluded: !!data.mealIncluded,
+    attachedWashroom: !!data.attachedBath,
+  },
+});
+
 // -----------------------------
 // Component
 // -----------------------------
@@ -99,37 +192,51 @@ const EditProperty = () => {
       setLoading(true);
       try {
         if (propertyFromState) {
-          setFormData((prev) => ({ ...prev, ...propertyFromState }));
+          setFormData((prev) => ({ ...prev, ...mapPropertyToFormData(propertyFromState) }));
           return;
         }
-        const token = localStorage.getItem("token");
+        const token = getAuthToken();
         if (!token) {
           console.error("No token found. Redirecting to login?");
           setLoading(false);
           return;
         }
+        // Handle both v2 and legacy responses
+        let propertyData = null;
 
-        // You were fetching the list and filtering by id—kept that but hardened it
-        const res = await axios.get(`${baseurl}/api/landlord/properties/:id`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        console.log("📡 Load Status:", res.status);
-        console.log("✅ Load Body:", res.data);
-
-        if (res.data?.success && Array.isArray(res.data.properties)) {
-          const found = res.data.properties.find(
-            (p) => String(p._id) === String(id)
-          );
-          if (found) {
-            setFormData((prev) => ({ ...prev, ...found }));
-          } else {
-            console.error("Property not found for id:", id);
-            alert("Property not found.");
-            navigate("/landlord/properties");
+        try {
+          const v2Res = await axios.get(`${baseurl}api/v2/properties/${id}/details`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (v2Res.data?.success && v2Res.data?.data) {
+            propertyData = v2Res.data.data;
           }
+        } catch (v2Err) {
+          console.warn("V2 details fetch failed, trying legacy endpoint.", v2Err?.message);
+        }
+
+        if (!propertyData) {
+          const legacyRes = await axios.get(`${baseurl}/api/landlord/property/${id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (legacyRes.data?.success) {
+            if (legacyRes.data.property) {
+              propertyData = legacyRes.data.property;
+            } else if (Array.isArray(legacyRes.data.properties)) {
+              const found = legacyRes.data.properties.find(
+                (p) => String(p._id) === String(id)
+              );
+              propertyData = found || null;
+            }
+          }
+        }
+
+        if (propertyData) {
+          setFormData((prev) => ({ ...prev, ...mapPropertyToFormData(propertyData) }));
         } else {
-          console.warn("Unexpected load response shape:", res.data);
-          alert("Failed to load property. Unexpected response.");
+          console.error("Property not found for id:", id);
+          alert("Property not found.");
+          navigate("/landlord/property");
         }
       } catch (err) {
         console.error("💥 Error loading property:", err);
@@ -173,7 +280,7 @@ const EditProperty = () => {
     setSaving(true);
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getAuthToken();
       if (!token) {
         alert("Not logged in. Please log in again.");
         setSaving(false);
@@ -753,3 +860,4 @@ const ArrayField = ({
 );
 
 export default EditProperty;
+

@@ -29,10 +29,10 @@ const tabList = [
   "Details",
   "Rooms",
   "Tenant",
-  "TenantDues",
+  // "TenantDues",
   "Complaints",
   "PropertyReviews",
-  "PropertyExpenses",
+  // "PropertyExpenses",
 ];
 
 // 3D Icon Wrapper - GTharzo themed

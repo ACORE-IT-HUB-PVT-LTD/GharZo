@@ -8,7 +8,6 @@ import LandLoardreelsub from "../Components/LandLoard/Subscription/MyReelSubscri
 import PropertyList from "../Components/LandLoard/Property/Propertylist";
 import AddProperty from "../Components/LandLoard/Property/AddProperty";
 import PoliceVerification from "../Components/LandLoard/Property/PoliceVerification.jsx";
-import EditProperty from "../Components/LandLoard/Property/EditProperty.jsx";
 import RoomOverview from "../Components/LandLoard/Property/RoomOverview";
 import Property from "../Components/LandLoard/Property/Property";
 import Workers from "../Components/LandLoard/Workers/Workers";
@@ -48,7 +47,7 @@ const landlordMainRoutes = (
     <Route path="add-property" element={<AddProperty />} />
     <Route path="police-verification" element={<PoliceVerification />} />
     <Route path="property/edit/:id" element={<AddProperty />} />
-    <Route path="property/:id/edit" element={<EditProperty />} />
+    <Route path="property/:id/edit" element={<AddProperty />} />
     <Route path="room-overview" element={<RoomOverview />} />
     <Route path="property" element={<Property />} />
     <Route path="expenses" element={<Expenses />} />

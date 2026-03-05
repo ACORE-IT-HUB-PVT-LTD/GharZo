@@ -261,6 +261,7 @@ export default function PropertyListingForm() {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markerRef = useRef(null);
+  const isCreatingDraft = useRef(false); // Track draft creation to prevent duplicates
 
   const [form, setForm] = useState({
     // Step 0
@@ -758,6 +759,10 @@ export default function PropertyListingForm() {
 
   // ─── API Calls ─────────────────────────────────────────────────────────────
   const createDraft = async () => {
+    // Prevent multiple draft creation calls using ref
+    if (isCreatingDraft.current) return;
+    isCreatingDraft.current = true;
+    
     setLoading(true);
     try {
       const draftData = {
@@ -784,6 +789,7 @@ export default function PropertyListingForm() {
       addToast(e.message || "Failed to create draft", "error");
     } finally {
       setLoading(false);
+      isCreatingDraft.current = false;
     }
   };
 
@@ -1080,6 +1086,9 @@ export default function PropertyListingForm() {
 
   // ─── Navigation ────────────────────────────────────────────────────────────
   const handleNext = async () => {
+    // Prevent multiple clicks during loading or draft creation
+    if (loading || isCreatingDraft.current) return;
+    
     const validationResult = validateStep();
     const isValid = validationResult.isValid;
     const validationErrors = validationResult.errors || {};

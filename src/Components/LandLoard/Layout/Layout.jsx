@@ -7,7 +7,10 @@ import Sidebar from "../Sidebar/Sidebar";
 const LandlordLayoutContent = () => {
   const [sidebarWidth, setSidebarWidth] = useState(80);
   const location = useLocation();
-  const hideSidebar = location.pathname === "/landlord/add-property" || location.pathname.includes("/landlord/property/edit/");
+  const hideSidebar =
+    location.pathname === "/landlord/add-property" ||
+    location.pathname.includes("/landlord/property/edit/") ||
+    /\/landlord\/property\/[^/]+\/edit$/.test(location.pathname);
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#f8fafc]">

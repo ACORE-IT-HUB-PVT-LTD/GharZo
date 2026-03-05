@@ -59,6 +59,7 @@ const Property = () => {
   const [selectedPropertyIds, setSelectedPropertyIds] = useState([]);
   const [deleteModal, setDeleteModal] = useState({ open: false, ids: [], names: [] });
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const getAuthToken = () =>
     localStorage.token || localStorage.usertoken || localStorage.landlordtoken ||
@@ -102,10 +103,17 @@ const Property = () => {
     fetchProperties();
   }, []);
 
-  // Filter by title only
+  // Filter by title and status
   const filteredProperties = properties.filter((prop) => {
-    if (!searchTitle.trim()) return true;
-    return (prop.title || "").toLowerCase().includes(searchTitle.trim().toLowerCase());
+    // Status filter
+    if (statusFilter !== "all" && prop.status !== statusFilter) {
+      return false;
+    }
+    // Title filter
+    if (searchTitle.trim()) {
+      return (prop.title || "").toLowerCase().includes(searchTitle.trim().toLowerCase());
+    }
+    return true;
   });
 
   const openDeleteModal = (ids) => {
@@ -186,7 +194,7 @@ const Property = () => {
         </motion.div>
 
         {/* Search bar */}
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }} className="mb-6">
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }} className="mb-4">
           <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
             <div className="relative">
               <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-[#E07B1A] text-sm" />
@@ -203,6 +211,41 @@ const Property = () => {
                 </button>
               )}
             </div>
+          </div>
+        </motion.div>
+
+        {/* Status Filter Tabs */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.15 }} className="mb-6">
+          <div className="flex flex-wrap gap-2">
+            {[
+              { value: "all", label: "All", color: "slate" },
+              { value: "Active", label: "Active", color: "green" },
+              { value: "Pending", label: "Pending", color: "yellow" },
+              { value: "Draft", label: "Draft", color: "gray" },
+              { value: "Rejected", label: "Rejected", color: "red" },
+            ].map((status) => {
+              const count = status.value === "all" 
+                ? properties.length 
+                : properties.filter(p => p.status === status.value).length;
+              return (
+                <button
+                  key={status.value}
+                  onClick={() => setStatusFilter(status.value)}
+                  className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                    statusFilter === status.value
+                      ? status.color === "slate" ? "bg-slate-700 text-white"
+                      : status.color === "green" ? "bg-green-600 text-white"
+                      : status.color === "yellow" ? "bg-yellow-500 text-white"
+                      : status.color === "gray" ? "bg-gray-500 text-white"
+                      : "bg-red-500 text-white"
+                      : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  {status.label}
+                  <span className="ml-1.5 opacity-70">({count})</span>
+                </button>
+              );
+            })}
           </div>
         </motion.div>
 
@@ -325,7 +368,7 @@ const Property = () => {
                         <Link to={`/landlord/property/${property._id}`} title="View" className="py-3 rounded-xl flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm hover:shadow-md" style={{ background: "linear-gradient(135deg, #1B2A4A, #243660)" }}>
                           <FaEye className="text-white text-sm" />
                         </Link>
-                        <Link to={`/landlord/property/edit/${property._id}`} title="Edit" className="py-3 rounded-xl flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm hover:shadow-md" style={{ background: "linear-gradient(135deg, #E07B1A, #f5a623)" }}>
+                        <Link to={`/landlord/property/${property._id}/edit`} title="Edit" className="py-3 rounded-xl flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm hover:shadow-md" style={{ background: "linear-gradient(135deg, #E07B1A, #f5a623)" }}>
                           <FaEdit className="text-white text-sm" />
                         </Link>
                         <button onClick={() => openDeleteModal([property._id])} disabled={deletingId === property._id} title="Delete" className={`py-3 rounded-xl flex items-center justify-center transition-all duration-200 shadow-sm ${deletingId === property._id ? "opacity-50 cursor-not-allowed bg-red-300" : "bg-red-500 hover:bg-red-600 hover:scale-105 active:scale-95 hover:shadow-md"}`}>
