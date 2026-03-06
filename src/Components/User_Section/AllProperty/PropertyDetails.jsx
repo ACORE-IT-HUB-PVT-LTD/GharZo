@@ -114,58 +114,17 @@ function PropertyDetails() {
     const fetchProperty = async () => {
       setLoading(true);
       try {
-        // Try authenticated v2 details endpoint first (token from localStorage)
-        let token = localStorage.getItem("usertoken") || localStorage.getItem("authToken") || localStorage.getItem("access_token");
-
-        if (token) {
-          try {
-            const resV2 = await axios.get(
-              `https://api.gharzoreality.com/api/v2/properties/${id}/details`,
-              {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  "Content-Type": "application/json",
-                },
-              }
-            );
-
-            const foundV2 = resV2.data?.data;
-            if (foundV2) {
-              // when v2 returns full property object in data
-              const calculatedPostedDays = Math.floor(
-                (new Date() - new Date(foundV2.createdAt)) / (1000 * 60 * 60 * 24)
-              );
-
-              const updatedProperty = {
-                ...foundV2,
-                description:
-                  foundV2?.description ||
-                  `${foundV2.title} is a premium ${foundV2.propertyType?.toLowerCase() || "property"} located at ${
-                    foundV2.location?.address
-                  }, ${foundV2.location?.city}.`,
-              };
-
-              setProperty(updatedProperty);
-              setPostedDays(calculatedPostedDays);
-              setLoading(false);
-              return;
-            }
-          } catch (e) {
-            console.warn("Authenticated v2 details fetch failed, falling back to public API:", e?.response?.status || e.message);
-            // continue to public fetch
-          }
-        }
-
-        // Fallback to v2 public endpoint
+        // Use only the public API endpoint
         const response = await axios.get(
-          `${baseurl}api/v2/properties/${id}`,
+          `https://api.gharzoreality.com/api/public/properties/${id}`,
           {
             headers: {
               "Content-Type": "application/json",
             },
           }
         );
-        const found = response.data?.data || response.data?.property;
+
+        const found = response.data?.data?.property || response.data?.data || response.data?.property;
 
         if (!found) {
           console.error("No property found in response");
@@ -173,23 +132,21 @@ function PropertyDetails() {
           return;
         }
 
-        if (found) {
-          const calculatedPostedDays = Math.floor(
-            (new Date() - new Date(found.createdAt)) / (1000 * 60 * 60 * 24)
-          );
+        const calculatedPostedDays = Math.floor(
+          (new Date() - new Date(found.createdAt)) / (1000 * 60 * 60 * 24)
+        );
 
-          const updatedProperty = {
-            ...found,
-            description:
-              found?.description ||
-              `${found.title} is a premium ${found.propertyType?.toLowerCase() || "property"} located at ${
-                found.location?.address
-              }, ${found.location?.city}. This property features ${found.bhk} BHK with ${found.bathrooms} bathrooms.`,
-          };
+        const updatedProperty = {
+          ...found,
+          description:
+            found?.description ||
+            `${found.title} is a premium ${found.propertyType?.toLowerCase() || "property"} located at ${
+              found.location?.address
+            }, ${found.location?.city}. This property features ${found.bhk} BHK with ${found.bathrooms} bathrooms.`,
+        };
 
-          setProperty(updatedProperty);
-          setPostedDays(calculatedPostedDays);
-        }
+        setProperty(updatedProperty);
+        setPostedDays(calculatedPostedDays);
       } catch (err) {
         console.error("Error fetching property:", err);
         setProperty(null);
@@ -227,7 +184,6 @@ function PropertyDetails() {
       }
     } catch (error) {
       console.error("Error checking saved status:", error);
-      // If API fails, set liked to false
       setLiked(false);
     }
   };
@@ -244,7 +200,6 @@ function PropertyDetails() {
 
     setSavingProperty(true);
     try {
-      // Toggle API - single POST request that automatically toggles save/unsave
       const response = await axios.post(
         `https://api.gharzoreality.com/api/saved-properties/${id}`,
         {},
@@ -257,7 +212,6 @@ function PropertyDetails() {
       );
       
       if (response.data?.success) {
-        // API automatically toggles - update state based on response
         setLiked(response.data.isSaved);
         toast.success(response.data.message || (response.data.isSaved ? "Property saved to wishlist" : "Property removed from wishlist"));
       }
@@ -529,7 +483,6 @@ function PropertyDetails() {
               onClick={() => {
                 const propertyId = property._id || property.id;
                 if (propertyId) {
-                  // Open share modal
                   setSharePropertyId(propertyId);
                   setShowShareModal(true);
                 }
@@ -825,84 +778,29 @@ function PriceSection({ property }) {
 function QuickStatsGrid({ property, postedDays }) {
   const stats = [];
 
-  // BHK for residential
   if (property.bhk) {
-    stats.push({
-      icon: <FaBed size={24} />,
-      label: "BHK",
-      value: property.bhk,
-      color: "blue"
-    });
+    stats.push({ icon: <FaBed size={24} />, label: "BHK", value: property.bhk, color: "blue" });
   }
-
-  // Bathrooms
   if (property.bathrooms) {
-    stats.push({
-      icon: <FaBath size={24} />,
-      label: "Bathrooms",
-      value: property.bathrooms,
-      color: "cyan"
-    });
+    stats.push({ icon: <FaBath size={24} />, label: "Bathrooms", value: property.bathrooms, color: "cyan" });
   }
-
-  // Balconies
   if (property.balconies) {
-    stats.push({
-      icon: <FaDoorOpen size={24} />,
-      label: "Balconies",
-      value: property.balconies,
-      color: "green"
-    });
+    stats.push({ icon: <FaDoorOpen size={24} />, label: "Balconies", value: property.balconies, color: "green" });
   }
-
-  // Carpet Area
   if (property.area?.carpet) {
-    stats.push({
-      icon: <FaRulerCombined size={24} />,
-      label: "Carpet Area",
-      value: `${property.area.carpet} ${property.area.unit || 'sqft'}`,
-      color: "purple"
-    });
+    stats.push({ icon: <FaRulerCombined size={24} />, label: "Carpet Area", value: `${property.area.carpet} ${property.area.unit || 'sqft'}`, color: "purple" });
   }
-
-  // Floor
   if (property.floor?.current !== undefined && property.floor?.total) {
-    stats.push({
-      icon: <FaLayerGroup size={24} />,
-      label: "Floor",
-      value: `${property.floor.current}/${property.floor.total}`,
-      color: "orange"
-    });
+    stats.push({ icon: <FaLayerGroup size={24} />, label: "Floor", value: `${property.floor.current}/${property.floor.total}`, color: "orange" });
   }
-
-  // Parking
   if (property.parking?.covered || property.parking?.open) {
     const totalParking = (property.parking?.covered || 0) + (property.parking?.open || 0);
-    stats.push({
-      icon: <FaParking size={24} />,
-      label: "Parking",
-      value: totalParking,
-      color: "indigo"
-    });
+    stats.push({ icon: <FaParking size={24} />, label: "Parking", value: totalParking, color: "indigo" });
   }
-
-  // Property Age
   if (property.propertyAge) {
-    stats.push({
-      icon: <FaCalendarAlt size={24} />,
-      label: "Age",
-      value: property.propertyAge,
-      color: "pink"
-    });
+    stats.push({ icon: <FaCalendarAlt size={24} />, label: "Age", value: property.propertyAge, color: "pink" });
   }
-
-  // Posted Days
-  stats.push({
-    icon: <FaClock size={24} />,
-    label: "Listed",
-    value: `${postedDays} days ago`,
-    color: "gray"
-  });
+  stats.push({ icon: <FaClock size={24} />, label: "Listed", value: `${postedDays} days ago`, color: "gray" });
 
   const colorMap = {
     blue: "from-blue-500 to-blue-600",
@@ -938,12 +836,9 @@ function QuickStatsGrid({ property, postedDays }) {
 
 /* ====================== Property Type Specific Details Component ====================== */
 function PropertyTypeSpecificDetails({ property }) {
-  // PG Details
   if (property.listingType === "PG" && property.pgDetails) {
     return <PGSpecificDetails pgDetails={property.pgDetails} />;
   }
-
-  // Rental Management Stats
   if (property.isRentalManagement && property.roomStats) {
     return (
       <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl p-5 border border-emerald-100">
@@ -968,7 +863,6 @@ function PropertyTypeSpecificDetails({ property }) {
       </div>
     );
   }
-
   return null;
 }
 
@@ -980,73 +874,39 @@ function PGSpecificDetails({ pgDetails }) {
         <UsersIcon size={22} className="text-violet-600" />
         PG Details
       </h3>
-      
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        {pgDetails.roomType && (
-          <InfoBadge icon={<FaBed />} label="Room Type" value={pgDetails.roomType} />
-        )}
-        {pgDetails.totalBeds && (
-          <InfoBadge icon={<FaBed />} label="Total Beds" value={pgDetails.totalBeds} />
-        )}
-        {pgDetails.availableBeds !== undefined && (
-          <InfoBadge icon={<CheckCircle2 />} label="Available Beds" value={pgDetails.availableBeds} color="emerald" />
-        )}
-        {pgDetails.genderPreference && (
-          <InfoBadge icon={<UsersIcon />} label="Gender" value={pgDetails.genderPreference} />
-        )}
-        {pgDetails.foodIncluded !== undefined && (
-          <InfoBadge 
-            icon={<FaUtensils />} 
-            label="Food" 
-            value={pgDetails.foodIncluded ? `Included (${pgDetails.foodType || 'N/A'})` : 'Not Included'} 
-          />
-        )}
-        {pgDetails.commonWashroom !== undefined && (
-          <InfoBadge 
-            icon={<FaBath />} 
-            label="Washroom" 
-            value={pgDetails.commonWashroom ? 'Common' : pgDetails.attachedWashroom ? 'Attached' : 'N/A'} 
-          />
-        )}
+        {pgDetails.roomType && (<InfoBadge icon={<FaBed />} label="Room Type" value={pgDetails.roomType} />)}
+        {pgDetails.totalBeds && (<InfoBadge icon={<FaBed />} label="Total Beds" value={pgDetails.totalBeds} />)}
+        {pgDetails.availableBeds !== undefined && (<InfoBadge icon={<CheckCircle2 />} label="Available Beds" value={pgDetails.availableBeds} color="emerald" />)}
+        {pgDetails.genderPreference && (<InfoBadge icon={<UsersIcon />} label="Gender" value={pgDetails.genderPreference} />)}
+        {pgDetails.foodIncluded !== undefined && (<InfoBadge icon={<FaUtensils />} label="Food" value={pgDetails.foodIncluded ? `Included (${pgDetails.foodType || 'N/A'})` : 'Not Included'} />)}
+        {pgDetails.commonWashroom !== undefined && (<InfoBadge icon={<FaBath />} label="Washroom" value={pgDetails.commonWashroom ? 'Common' : pgDetails.attachedWashroom ? 'Attached' : 'N/A'} />)}
       </div>
-
       {pgDetails.foodTimings && (
         <div className="mt-4 p-3 bg-white rounded-lg">
           <p className="font-semibold text-sm mb-2">Meal Timings:</p>
           <div className="grid grid-cols-3 gap-2 text-xs">
-            {pgDetails.foodTimings.breakfast && (
-              <div><span className="font-medium">Breakfast:</span> {pgDetails.foodTimings.breakfast}</div>
-            )}
-            {pgDetails.foodTimings.lunch && (
-              <div><span className="font-medium">Lunch:</span> {pgDetails.foodTimings.lunch}</div>
-            )}
-            {pgDetails.foodTimings.dinner && (
-              <div><span className="font-medium">Dinner:</span> {pgDetails.foodTimings.dinner}</div>
-            )}
+            {pgDetails.foodTimings.breakfast && (<div><span className="font-medium">Breakfast:</span> {pgDetails.foodTimings.breakfast}</div>)}
+            {pgDetails.foodTimings.lunch && (<div><span className="font-medium">Lunch:</span> {pgDetails.foodTimings.lunch}</div>)}
+            {pgDetails.foodTimings.dinner && (<div><span className="font-medium">Dinner:</span> {pgDetails.foodTimings.dinner}</div>)}
           </div>
         </div>
       )}
-
       {pgDetails.commonAreas && pgDetails.commonAreas.length > 0 && (
         <div className="mt-4 p-3 bg-white rounded-lg">
           <p className="font-semibold text-sm mb-2">Common Areas:</p>
           <div className="flex flex-wrap gap-2">
             {pgDetails.commonAreas.map((area, i) => (
-              <span key={i} className="px-2 py-1 bg-violet-100 text-violet-700 rounded-full text-xs">
-                {area}
-              </span>
+              <span key={i} className="px-2 py-1 bg-violet-100 text-violet-700 rounded-full text-xs">{area}</span>
             ))}
           </div>
         </div>
       )}
-
       {pgDetails.rules && pgDetails.rules.length > 0 && (
         <div className="mt-4 p-3 bg-white rounded-lg">
           <p className="font-semibold text-sm mb-2">Rules & Regulations:</p>
           <ul className="list-disc list-inside text-xs text-gray-700 space-y-1">
-            {pgDetails.rules.map((rule, i) => (
-              <li key={i}>{rule}</li>
-            ))}
+            {pgDetails.rules.map((rule, i) => (<li key={i}>{rule}</li>))}
           </ul>
         </div>
       )}
@@ -1112,54 +972,20 @@ function PropertyTabs({ activeTab, setActiveTab, property, openImageModal, place
 /* ====================== Overview Tab Component ====================== */
 function OverviewTab({ property }) {
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="space-y-6"
-    >
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       <div>
         <h3 className="text-2xl font-display font-bold text-gray-900 mb-4 flex items-center gap-2">
           <span className="w-1 h-7 bg-gradient-to-b from-indigo-600 to-violet-600 rounded-full" />
           About This Property
         </h3>
-        <p className="text-gray-700 leading-relaxed text-base">
-          {property.description}
-        </p>
+        <p className="text-gray-700 leading-relaxed text-base">{property.description}</p>
       </div>
-
-      {/* Key Highlights */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {property.facing && (
-          <HighlightCard 
-            icon={<FaCompass className="text-indigo-600" />}
-            title="Facing"
-            value={property.facing}
-          />
-        )}
-        {property.furnishing?.type && (
-          <HighlightCard 
-            icon={<FaCouch className="text-violet-600" />}
-            title="Furnishing"
-            value={property.furnishing.type}
-          />
-        )}
-        {property.availableFrom && (
-          <HighlightCard 
-            icon={<FaCalendarAlt className="text-emerald-600" />}
-            title="Available From"
-            value={new Date(property.availableFrom).toLocaleDateString()}
-          />
-        )}
-        {property.ownership?.type && (
-          <HighlightCard 
-            icon={<FaFileContract className="text-blue-600" />}
-            title="Ownership"
-            value={property.ownership.type}
-          />
-        )}
+        {property.facing && (<HighlightCard icon={<FaCompass className="text-indigo-600" />} title="Facing" value={property.facing} />)}
+        {property.furnishing?.type && (<HighlightCard icon={<FaCouch className="text-violet-600" />} title="Furnishing" value={property.furnishing.type} />)}
+        {property.availableFrom && (<HighlightCard icon={<FaCalendarAlt className="text-emerald-600" />} title="Available From" value={new Date(property.availableFrom).toLocaleDateString()} />)}
+        {property.ownership?.type && (<HighlightCard icon={<FaFileContract className="text-blue-600" />} title="Ownership" value={property.ownership.type} />)}
       </div>
-
-      {/* Furnishing Items */}
       {property.furnishing?.items && property.furnishing.items.length > 0 && (
         <div>
           <h4 className="font-bold text-gray-900 mb-3">Furnishing Includes:</h4>
@@ -1181,15 +1007,12 @@ function OverviewTab({ property }) {
 function DetailsTab({ property }) {
   const details = [];
 
-  // Area Details
   if (property.area) {
     if (property.area.carpet) details.push({ label: "Carpet Area", value: `${property.area.carpet} ${property.area.unit || 'sqft'}`, icon: <FaRulerCombined /> });
     if (property.area.builtUp) details.push({ label: "Built-up Area", value: `${property.area.builtUp} ${property.area.unit || 'sqft'}`, icon: <FaRulerCombined /> });
     if (property.area.superBuiltUp) details.push({ label: "Super Built-up Area", value: `${property.area.superBuiltUp} ${property.area.unit || 'sqft'}`, icon: <FaRulerCombined /> });
     if (property.area.plotArea) details.push({ label: "Plot Area", value: `${property.area.plotArea} ${property.area.unit || 'sqft'}`, icon: <FaRulerCombined /> });
   }
-
-  // Property Features
   if (property.propertyFeatures) {
     if (property.propertyFeatures.powerBackup) details.push({ label: "Power Backup", value: property.propertyFeatures.powerBackup, icon: <FaBolt /> });
     if (property.propertyFeatures.waterSupply) details.push({ label: "Water Supply", value: property.propertyFeatures.waterSupply, icon: <FaTint /> });
@@ -1200,8 +1023,6 @@ function DetailsTab({ property }) {
     if (property.propertyFeatures.nonVegAllowed !== undefined) details.push({ label: "Non-Veg Allowed", value: property.propertyFeatures.nonVegAllowed ? "Yes" : "No", icon: <FaUtensils /> });
     if (property.propertyFeatures.wheelchairAccessible !== undefined) details.push({ label: "Wheelchair Accessible", value: property.propertyFeatures.wheelchairAccessible ? "Yes" : "No", icon: <FaCheckCircle /> });
   }
-
-  // Builder/Project Info
   if (property.builder) {
     if (property.builder.name) details.push({ label: "Builder Name", value: property.builder.name, icon: <FaHammer /> });
     if (property.builder.reraId) details.push({ label: "RERA ID", value: property.builder.reraId, icon: <FaFileContract /> });
@@ -1210,22 +1031,15 @@ function DetailsTab({ property }) {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="space-y-6"
-    >
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       <h3 className="text-2xl font-display font-bold text-gray-900 mb-6 flex items-center gap-2">
         <span className="w-1 h-7 bg-gradient-to-b from-indigo-600 to-violet-600 rounded-full" />
         Property Details
       </h3>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {details.map((detail, i) => (
           <div key={i} className="flex items-center gap-3 p-4 bg-gradient-to-r from-gray-50 to-white rounded-xl border border-gray-100">
-            <div className="text-indigo-600 text-xl">
-              {detail.icon}
-            </div>
+            <div className="text-indigo-600 text-xl">{detail.icon}</div>
             <div>
               <p className="text-xs text-gray-500 font-medium">{detail.label}</p>
               <p className="text-sm font-bold text-gray-900">{detail.value}</p>
@@ -1233,8 +1047,6 @@ function DetailsTab({ property }) {
           </div>
         ))}
       </div>
-
-      {/* Verification Status */}
       {property.verificationStatus && (
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-5 border border-blue-100">
           <div className="flex items-center gap-3">
@@ -1262,25 +1074,16 @@ function AmenitiesTab({ property }) {
     ...(property.amenities?.nearby || []),
     ...(property.amenitiesList || [])
   ];
-
   const uniqueAmenities = [...new Set(allAmenities)];
-
-  // PG Facilities
   const pgFacilities = property.pgDetails?.facilities || {};
   const securityFeatures = property.pgDetails?.securityFeatures || {};
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="space-y-6"
-    >
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       <h3 className="text-2xl font-display font-bold text-gray-900 mb-6 flex items-center gap-2">
         <span className="w-1 h-7 bg-gradient-to-b from-indigo-600 to-violet-600 rounded-full" />
         Amenities & Facilities
       </h3>
-
-      {/* General Amenities */}
       {uniqueAmenities.length > 0 && (
         <div>
           <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -1303,8 +1106,6 @@ function AmenitiesTab({ property }) {
           </div>
         </div>
       )}
-
-      {/* PG Facilities */}
       {Object.keys(pgFacilities).length > 0 && (
         <div>
           <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -1321,8 +1122,6 @@ function AmenitiesTab({ property }) {
           </div>
         </div>
       )}
-
-      {/* Security Features */}
       {Object.keys(securityFeatures).length > 0 && (
         <div>
           <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -1346,17 +1145,11 @@ function AmenitiesTab({ property }) {
 /* ====================== Location Tab Component ====================== */
 function LocationTab({ property }) {
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="space-y-6"
-    >
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       <h3 className="text-2xl font-display font-bold text-gray-900 mb-6 flex items-center gap-2">
         <span className="w-1 h-7 bg-gradient-to-b from-indigo-600 to-violet-600 rounded-full" />
         Location & Connectivity
       </h3>
-
-      {/* Address Card */}
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
         <div className="flex items-start gap-4">
           <FaMapMarkerAlt className="text-indigo-600 text-2xl flex-shrink-0 mt-1" />
@@ -1376,8 +1169,6 @@ function LocationTab({ property }) {
           </div>
         </div>
       </div>
-
-      {/* Map */}
       {property.location?.coordinates?.latitude && property.location?.coordinates?.longitude && (
         <div className="rounded-2xl overflow-hidden shadow-lg">
           <iframe
@@ -1391,8 +1182,6 @@ function LocationTab({ property }) {
           />
         </div>
       )}
-
-      {/* Virtual Tour */}
       {property.virtualTour?.url && (
         <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-100">
           <div className="flex items-center gap-3 mb-4">
@@ -1421,17 +1210,11 @@ function GalleryTab({ property, openImageModal, placeholderImage }) {
   const images = property.images && property.images.length > 0 
     ? property.images.map(img => img?.url || img)
     : [placeholderImage];
-
   const videos = property.videos || [];
   const floorPlans = property.floorPlan || [];
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="space-y-8"
-    >
-      {/* Images */}
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
       <div>
         <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
           <Eye className="text-indigo-600" />
@@ -1445,11 +1228,7 @@ function GalleryTab({ property, openImageModal, placeholderImage }) {
               className="relative group overflow-hidden rounded-xl shadow-lg cursor-pointer aspect-square"
               onClick={() => openImageModal(images, i)}
             >
-              <img
-                src={img}
-                alt={`Gallery ${i}`}
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-              />
+              <img src={img} alt={`Gallery ${i}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
                 <Eye className="text-white opacity-0 group-hover:opacity-100 transition-opacity" size={32} />
               </div>
@@ -1457,8 +1236,6 @@ function GalleryTab({ property, openImageModal, placeholderImage }) {
           ))}
         </div>
       </div>
-
-      {/* Videos */}
       {videos.length > 0 && (
         <div>
           <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -1468,11 +1245,7 @@ function GalleryTab({ property, openImageModal, placeholderImage }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {videos.map((video, i) => (
               <div key={i} className="rounded-xl overflow-hidden shadow-lg">
-                <video 
-                  controls 
-                  className="w-full"
-                  poster={video.thumbnail}
-                >
+                <video controls className="w-full" poster={video.thumbnail}>
                   <source src={video.url} type="video/mp4" />
                   Your browser does not support the video tag.
                 </video>
@@ -1481,8 +1254,6 @@ function GalleryTab({ property, openImageModal, placeholderImage }) {
           </div>
         </div>
       )}
-
-      {/* Floor Plans */}
       {floorPlans.length > 0 && (
         <div>
           <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -1497,11 +1268,7 @@ function GalleryTab({ property, openImageModal, placeholderImage }) {
                 className="rounded-xl overflow-hidden shadow-lg cursor-pointer"
                 onClick={() => openImageModal(floorPlans.map(p => p.url), i)}
               >
-                <img
-                  src={plan.url}
-                  alt={`Floor Plan ${i + 1}`}
-                  className="w-full h-auto"
-                />
+                <img src={plan.url} alt={`Floor Plan ${i + 1}`} className="w-full h-auto" />
               </motion.div>
             ))}
           </div>
@@ -1514,17 +1281,11 @@ function GalleryTab({ property, openImageModal, placeholderImage }) {
 /* ====================== Legal & Pricing Tab Component ====================== */
 function LegalPricingTab({ property }) {
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="space-y-6"
-    >
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       <h3 className="text-2xl font-display font-bold text-gray-900 mb-6 flex items-center gap-2">
         <span className="w-1 h-7 bg-gradient-to-b from-indigo-600 to-violet-600 rounded-full" />
         Legal & Pricing Details
       </h3>
-
-      {/* Ownership */}
       {property.ownership && (
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
           <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -1538,33 +1299,25 @@ function LegalPricingTab({ property }) {
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Verified:</span>
-              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                property.ownership.verified 
-                  ? 'bg-green-100 text-green-700' 
-                  : 'bg-orange-100 text-orange-700'
-              }`}>
+              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${property.ownership.verified ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
                 {property.ownership.verified ? 'Verified' : 'Not Verified'}
               </span>
             </div>
           </div>
         </div>
       )}
-
-      {/* Landlord Payment Details */}
       {property.landlordDetails && (
         <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl p-6 border border-emerald-100">
           <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
             <FaMoneyBillWave className="text-emerald-600" />
             Payment Information
           </h4>
-          
           {property.landlordDetails.preferredPaymentMethod && (
             <div className="mb-4">
               <p className="text-sm text-gray-600 mb-1">Preferred Payment Method:</p>
               <p className="font-semibold">{property.landlordDetails.preferredPaymentMethod}</p>
             </div>
           )}
-
           {property.landlordDetails.bankAccount && (
             <div className="mb-4 p-4 bg-white rounded-lg">
               <p className="font-semibold mb-2 flex items-center gap-2">
@@ -1572,25 +1325,14 @@ function LegalPricingTab({ property }) {
                 Bank Account Details
               </p>
               <div className="space-y-1 text-sm">
-                {property.landlordDetails.bankAccount.accountHolderName && (
-                  <p><span className="text-gray-600">Account Holder:</span> <span className="font-medium">{property.landlordDetails.bankAccount.accountHolderName}</span></p>
-                )}
-                {property.landlordDetails.bankAccount.bankName && (
-                  <p><span className="text-gray-600">Bank:</span> <span className="font-medium">{property.landlordDetails.bankAccount.bankName}</span></p>
-                )}
-                {property.landlordDetails.bankAccount.branchName && (
-                  <p><span className="text-gray-600">Branch:</span> <span className="font-medium">{property.landlordDetails.bankAccount.branchName}</span></p>
-                )}
-                {property.landlordDetails.bankAccount.accountNumber && (
-                  <p><span className="text-gray-600">Account Number:</span> <span className="font-medium">****{property.landlordDetails.bankAccount.accountNumber.slice(-4)}</span></p>
-                )}
-                {property.landlordDetails.bankAccount.ifscCode && (
-                  <p><span className="text-gray-600">IFSC:</span> <span className="font-medium">{property.landlordDetails.bankAccount.ifscCode}</span></p>
-                )}
+                {property.landlordDetails.bankAccount.accountHolderName && (<p><span className="text-gray-600">Account Holder:</span> <span className="font-medium">{property.landlordDetails.bankAccount.accountHolderName}</span></p>)}
+                {property.landlordDetails.bankAccount.bankName && (<p><span className="text-gray-600">Bank:</span> <span className="font-medium">{property.landlordDetails.bankAccount.bankName}</span></p>)}
+                {property.landlordDetails.bankAccount.branchName && (<p><span className="text-gray-600">Branch:</span> <span className="font-medium">{property.landlordDetails.bankAccount.branchName}</span></p>)}
+                {property.landlordDetails.bankAccount.accountNumber && (<p><span className="text-gray-600">Account Number:</span> <span className="font-medium">****{property.landlordDetails.bankAccount.accountNumber.slice(-4)}</span></p>)}
+                {property.landlordDetails.bankAccount.ifscCode && (<p><span className="text-gray-600">IFSC:</span> <span className="font-medium">{property.landlordDetails.bankAccount.ifscCode}</span></p>)}
               </div>
             </div>
           )}
-
           {property.landlordDetails.upiDetails && (
             <div className="p-4 bg-white rounded-lg">
               <p className="font-semibold mb-2 flex items-center gap-2">
@@ -1599,40 +1341,29 @@ function LegalPricingTab({ property }) {
               </p>
               {property.landlordDetails.upiDetails.upiId && (
                 <p className="text-sm mb-2">
-                  <span className="text-gray-600">UPI ID:</span> 
+                  <span className="text-gray-600">UPI ID:</span>
                   <span className="font-medium ml-2">{property.landlordDetails.upiDetails.upiId}</span>
                 </p>
               )}
               {property.landlordDetails.upiDetails.qrCodeUrl && (
                 <div className="mt-3">
                   <p className="text-xs text-gray-600 mb-2">Scan QR Code:</p>
-                  <img 
-                    src={property.landlordDetails.upiDetails.qrCodeUrl} 
-                    alt="UPI QR Code" 
-                    className="w-32 h-32 border-2 border-gray-200 rounded-lg"
-                  />
+                  <img src={property.landlordDetails.upiDetails.qrCodeUrl} alt="UPI QR Code" className="w-32 h-32 border-2 border-gray-200 rounded-lg" />
                 </div>
               )}
             </div>
           )}
-
           {(property.landlordDetails.gstNumber || property.landlordDetails.panNumber) && (
             <div className="mt-4 p-4 bg-white rounded-lg">
               <p className="font-semibold mb-2">Tax Details</p>
               <div className="space-y-1 text-sm">
-                {property.landlordDetails.gstNumber && (
-                  <p><span className="text-gray-600">GST Number:</span> <span className="font-medium">{property.landlordDetails.gstNumber}</span></p>
-                )}
-                {property.landlordDetails.panNumber && (
-                  <p><span className="text-gray-600">PAN Number:</span> <span className="font-medium">{property.landlordDetails.panNumber}</span></p>
-                )}
+                {property.landlordDetails.gstNumber && (<p><span className="text-gray-600">GST Number:</span> <span className="font-medium">{property.landlordDetails.gstNumber}</span></p>)}
+                {property.landlordDetails.panNumber && (<p><span className="text-gray-600">PAN Number:</span> <span className="font-medium">{property.landlordDetails.panNumber}</span></p>)}
               </div>
             </div>
           )}
         </div>
       )}
-
-      {/* Pricing Breakdown */}
       <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-2xl p-6 border border-orange-100">
         <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
           <FaRupeeSign className="text-orange-600" />
@@ -1641,9 +1372,7 @@ function LegalPricingTab({ property }) {
         <div className="space-y-3">
           <div className="flex justify-between items-center p-3 bg-white rounded-lg">
             <span className="text-gray-700">Property Price:</span>
-            <span className="text-xl font-bold text-gray-900">
-              ₹{property.price?.amount?.toLocaleString('en-IN')}
-            </span>
+            <span className="text-xl font-bold text-gray-900">₹{property.price?.amount?.toLocaleString('en-IN')}</span>
           </div>
           {property.price?.pricePerSqft && (
             <div className="flex justify-between items-center p-3 bg-white rounded-lg">
@@ -1673,8 +1402,7 @@ function LegalPricingTab({ property }) {
 function OwnerInfoCard({ property }) {
   const ownerName = property.ownerId?.name || property.contactInfo?.name || "Property Manager";
   const ownerEmail = property.ownerId?.email || property.contactInfo?.email || "";
-  // const ownerPhone = property.contactInfo?.phone || "";
-  const ownerPhone =  "9755271778";
+  const ownerPhone = "9755271778";
   const alternatePhone = property.contactInfo?.alternatePhone || "";
   const preferredCallTime = property.contactInfo?.preferredCallTime || "";
 
@@ -1691,41 +1419,29 @@ function OwnerInfoCard({ property }) {
         </div>
         Contact Information 
       </h2>
-      
       <div className="space-y-4">
         <div>
           <p className="text-xl font-bold">{ownerName}</p>
           <p className="text-indigo-100 text-sm">{property.postedBy || 'Owner'}</p>
         </div>
-
         {ownerEmail && (
           <div className="flex items-center gap-2 text-indigo-100">
             <FaEnvelope size={16} />
             <span className="text-sm">{ownerEmail}</span>
           </div>
         )}
-
-        {/* {ownerPhone && (
-          <div className="flex items-center gap-2 text-indigo-100">
-            <FaPhone size={16} />
-            <span className="text-sm">{ownerPhone}</span>
-          </div>
-        )} */}
-
         {alternatePhone && (
           <div className="flex items-center gap-2 text-indigo-100">
             <FaPhone size={16} />
             <span className="text-sm">{alternatePhone} (Alternate)</span>
           </div>
         )}
-
         {preferredCallTime && (
           <div className="flex items-center gap-2 text-indigo-100">
             <FaClock size={16} />
             <span className="text-sm">Best time to call: {preferredCallTime}</span>
           </div>
         )}
-
         <div className="flex gap-3 pt-4">
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -1762,7 +1478,6 @@ function PropertyStats({ stats }) {
         <FaChartLine className="text-indigo-600" />
         Property Analytics
       </h3>
-      
       <div className="space-y-3">
         <StatItem icon={<Eye />} label="Total Views" value={stats.views || 0} />
         <StatItem icon={<UsersIcon />} label="Unique Views" value={stats.uniqueViews || 0} />
@@ -1770,12 +1485,9 @@ function PropertyStats({ stats }) {
         <StatItem icon={<Bookmark />} label="Shortlists" value={stats.shortlists || 0} />
         <StatItem icon={<Share2 />} label="Shares" value={stats.shares || 0} />
       </div>
-
       {stats.lastViewedAt && (
         <div className="mt-4 pt-4 border-t border-gray-200">
-          <p className="text-xs text-gray-500">
-            Last viewed: {new Date(stats.lastViewedAt).toLocaleString()}
-          </p>
+          <p className="text-xs text-gray-500">Last viewed: {new Date(stats.lastViewedAt).toLocaleString()}</p>
         </div>
       )}
     </motion.div>
@@ -1841,11 +1553,7 @@ function ImageModal({ selectedImages, initialSlide, closeImageModal }) {
         {selectedImages.map((img, i) => (
           <SwiperSlide key={i}>
             <div className="flex items-center justify-center h-full">
-              <img
-                src={img}
-                alt={`Full view ${i}`}
-                className="max-w-full max-h-full object-contain"
-              />
+              <img src={img} alt={`Full view ${i}`} className="max-w-full max-h-full object-contain" />
             </div>
           </SwiperSlide>
         ))}
@@ -1877,6 +1585,10 @@ function RatingAndComments({ propertyId }) {
   const [replyText, setReplyText] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [sortBy, setSortBy] = useState("helpful");
+  const [page, setPage] = useState(1);
+  const [limit] = useState(5);
+  const navigate = useNavigate();
 
   const getToken = () => localStorage.getItem("usertoken");
 
@@ -1891,29 +1603,26 @@ function RatingAndComments({ propertyId }) {
     });
   };
 
-  // Fetch reviews and stats using new API
   const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      // Fetch reviews for this property
       const reviewsResponse = await axios.get(
-        `${baseurl}api/property-reviews/property/${propertyId}`
+        `${baseurl}api/property-reviews/property/${propertyId}?sortBy=${sortBy}&page=${page}&limit=${limit}`
       );
       
       if (reviewsResponse.data?.success) {
-        const reviewsList = reviewsResponse.data.data || [];
-        setReviews(reviewsList);
+        setReviews(reviewsResponse.data.data || []);
       }
 
-      // Fetch property details to get ratings from property-reviews API
       const propertyResponse = await axios.get(
-        `https://api.gharzoreality.com/api/v2/properties/${propertyId}/details`
+        `https://api.gharzoreality.com/api/public/properties/${propertyId}`
       );
       
-      if (propertyResponse.data?.success && propertyResponse.data.data?.ratingsAndReviews) {
-        const ratingsData = propertyResponse.data.data.ratingsAndReviews;
+      const propData = propertyResponse.data?.data?.property || propertyResponse.data?.data;
+      if (propData?.ratingsAndReviews) {
+        const ratingsData = propData.ratingsAndReviews;
         setStats({
           averageRating: ratingsData.averageRating || 0,
           totalRatings: ratingsData.totalReviews || 0,
@@ -1923,7 +1632,6 @@ function RatingAndComments({ propertyId }) {
         });
       }
 
-      // Get current user from token
       const token = getToken();
       if (token) {
         try {
@@ -1943,7 +1651,7 @@ function RatingAndComments({ propertyId }) {
 
   useEffect(() => {
     fetchData();
-  }, [propertyId]);
+  }, [propertyId, sortBy, page, limit]);
 
   const handleSubmitReview = async () => {
     if (!getToken()) {
@@ -1951,12 +1659,10 @@ function RatingAndComments({ propertyId }) {
       setShowTokenInput(true);
       return;
     }
-
     if (!reviewTitle.trim() || !reviewDescription.trim()) {
       setError("Please provide a title and description for your review.");
       return;
     }
-
     if (rating === 0) {
       setError("Please provide an overall rating.");
       return;
@@ -1975,10 +1681,7 @@ function RatingAndComments({ propertyId }) {
           cleanliness: cleanlinessRating || rating,
           amenities: amenitiesRating || rating
         },
-        review: {
-          title: reviewTitle,
-          description: reviewDescription
-        },
+        review: { title: reviewTitle, description: reviewDescription },
         pros: pros ? pros.split(",").map(s => s.trim()).filter(Boolean) : [],
         cons: cons ? cons.split(",").map(s => s.trim()).filter(Boolean) : [],
         tags: tags,
@@ -1986,28 +1689,13 @@ function RatingAndComments({ propertyId }) {
         recommendedFor: recommendedFor
       };
 
-      const response = await axiosInstance.post(
-        `api/property-reviews/create`,
-        requestBody
-      );
+      const response = await axiosInstance.post(`api/property-reviews/create`, requestBody);
 
       if (response.data?.success) {
-        // Refresh reviews
         await fetchData();
-        
-        // Reset form
-        setRating(0);
-        setLocationRating(0);
-        setCleanlinessRating(0);
-        setAmenitiesRating(0);
-        setReviewTitle("");
-        setReviewDescription("");
-        setPros("");
-        setCons("");
-        setTags([]);
-        setWouldRecommend(true);
-        setRecommendedFor([]);
-        
+        setRating(0); setLocationRating(0); setCleanlinessRating(0); setAmenitiesRating(0);
+        setReviewTitle(""); setReviewDescription(""); setPros(""); setCons("");
+        setTags([]); setWouldRecommend(true); setRecommendedFor([]);
         toast.success(response.data.message || "Review submitted successfully!");
       } else {
         throw new Error(response.data?.message || "Failed to submit review");
@@ -2026,75 +1714,35 @@ function RatingAndComments({ propertyId }) {
   };
 
   const handleVote = async (reviewId, voteType) => {
-    if (!getToken()) {
-      setError("Please login to vote.");
-      setShowTokenInput(true);
-      return;
-    }
-
+    if (!getToken()) { setError("Please login to vote."); setShowTokenInput(true); return; }
     try {
       const axiosInstance = createAxiosInstance();
-      const response = await axiosInstance.post(
-        `api/property-reviews/${reviewId}/vote`,
-        { voteType }
-      );
-
-      if (response.data?.success) {
-        // Refresh reviews to get updated vote counts
-        await fetchData();
-        toast.success("Vote recorded!");
-      }
+      const response = await axiosInstance.post(`api/property-reviews/${reviewId}/vote`, { voteType });
+      if (response.data?.success) { await fetchData(); toast.success("Vote recorded!"); }
     } catch (err) {
-      console.error("Error voting:", err);
       toast.error(err.response?.data?.message || "Failed to record vote");
     }
   };
 
   const handleFlag = async (reviewId, reason) => {
-    if (!getToken()) {
-      setError("Please login to flag.");
-      setShowTokenInput(true);
-      return;
-    }
-
+    if (!getToken()) { setError("Please login to flag."); setShowTokenInput(true); return; }
     try {
       const axiosInstance = createAxiosInstance();
-      const response = await axiosInstance.post(
-        `api/property-reviews/${reviewId}/flag`,
-        { reason }
-      );
-
-      if (response.data?.success) {
-        toast.success("Review flagged successfully!");
-      }
+      const response = await axiosInstance.post(`api/property-reviews/${reviewId}/flag`, { reason });
+      if (response.data?.success) { toast.success("Review flagged successfully!"); }
     } catch (err) {
-      console.error("Error flagging:", err);
       toast.error(err.response?.data?.message || "Failed to flag review");
     }
   };
 
   const handleReply = async (commentId) => {
-    if (!replyText.trim()) {
-      setError("Reply cannot be empty.");
-      return;
-    }
-
+    if (!replyText.trim()) { setError("Reply cannot be empty."); return; }
     try {
       setError(null);
       const axiosInstance = createAxiosInstance();
-      // Note: The new API might have a different endpoint for replies
-      const response = await axiosInstance.post(
-        `api/property-reviews/${commentId}/reply`,
-        { response: replyText }
-      );
-
-      if (response.data?.success) {
-        await fetchData();
-        setReplyText("");
-        setReplyingTo(null);
-      }
+      const response = await axiosInstance.post(`api/property-reviews/${commentId}/reply`, { response: replyText });
+      if (response.data?.success) { await fetchData(); setReplyText(""); setReplyingTo(null); }
     } catch (err) {
-      console.error("Error adding reply:", err);
       setError(err.response?.data?.message || "Failed to send reply");
     }
   };
@@ -2102,24 +1750,19 @@ function RatingAndComments({ propertyId }) {
   const handleTokenSubmit = () => {
     if (newToken.trim()) {
       localStorage.setItem("usertoken", newToken);
-      setShowTokenInput(false);
-      setNewToken("");
-      setError(null);
-      fetchData();
+      setShowTokenInput(false); setNewToken(""); setError(null); fetchData();
     }
   };
 
   const tagSuggestions = ["Clean", "Great Location", "Good Amenities", "Value for Money", "Peaceful", "Noise Free", "Well Maintained", "Owner Responsive"];
   const recommendedForOptions = ["Working Professionals", "Students", "Families", "Couples", "Singles"];
 
-  const getReviewerInfo = (review) => {
-    return {
-      name: review.reviewerInfo?.name || review.reviewerId?.name || "Anonymous",
-      role: review.reviewerInfo?.role || "user",
-      isVerified: review.verification?.isVerified || false,
-      stayDuration: review.reviewerInfo?.stayDuration
-    };
-  };
+  const getReviewerInfo = (review) => ({
+    name: review.reviewerInfo?.name || review.reviewerId?.name || "Anonymous",
+    role: review.reviewerInfo?.role || "user",
+    isVerified: review.verification?.isVerified || false,
+    stayDuration: review.reviewerInfo?.stayDuration
+  });
 
   const formatDate = (dateStr) => {
     const date = new Date(dateStr);
@@ -2148,10 +1791,7 @@ function RatingAndComments({ propertyId }) {
             onChange={(e) => setNewToken(e.target.value)}
             className="flex-1 px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-600 transition-colors"
           />
-          <button
-            onClick={handleTokenSubmit}
-            className="px-6 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
-          >
+          <button onClick={handleTokenSubmit} className="px-6 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all">
             Submit
           </button>
         </div>
@@ -2166,34 +1806,18 @@ function RatingAndComments({ propertyId }) {
             <div>
               <div className="flex text-amber-400 mb-2">
                 {[...Array(5)].map((_, i) => (
-                  <Star 
-                    key={i} 
-                    size={20} 
-                    fill={i < Math.round(stats.averageRating || 0) ? "currentColor" : "none"} 
-                    className={i < Math.round(stats.averageRating || 0) ? "text-amber-400" : "text-gray-300"}
-                  />
+                  <Star key={i} size={20} fill={i < Math.round(stats.averageRating || 0) ? "currentColor" : "none"} className={i < Math.round(stats.averageRating || 0) ? "text-amber-400" : "text-gray-300"} />
                 ))}
               </div>
-              <p className="text-sm text-gray-600 font-medium">
-                Based on {stats.totalRatings || 0} reviews
-              </p>
+              <p className="text-sm text-gray-600 font-medium">Based on {stats.totalRatings || 0} reviews</p>
               {stats.recommendationRate > 0 && (
-                <p className="text-xs text-emerald-600 font-medium mt-1">
-                  {stats.recommendationRate}% recommend this property
-                </p>
+                <p className="text-xs text-emerald-600 font-medium mt-1">{stats.recommendationRate}% recommend this property</p>
               )}
             </div>
           </div>
-          
-          {/* Rating Breakdown */}
           {stats.ratings && Object.keys(stats.ratings).length > 0 && (
             <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                { key: 'location', label: 'Location' },
-                { key: 'cleanliness', label: 'Cleanliness' },
-                { key: 'amenities', label: 'Amenities' },
-                { key: 'overall', label: 'Overall' }
-              ].map(item => (
+              {[{ key: 'location', label: 'Location' }, { key: 'cleanliness', label: 'Cleanliness' }, { key: 'amenities', label: 'Amenities' }, { key: 'overall', label: 'Overall' }].map(item => (
                 stats.ratings[item.key] > 0 && (
                   <div key={item.key} className="bg-white rounded-lg p-2 text-center">
                     <p className="text-xs text-gray-500">{item.label}</p>
@@ -2210,193 +1834,85 @@ function RatingAndComments({ propertyId }) {
       {getToken() ? (
         <div className="bg-white rounded-2xl p-6 border border-gray-200 mb-6">
           <h4 className="text-lg font-bold text-gray-900 mb-4">Write a Review</h4>
-          
-          {/* Overall Rating */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">Overall Rating *</label>
             <div className="flex gap-1">
               {[...Array(5)].map((_, i) => {
                 const starValue = i + 1;
                 return (
-                  <motion.span
-                    key={i}
-                    whileHover={{ scale: 1.2 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => setRating(starValue)}
-                    className={`cursor-pointer text-3xl transition-colors ${
-                      starValue <= rating ? "text-amber-400" : "text-gray-300"
-                    }`}
-                  >
-                    ★
-                  </motion.span>
+                  <motion.span key={i} whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.9 }} onClick={() => setRating(starValue)} className={`cursor-pointer text-3xl transition-colors ${starValue <= rating ? "text-amber-400" : "text-gray-300"}`}>★</motion.span>
                 );
               })}
-              <span className="ml-2 text-sm text-gray-500 self-center">
-                {rating > 0 ? `${rating} star${rating > 1 ? 's' : ''}` : 'Select rating'}
-              </span>
+              <span className="ml-2 text-sm text-gray-500 self-center">{rating > 0 ? `${rating} star${rating > 1 ? 's' : ''}` : 'Select rating'}</span>
             </div>
           </div>
-
-          {/* Category Ratings */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Location Rating</label>
               <div className="flex gap-1">
-                {[...Array(5)].map((_, i) => (
-                  <span
-                    key={i}
-                    onClick={() => setLocationRating(i + 1)}
-                    className={`cursor-pointer text-lg ${i < locationRating ? "text-amber-400" : "text-gray-300"}`}
-                  >★</span>
-                ))}
+                {[...Array(5)].map((_, i) => (<span key={i} onClick={() => setLocationRating(i + 1)} className={`cursor-pointer text-lg ${i < locationRating ? "text-amber-400" : "text-gray-300"}`}>★</span>))}
               </div>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Cleanliness</label>
               <div className="flex gap-1">
-                {[...Array(5)].map((_, i) => (
-                  <span
-                    key={i}
-                    onClick={() => setCleanlinessRating(i + 1)}
-                    className={`cursor-pointer text-lg ${i < cleanlinessRating ? "text-amber-400" : "text-gray-300"}`}
-                  >★</span>
-                ))}
+                {[...Array(5)].map((_, i) => (<span key={i} onClick={() => setCleanlinessRating(i + 1)} className={`cursor-pointer text-lg ${i < cleanlinessRating ? "text-amber-400" : "text-gray-300"}`}>★</span>))}
               </div>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Amenities</label>
               <div className="flex gap-1">
-                {[...Array(5)].map((_, i) => (
-                  <span
-                    key={i}
-                    onClick={() => setAmenitiesRating(i + 1)}
-                    className={`cursor-pointer text-lg ${i < amenitiesRating ? "text-amber-400" : "text-gray-300"}`}
-                  >★</span>
-                ))}
+                {[...Array(5)].map((_, i) => (<span key={i} onClick={() => setAmenitiesRating(i + 1)} className={`cursor-pointer text-lg ${i < amenitiesRating ? "text-amber-400" : "text-gray-300"}`}>★</span>))}
               </div>
             </div>
           </div>
-
-          {/* Review Title */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">Review Title *</label>
-            <input
-              type="text"
-              value={reviewTitle}
-              onChange={(e) => setReviewTitle(e.target.value)}
-              placeholder="e.g., Great property with excellent amenities"
-              className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-600 transition-colors"
-            />
+            <input type="text" value={reviewTitle} onChange={(e) => setReviewTitle(e.target.value)} placeholder="e.g., Great property with excellent amenities" className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-600 transition-colors" />
           </div>
-
-          {/* Review Description */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">Your Experience *</label>
-            <textarea
-              value={reviewDescription}
-              onChange={(e) => setReviewDescription(e.target.value)}
-              placeholder="Tell others about your experience with this property..."
-              rows={3}
-              className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-600 transition-colors resize-none"
-            />
+            <textarea value={reviewDescription} onChange={(e) => setReviewDescription(e.target.value)} placeholder="Tell others about your experience with this property..." rows={3} className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-600 transition-colors resize-none" />
           </div>
-
-          {/* Pros */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">Pros (comma separated)</label>
-            <input
-              type="text"
-              value={pros}
-              onChange={(e) => setPros(e.target.value)}
-              placeholder="e.g., Good location, Clean property, Helpful owner"
-              className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-600 transition-colors"
-            />
+            <input type="text" value={pros} onChange={(e) => setPros(e.target.value)} placeholder="e.g., Good location, Clean property, Helpful owner" className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-600 transition-colors" />
           </div>
-
-          {/* Cons */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">Cons (comma separated)</label>
-            <input
-              type="text"
-              value={cons}
-              onChange={(e) => setCons(e.target.value)}
-              placeholder="e.g., Slightly expensive, Parking issues"
-              className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-600 transition-colors"
-            />
+            <input type="text" value={cons} onChange={(e) => setCons(e.target.value)} placeholder="e.g., Slightly expensive, Parking issues" className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-600 transition-colors" />
           </div>
-
-          {/* Tags */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">Tags</label>
             <div className="flex flex-wrap gap-2">
               {tagSuggestions.map(tag => (
-                <button
-                  key={tag}
-                  type="button"
-                  onClick={() => setTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                    tags.includes(tag) 
-                      ? 'bg-indigo-600 text-white' 
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {tag}
-                </button>
+                <button key={tag} type="button" onClick={() => setTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])} className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${tags.includes(tag) ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{tag}</button>
               ))}
             </div>
           </div>
-
-          {/* Would Recommend */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">Would you recommend this property?</label>
             <div className="flex gap-4">
               <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="recommend"
-                  checked={wouldRecommend === true}
-                  onChange={() => setWouldRecommend(true)}
-                  className="w-4 h-4 text-indigo-600"
-                />
+                <input type="radio" name="recommend" checked={wouldRecommend === true} onChange={() => setWouldRecommend(true)} className="w-4 h-4 text-indigo-600" />
                 <span className="text-sm text-gray-700">Yes</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="recommend"
-                  checked={wouldRecommend === false}
-                  onChange={() => setWouldRecommend(false)}
-                  className="w-4 h-4 text-indigo-600"
-                />
+                <input type="radio" name="recommend" checked={wouldRecommend === false} onChange={() => setWouldRecommend(false)} className="w-4 h-4 text-indigo-600" />
                 <span className="text-sm text-gray-700">No</span>
               </label>
             </div>
           </div>
-
-          {/* Recommended For */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">Recommended For</label>
             <div className="flex flex-wrap gap-2">
               {recommendedForOptions.map(option => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => setRecommendedFor(prev => prev.includes(option) ? prev.filter(o => o !== option) : [...prev, option])}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                    recommendedFor.includes(option) 
-                      ? 'bg-emerald-600 text-white' 
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {option}
-                </button>
+                <button key={option} type="button" onClick={() => setRecommendedFor(prev => prev.includes(option) ? prev.filter(o => o !== option) : [...prev, option])} className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${recommendedFor.includes(option) ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{option}</button>
               ))}
             </div>
           </div>
-
           <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
             onClick={handleSubmitReview}
             disabled={submitting || !rating || !reviewTitle.trim() || !reviewDescription.trim()}
             className="w-full px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
@@ -2407,14 +1923,23 @@ function RatingAndComments({ propertyId }) {
       ) : (
         <div className="bg-gradient-to-r from-indigo-50 to-violet-50 rounded-2xl p-6 border border-indigo-200 mb-6 text-center">
           <p className="text-gray-600 mb-3">Please login to write a review</p>
-          <button
-            onClick={() => navigate('/user/login')}
-            className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-colors"
-          >
-            Login to Review
-          </button>
+          <button onClick={() => navigate('/user/login')} className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-colors">Login to Review</button>
         </div>
       )}
+
+      {/* Sort Controls */}
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6 p-4 bg-white rounded-xl border border-gray-200">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-600">Sort by:</span>
+          <select value={sortBy} onChange={(e) => { setSortBy(e.target.value); setPage(1); }} className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="helpful">Most Helpful</option>
+            <option value="recent">Most Recent</option>
+            <option value="highest">Highest Rated</option>
+            <option value="lowest">Lowest Rated</option>
+          </select>
+        </div>
+        <div className="text-sm text-gray-500">Showing {reviews.length} reviews (Page {page})</div>
+      </div>
 
       {/* Reviews List */}
       <div className="space-y-4">
@@ -2434,7 +1959,6 @@ function RatingAndComments({ propertyId }) {
                 transition={{ delay: index * 0.1 }}
                 className="bg-white rounded-2xl p-6 border border-gray-200 hover:shadow-lg transition-shadow"
               >
-                {/* Review Header */}
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 flex items-center justify-center text-white font-bold text-lg">
@@ -2444,123 +1968,63 @@ function RatingAndComments({ propertyId }) {
                       <p className="font-bold text-gray-900">{reviewer.name}</p>
                       <div className="flex items-center gap-2 text-xs text-gray-500">
                         <span className="capitalize">{reviewer.role}</span>
-                        {reviewer.isVerified && (
-                          <span className="flex items-center gap-1 text-emerald-600">
-                            <FaCheckCircle size={10} /> Verified
-                          </span>
-                        )}
+                        {reviewer.isVerified && (<span className="flex items-center gap-1 text-emerald-600"><FaCheckCircle size={10} /> Verified</span>)}
                         <span>•</span>
                         <span>{formatDate(review.reviewDate || review.createdAt)}</span>
                       </div>
                     </div>
                   </div>
-                  
-                  {/* Rating Display */}
                   <div className="flex items-center gap-1">
                     {[...Array(5)].map((_, i) => (
-                      <Star 
-                        key={i} 
-                        size={14} 
-                        fill={i < (review.ratings?.overall || 0) ? "currentColor" : "none"} 
-                        className={i < (review.ratings?.overall || 0) ? "text-amber-400" : "text-gray-300"}
-                      />
+                      <Star key={i} size={14} fill={i < (review.ratings?.overall || 0) ? "currentColor" : "none"} className={i < (review.ratings?.overall || 0) ? "text-amber-400" : "text-gray-300"} />
                     ))}
-                    <span className="ml-1 text-sm font-bold text-gray-700">
-                      {review.ratings?.overall || 0}
-                    </span>
+                    <span className="ml-1 text-sm font-bold text-gray-700">{review.ratings?.overall || 0}</span>
                   </div>
                 </div>
-
-                {/* Review Content */}
-                {review.review?.title && (
-                  <h4 className="font-bold text-gray-900 mb-1">{review.review.title}</h4>
-                )}
-                {review.review?.description && (
-                  <p className="text-gray-700 mb-3">{review.review.description}</p>
-                )}
-
-                {/* Pros & Cons */}
+                {review.review?.title && (<h4 className="font-bold text-gray-900 mb-1">{review.review.title}</h4>)}
+                {review.review?.description && (<p className="text-gray-700 mb-3">{review.review.description}</p>)}
                 {(review.review?.pros?.length > 0 || review.review?.cons?.length > 0) && (
                   <div className="flex flex-wrap gap-4 mb-3 text-sm">
                     {review.review?.pros?.length > 0 && (
                       <div className="flex items-start gap-2">
                         <FaCheckCircle className="text-emerald-500 mt-0.5" size={14} />
-                        <div>
-                          <span className="font-medium text-emerald-700">Pros: </span>
-                          <span className="text-gray-600">{review.review.pros.join(', ')}</span>
-                        </div>
+                        <div><span className="font-medium text-emerald-700">Pros: </span><span className="text-gray-600">{review.review.pros.join(', ')}</span></div>
                       </div>
                     )}
                     {review.review?.cons?.length > 0 && (
                       <div className="flex items-start gap-2">
                         <FaTimesCircle className="text-red-500 mt-0.5" size={14} />
-                        <div>
-                          <span className="font-medium text-red-700">Cons: </span>
-                          <span className="text-gray-600">{review.review.cons.join(', ')}</span>
-                        </div>
+                        <div><span className="font-medium text-red-700">Cons: </span><span className="text-gray-600">{review.review.cons.join(', ')}</span></div>
                       </div>
                     )}
                   </div>
                 )}
-
-                {/* Tags */}
                 {review.review?.tags?.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-3">
-                    {review.review.tags.map((tag, idx) => (
-                      <span key={idx} className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
-                        {tag}
-                      </span>
-                    ))}
+                    {review.review.tags.map((tag, idx) => (<span key={idx} className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">{tag}</span>))}
                   </div>
                 )}
-
-                {/* Recommendation */}
                 {review.wouldRecommend !== undefined && (
-                  <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium mb-3 ${
-                    review.wouldRecommend 
-                      ? 'bg-emerald-100 text-emerald-700' 
-                      : 'bg-red-100 text-red-700'
-                  }`}>
-                    {review.wouldRecommend ? (
-                      <><FaCheckCircle size={12} /> Recommended</>
-                    ) : (
-                      <><FaTimesCircle size={12} /> Not Recommended</>
-                    )}
+                  <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium mb-3 ${review.wouldRecommend ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                    {review.wouldRecommend ? (<><FaCheckCircle size={12} /> Recommended</>) : (<><FaTimesCircle size={12} /> Not Recommended</>)}
                   </div>
                 )}
-
-                {/* Landlord Response */}
                 {review.landlordResponse?.responded && (
                   <div className="mt-3 ml-4 pl-4 border-l-2 border-indigo-200">
-                    <p className="text-xs font-medium text-indigo-600 mb-1">
-                      Owner Response
-                    </p>
+                    <p className="text-xs font-medium text-indigo-600 mb-1">Owner Response</p>
                     <p className="text-sm text-gray-700">{review.landlordResponse.response}</p>
                   </div>
                 )}
-
-                {/* Actions */}
                 <div className="flex items-center gap-4 mt-4 pt-3 border-t border-gray-100">
-                  <button
-                    onClick={() => handleVote(review._id, 'helpful')}
-                    className="flex items-center gap-1 text-sm text-gray-500 hover:text-emerald-600 transition-colors"
-                  >
+                  <button onClick={() => handleVote(review._id, 'helpful')} className="flex items-center gap-1 text-sm text-gray-500 hover:text-emerald-600 transition-colors">
                     <FaCheckCircle size={14} />
                     <span>Helpful ({review.helpfulVotes?.helpful || 0})</span>
                   </button>
-                  <button
-                    onClick={() => handleVote(review._id, 'notHelpful')}
-                    className="flex items-center gap-1 text-sm text-gray-500 hover:text-red-600 transition-colors"
-                  >
+                  <button onClick={() => handleVote(review._id, 'notHelpful')} className="flex items-center gap-1 text-sm text-gray-500 hover:text-red-600 transition-colors">
                     <FaTimesCircle size={14} />
                     <span>Not Helpful ({review.helpfulVotes?.notHelpful || 0})</span>
                   </button>
-                  <button
-                    onClick={() => handleFlag(review._id, 'Offensive content')}
-                    className="text-sm text-gray-500 hover:text-red-600 transition-colors ml-auto"
-                  >
-                    Flag
-                  </button>
+                  <button onClick={() => handleFlag(review._id, 'Offensive content')} className="text-sm text-gray-500 hover:text-red-600 transition-colors ml-auto">Flag</button>
                 </div>
               </motion.div>
             );
@@ -2573,9 +2037,18 @@ function RatingAndComments({ propertyId }) {
             <p className="text-gray-500 font-medium">No reviews yet. Be the first to share your thoughts!</p>
           </div>
         )}
+
+        {/* Pagination */}
+        {reviews.length > 0 && (
+          <div className="flex items-center justify-center gap-2 mt-8">
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Previous</button>
+            <span className="px-4 py-2 text-sm text-gray-600">Page {page}</span>
+            <button onClick={() => setPage(p => p + 1)} disabled={reviews.length < limit} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Next</button>
+          </div>
+        )}
       </div>
     </div>
   );
-} 
+}
 
 export default PropertyDetails;

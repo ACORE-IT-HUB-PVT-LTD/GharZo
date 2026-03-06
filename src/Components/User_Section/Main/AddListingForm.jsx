@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { FaWhatsapp } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 
 import {
   FiHome, FiMapPin, FiCamera, FiCheckCircle, FiEye, FiChevronRight,
@@ -247,6 +248,7 @@ function SuccessScreen() {
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 export default function PropertyListingForm() {
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [propertyId, setPropertyId] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -1129,7 +1131,7 @@ export default function PropertyListingForm() {
   };
 
   const handleBack = () => {
-    if (currentStep > 0) setCurrentStep((p) => p - 1);
+    setCurrentStep((prev) => Math.max(prev - 1, 0));
   };
 
   // ─── Sidebar Steps ──────────────────────────────────────────────────────────
@@ -1346,13 +1348,14 @@ export default function PropertyListingForm() {
                 <button className="lg:hidden w-9 h-9 flex items-center justify-center rounded-xl bg-gray-50 text-gray-600 hover:bg-violet-50 hover:text-violet-600 transition-colors" onClick={() => setSidebarOpen(true)}>
                   <FiMenu size={18} />
                 </button>
+                
                 <button
                   type="button"
-                  onClick={handleBack}
-                  disabled={currentStep === 0}
+                      onClick={() => navigate('/')}
+                  
                   className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-gray-600 hover:text-violet-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors rounded-xl hover:bg-violet-50"
                 >
-                  <FiChevronLeft size={16} /> Back
+                  <FiHome size={16} /> Home
                 </button>
               </div>
 
@@ -1387,11 +1390,27 @@ export default function PropertyListingForm() {
             <div className="flex-1 overflow-y-auto">
               <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 animate-fade-in">
 
+             
+  <h3 className="text-2xl font-semibold text-slate-800 mb-2 font-serif">
+    Add Property Details
+  </h3>
+  <p className="text-gray-500 text-base">
+    Tell us about your property
+  </p>
+
+  <br />
+                  <button
+                    type="button"
+                    onClick={handleBack}
+                    className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 hover:text-violet-700 mb-6"
+                  >
+                    <FiChevronLeft size={16} />
+                    Back
+                  </button>
+
                 {/* ── STEP 0: Property Type ────────────────────────────────── */}
                 {currentStep === 0 && (
                   <div>
-                    <h1 className="heading text-xl sm:text-2xl text-gray-900 mb-1">Add Property Details</h1>
-                    <p className="text-gray-500 text-sm mb-6">Tell us about your property</p>
 
                     <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100 space-y-6">
                       <InputField label="Category" required error={errors.category}>
@@ -1497,7 +1516,6 @@ export default function PropertyListingForm() {
                     </div>
                   </div>
                 )}
-
                 {/* ── STEP 1: Basic Details ────────────────────────────────── */}
                 {currentStep === 1 && (
                   <div>
@@ -3276,3 +3294,5 @@ export default function PropertyListingForm() {
     </div>
   );
 }
+
+

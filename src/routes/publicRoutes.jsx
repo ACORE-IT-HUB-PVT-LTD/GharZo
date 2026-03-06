@@ -55,11 +55,13 @@ const PublicLayout = () => {
 
   // /reels and /service-reels pe Navbar aur Footer dono hide
   const isReelsPage = location.pathname === "/reels" || location.pathname === "/service-reels";
+  // /add-listing pe sirf Navbar hide
+  const isNavbarHiddenPage = isReelsPage || location.pathname === "/add-listing";
 
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Navbar sirf tab show hoga jab /reels ya /service-reels nahi hai */}
-      {!isReelsPage && <Navbar />}
+      {/* Navbar hide on reels/service-reels/add-listing */}
+      {!isNavbarHiddenPage && <Navbar />}
 
       {/* <AdsPopup /> */}
 
@@ -68,7 +70,7 @@ const PublicLayout = () => {
         /reels ya /service-reels pe Navbar nahi hai toh top padding 0 rakho taaki
         ReelsPage apna full-screen layout khud manage kar sake.
       */}
-      <div className={`flex-grow ${isReelsPage ? "pt-0" : "pt-20"}`}>
+      <div className={`flex-grow ${isNavbarHiddenPage ? "pt-0" : "pt-20"}`}>
         <Routes>
           <Route path="/add-channel-partner" element={<AddChannelPartner />} />
           <Route path="/home-loan" element={<HomeLoan />} />
