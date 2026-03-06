@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+﻿import { useState, useEffect, useRef, useCallback } from "react";
 import { FaWhatsapp } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
 import {
   FiHome, FiMapPin, FiCamera, FiCheckCircle, FiEye, FiChevronRight,
-  FiChevronLeft, FiPlus, FiMinus, FiX, FiUpload, FiPhone, FiMail,
+  FiChevronLeft, FiX, FiUpload, FiPhone, FiMail,
   FiUser, FiDollarSign, FiLayers, FiShield, FiZap, FiDroplet,
   FiWifi, FiTruck, FiStar, FiInfo, FiAlertCircle, FiCheck,
   FiSearch, FiLoader, FiGrid, FiBriefcase, FiKey, FiClock, FiUsers,
@@ -31,7 +31,7 @@ const API_BASE = "https://api.gharzoreality.com/api/v2/properties";
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 const getAuthToken = () => localStorage.getItem("usertoken");
 
-// ─── Toast Component ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Toast Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function Toast({ toasts, removeToast }) {
   return (
     <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
@@ -52,36 +52,102 @@ function Toast({ toasts, removeToast }) {
   );
 }
 
-// ─── Counter Box ───────────────────────────────────────────────────────────────
-function CounterBox({ label, value, onChange, min = 0, max = 20, icon: Icon }) {
-  return (
-    <div className="flex flex-col items-center gap-2">
-      <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center text-violet-600">
-        <Icon size={20} />
+// â”€â”€â”€ Counter Box â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function CounterBox({ label, value, onChange, min = 0, max = 20, rkEnabled = false, isRK = false, onRKChange }) {
+  const getPresetOptions = () => {
+    if (label === "BHK") return [1, 2, 3, 4, 5];
+    if (label === "Bathrooms") return [1, 2, 3, 4, 5];
+    if (label === "Balconies") return [0, 1, 2, 3, 4];
+    if (label === "Current Floor") return [0, 1, 2, 3, 4, 5];
+    if (label === "Total Floors") return [1, 2, 3, 4, 5, 10];
+    return null;
+  };
+
+  const presetOptions = getPresetOptions();
+  const normalizedValue = Number(value);
+
+  const formatOptionLabel = (option) => {
+    if (label === "RK") return "1 RK";
+    if (label === "BHK") return option === 5 ? "5+ BHK" : `${option} BHK`;
+    if (label === "Bathrooms") return option === 5 ? "5+" : `${option}`;
+    if (label === "Balconies") return option === 4 ? "4+" : `${option}`;
+    if (label === "Current Floor") return option === 5 ? "5+" : `${option}`;
+    if (label === "Total Floors") return option === 10 ? "10+" : `${option}`;
+    return `${option}`;
+  };
+
+  if (presetOptions) {
+    const options =
+      presetOptions.includes(normalizedValue) ? presetOptions : [...presetOptions, normalizedValue].sort((a, b) => a - b);
+
+    return (
+      <div className="w-full">
+        <span className="block text-sm text-gray-700 font-medium mb-2">{label}</span>
+        <div className="flex flex-wrap gap-2">
+          {label === "BHK" && rkEnabled && (
+            <button
+              type="button"
+              onClick={() => {
+                onRKChange?.(true);
+                onChange(Math.max(min, Math.min(max, 1)));
+              }}
+              className={`min-w-[84px] px-4 py-3 rounded-xl border text-sm font-medium transition-all
+                ${isRK
+                  ? "border-violet-500 bg-violet-50 text-violet-700"
+                  : "border-gray-200 bg-white text-gray-700 hover:border-violet-300"}`}
+            >
+              1 RK
+            </button>
+          )}
+          {options.map((option) => {
+            const isSelected = label === "BHK" ? !isRK && normalizedValue === option : normalizedValue === option;
+            return (
+              <button
+                key={`${label}-${option}`}
+                type="button"
+                onClick={() => {
+                  if (label === "BHK" && rkEnabled) onRKChange?.(false);
+                  onChange(Math.max(min, Math.min(max, option)));
+                }}
+                className={`min-w-[84px] px-4 py-3 rounded-xl border text-sm font-medium transition-all
+                  ${isSelected
+                    ? "border-violet-500 bg-violet-50 text-violet-700"
+                    : "border-gray-200 bg-white text-gray-700 hover:border-violet-300"}`}
+              >
+                {formatOptionLabel(option)}
+              </button>
+            );
+          })}
+        </div>
       </div>
-      <span className="text-xs text-gray-500 font-medium text-center">{label}</span>
-      <div className="flex items-center gap-2 bg-gray-50 rounded-xl p-1">
+    );
+  }
+
+  return (
+    <div className="min-w-[130px] rounded-xl border border-gray-200 bg-white p-3">
+      <span className="block text-xs text-gray-500 font-medium text-center mb-2">{label}</span>
+      <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-1 py-1">
         <button
           type="button"
           onClick={() => onChange(Math.max(min, value - 1))}
-          className="w-7 h-7 rounded-lg bg-white shadow-sm flex items-center justify-center text-gray-600 hover:bg-violet-50 hover:text-violet-600 transition-colors"
+          className="w-8 h-8 rounded-md bg-white border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-violet-50 hover:text-violet-700 transition-colors"
         >
-          <FiMinus size={12} />
+          -
         </button>
-        <span className="w-6 text-center font-bold text-gray-800 text-sm">{value}</span>
+        <span className="min-w-[34px] text-center font-semibold text-gray-800 text-sm">{value}</span>
         <button
           type="button"
           onClick={() => onChange(Math.min(max, value + 1))}
-          className="w-7 h-7 rounded-lg bg-white shadow-sm flex items-center justify-center text-gray-600 hover:bg-violet-50 hover:text-violet-600 transition-colors"
+          className="w-8 h-8 rounded-md bg-white border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-violet-50 hover:text-violet-700 transition-colors"
         >
-          <FiPlus size={12} />
+          +
         </button>
       </div>
     </div>
   );
 }
 
-// ─── Select Card ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ Select Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function SelectCard({ label, icon: Icon, selected, onClick }) {
   return (
     <button
@@ -99,7 +165,7 @@ function SelectCard({ label, icon: Icon, selected, onClick }) {
   );
 }
 
-// ─── Chip Toggle ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ Chip Toggle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function Chip({ label, selected, onClick }) {
   return (
     <button
@@ -115,7 +181,7 @@ function Chip({ label, selected, onClick }) {
   );
 }
 
-// ─── Toggle Yes/No ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Toggle Yes/No â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function YesNoToggle({ label, value, onChange }) {
   return (
     <div className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-xl">
@@ -132,7 +198,7 @@ function YesNoToggle({ label, value, onChange }) {
   );
 }
 
-// ─── Input Field Wrapper ───────────────────────────────────────────────────────
+// â”€â”€â”€ Input Field Wrapper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function InputField({ label, required, error, children, hint }) {
   return (
     <div className="flex flex-col gap-1">
@@ -198,7 +264,7 @@ function TextInputWithError({ error, ...props }) {
   );
 }
 
-// ─── Preview Helpers ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Preview Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function PreviewSection({ title, icon: Icon, children }) {
   return (
     <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
@@ -220,7 +286,7 @@ function InfoItem({ label, value }) {
   );
 }
 
-// ─── Success Screen ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Success Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function SuccessScreen() {
   return (
     <div className="flex items-center justify-center min-h-screen px-4">
@@ -233,7 +299,7 @@ function SuccessScreen() {
           Your property has been submitted for approval. It will be reviewed within 24-48 hours.
         </p>
         <div className="mt-6 p-4 bg-violet-50 rounded-2xl border border-violet-100">
-          <p className="text-sm text-violet-700 font-medium">🎉 Congratulations! Your listing is now under review.</p>
+          <p className="text-sm text-violet-700 font-medium">ðŸŽ‰ Congratulations! Your listing is now under review.</p>
         </div>
         <button
           onClick={() => window.location.reload()}
@@ -246,7 +312,7 @@ function SuccessScreen() {
   );
 }
 
-// ─── Main Component ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function PropertyListingForm() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
@@ -427,7 +493,7 @@ export default function PropertyListingForm() {
     plotRoadWidth: "",
   });
 
-  // ─── Toast Helpers ─────────────────────────────────────────────────────────
+  // â”€â”€â”€ Toast Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const addToast = useCallback((message, type = "success") => {
     const id = Date.now();
     setToasts((prev) => [...prev, { id, message, type }]);
@@ -443,14 +509,14 @@ export default function PropertyListingForm() {
     Authorization: `Bearer ${getAuthToken()}`,
   };
 
-  // ─── Conditional Flags ─────────────────────────────────────────────────────
+  // â”€â”€â”€ Conditional Flags â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const isPG = form.listingType === "PG/Co-living" || form.propertyType === "PG/Co-living";
   const isRent = form.listingType === "Rent";
   const isSale = form.listingType === "Sale";
   const isResidential = form.category === "Residential";
   const isCommercial = form.category === "Commercial";
 
-  // ─── Property Types based on Category and Listing Type ─────────────────────────
+  // â”€â”€â”€ Property Types based on Category and Listing Type â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const residentialRentTypes = [
     { label: "Room", icon: RiHotelBedLine },
     { label: "Independent House", icon: PiHouseLine },
@@ -524,7 +590,7 @@ export default function PropertyListingForm() {
   const isFarmHouse = form.propertyType === "Farm House";
   const isVillaOnly = form.propertyType === "Villa";
 
-  // ─── Property-Type Specific Configuration Flags ────────────────────────────
+  // â”€â”€â”€ Property-Type Specific Configuration Flags â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const showBHK = !isPG && !isPlot && !isRoom && !isOffice && !isWarehouse && !isShop && isResidential &&
     (isFlat || isVilla || isStudio || isIndependentHouse || isIndependentFloor || isBuilderFloor ||
       form.propertyType === "Penthouse" || form.propertyType === "Duplex" || form.propertyType === "Farm House");
@@ -573,7 +639,7 @@ export default function PropertyListingForm() {
     ? ["School", "Hospital", "Market", "ATM", "Bank", "Metro Station", "Bus Stop", "Railway Station", "Airport", "Mall", "Restaurant", "Pharmacy", "Park"]
     : ["School", "Hospital", "Market", "ATM", "Bank", "Metro Station", "Bus Stop", "Railway Station", "Airport", "Mall", "Restaurant", "Pharmacy", "Park", "Temple", "Mosque", "Church", "Gurudwara"];
 
-  // ─── Load Cities ───────────────────────────────────────────────────────────
+  // â”€â”€â”€ Load Cities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     fetch("https://api.gharzoreality.com/api/master-data/v2/cities")
       .then((r) => r.json())
@@ -581,7 +647,7 @@ export default function PropertyListingForm() {
       .catch(() => {});
   }, []);
 
-  // ─── Load Mapbox (only when on step 3) ────────────────────────────────────
+  // â”€â”€â”€ Load Mapbox (only when on step 3) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     if (currentStep === 3 && !mapLoaded) {
       const link = document.createElement("link");
@@ -635,7 +701,7 @@ export default function PropertyListingForm() {
     }
   }, [mapLoaded, currentStep]);
 
-  // ─── Form Helpers ──────────────────────────────────────────────────────────
+  // â”€â”€â”€ Form Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const updateForm = (path, value) => {
     setForm((prev) => {
       const keys = path.split(".");
@@ -661,7 +727,7 @@ export default function PropertyListingForm() {
     updateForm(path, newArr);
   };
 
-  // ─── Geolocation ──────────────────────────────────────────────────────────
+  // â”€â”€â”€ Geolocation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const getCurrentLocation = () => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
@@ -714,7 +780,7 @@ export default function PropertyListingForm() {
     setLocationSuggestions([]);
   };
 
-  // ─── Validation ────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Validation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const validateStep = () => {
     const errs = {};
     try {
@@ -759,7 +825,7 @@ export default function PropertyListingForm() {
     return { isValid: Object.keys(errs).length === 0, errors: errs };
   };
 
-  // ─── API Calls ─────────────────────────────────────────────────────────────
+  // â”€â”€â”€ API Calls â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const createDraft = async () => {
     // Prevent multiple draft creation calls using ref
     if (isCreatingDraft.current) return;
@@ -1077,7 +1143,7 @@ export default function PropertyListingForm() {
         headers: apiHeaders,
       });
       const data = await res.json();
-      if (data.success) { addToast("Property submitted for approval! 🎉"); setCurrentStep(8); }
+      if (data.success) { addToast("Property submitted for approval! ðŸŽ‰"); setCurrentStep(8); }
       else throw new Error(data.message);
     } catch (e) {
       addToast(e.message || "Failed to submit property", "error");
@@ -1086,7 +1152,7 @@ export default function PropertyListingForm() {
     }
   };
 
-  // ─── Navigation ────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleNext = async () => {
     // Prevent multiple clicks during loading or draft creation
     if (loading || isCreatingDraft.current) return;
@@ -1134,7 +1200,7 @@ export default function PropertyListingForm() {
     setCurrentStep((prev) => Math.max(prev - 1, 0));
   };
 
-  // ─── Sidebar Steps ──────────────────────────────────────────────────────────
+  // â”€â”€â”€ Sidebar Steps â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const sidebarSteps = [
     { label: "Property Details", icon: FiHome, step: 0 },
     { label: "Basic Details", icon: FiInfo, step: 1 },
@@ -1179,16 +1245,16 @@ export default function PropertyListingForm() {
     "Waste Disposal", "Sewage Treatment Plant", "DG Backup", "Solar Panels",
   ];
 
-  // ─── WhatsApp redirect ─────────────────────────────────────────────────────
+  // â”€â”€â”€ WhatsApp redirect â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleWhatsApp = () => {
     const phoneNumber = "9755271778";
     const imageUrl = "https://gharzoreality.com/assets/stigar.png";
-    const message = `Hi! I'm interested to list my property on Gharzo Realty website.\n\nPlease find the attached reference: ${imageUrl}\n\nLooking forward to listing my property with Gharzo Realty™`;
+    const message = `Hi! I'm interested to list my property on Gharzo Realty website.\n\nPlease find the attached reference: ${imageUrl}\n\nLooking forward to listing my property with Gharzo Realtyâ„¢`;
     const msg = encodeURIComponent(message);
     window.open(`https://wa.me/${phoneNumber}?text=${msg}`, "_blank");
   };
 
-  // ─── Configuration Section Helper ─────────────────────────────────────────
+  // â”€â”€â”€ Configuration Section Helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const getConfigurationTitle = () => {
     if (isPG) return "PG / Co-living Configuration";
     if (isPlot) return "Plot Details";
@@ -1207,7 +1273,7 @@ export default function PropertyListingForm() {
     return "Configuration";
   };
 
-  // ─── Sidebar Content ───────────────────────────────────────────────────────
+  // â”€â”€â”€ Sidebar Content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const SidebarContent = () => (
     <>
       <div className="px-2 py-4 border-b border-gray-100">
@@ -1282,13 +1348,13 @@ export default function PropertyListingForm() {
       <div className="px-6 py-4 border-t border-gray-100">
         <p className="text-xs text-gray-400">
           Need Help?{" "}
-          <span className="text-violet-600 cursor-pointer font-medium">📞 Call 08048811281</span>
+          <span className="text-violet-600 cursor-pointer font-medium">ðŸ“ž Call 08048811281</span>
         </p>
       </div>
     </>
   );
 
-  // ─── Render ────────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
     <div className="bg-gradient-to-br from-slate-50 via-violet-50/30 to-blue-50/30 font-sans">
       <style>{`
@@ -1371,20 +1437,6 @@ export default function PropertyListingForm() {
                 <span className="text-xs text-gray-500 font-medium hidden sm:block">{Math.round((currentStep / 7) * 100)}%</span>
               </div>
 
-              <button
-                type="button"
-                onClick={handleNext}
-                disabled={loading}
-                className="flex items-center gap-1.5 px-4 sm:px-5 py-2 bg-gradient-to-r from-violet-600 to-violet-700 text-white text-xs sm:text-sm font-semibold rounded-xl hover:from-violet-700 hover:to-violet-800 disabled:opacity-70 disabled:cursor-not-allowed transition-all shadow-md shadow-violet-200"
-              >
-                {loading ? (
-                  <><FiLoader size={14} className="animate-spin" /> Processing...</>
-                ) : currentStep === 7 ? (
-                  <><FiCheckCircle size={14} /> Submit</>
-                ) : (
-                  <>Save & Continue <FiChevronRight size={14} /></>
-                )}
-              </button>
             </div>
 
             <div className="flex-1 overflow-y-auto">
@@ -1408,7 +1460,7 @@ export default function PropertyListingForm() {
                     Back
                   </button>
 
-                {/* ── STEP 0: Property Type ────────────────────────────────── */}
+                {/* â”€â”€ STEP 0: Property Type â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
                 {currentStep === 0 && (
                   <div>
 
@@ -1494,29 +1546,10 @@ export default function PropertyListingForm() {
                         </div>
                       )}
 
-                      {/* Save & Continue Button for Step 0 */}
-                      <div className="flex justify-center mt-6">
-                        <button
-                          type="button"
-                          onClick={handleNext}
-                          disabled={loading || !form.category || !form.listingType || (!isPG && !form.propertyType)}
-                          className="px-8 py-3 bg-violet-600 text-white rounded-xl font-semibold hover:bg-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                        >
-                          {loading ? (
-                            <>
-                              <FiLoader size={18} className="animate-spin" /> Saving...
-                            </>
-                          ) : (
-                            <>
-                              Save & Continue <FiChevronRight size={18} />
-                            </>
-                          )}
-                        </button>
-                      </div>
                     </div>
                   </div>
                 )}
-                {/* ── STEP 1: Basic Details ────────────────────────────────── */}
+                {/* â”€â”€ STEP 1: Basic Details â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
                 {currentStep === 1 && (
                   <div>
                     <h1 className="heading text-xl sm:text-2xl text-gray-900 mb-1">Basic Details</h1>
@@ -1579,13 +1612,13 @@ export default function PropertyListingForm() {
                         </div>
                       </div>
 
-                      {/* ── Configuration Section ── */}
+                      {/* â”€â”€ Configuration Section â”€â”€ */}
                       <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
                         <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
                           <FiHome size={16} className="text-violet-500" /> {getConfigurationTitle()}
                         </h3>
 
-                        {/* ── Plot / Agricultural Land ── */}
+                        {/* â”€â”€ Plot / Agricultural Land â”€â”€ */}
                         {isPlot && (
                           <div className="space-y-4">
                             <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
@@ -1613,7 +1646,7 @@ export default function PropertyListingForm() {
                           </div>
                         )}
 
-                        {/* ── PG / Co-living ── */}
+                        {/* â”€â”€ PG / Co-living â”€â”€ */}
                         {isPG && (
                           <div className="space-y-3">
                             <div className="flex flex-wrap gap-4 sm:gap-6">
@@ -1644,7 +1677,7 @@ export default function PropertyListingForm() {
                           </div>
                         )}
 
-                        {/* ── Room ── */}
+                        {/* â”€â”€ Room â”€â”€ */}
                         {isRoom && !isPG && (
                           <div className="space-y-4">
                             <div className="flex flex-wrap gap-4 sm:gap-6">
@@ -1659,47 +1692,16 @@ export default function PropertyListingForm() {
                           </div>
                         )}
 
-                        {/* ── Studio ── */}
+                        {/* â”€â”€ Studio â”€â”€ */}
                         {isStudio && !isPG && (
                           <div className="space-y-4">
                             {/* BHK with RK Toggle */}
                             {showBHK && (
                               <div className="flex flex-wrap items-center gap-4">
                                 <div className="flex flex-wrap gap-4 sm:gap-6">
-                                  <CounterBox label={form.isRK ? "RK" : "BHK"} value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                                  <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} min={1} max={10} rkEnabled={showRK} isRK={form.isRK} onRKChange={(v) => updateForm("isRK", v)} />
                                 </div>
-                                {showRK && (
-                                  <div className="flex gap-2">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        updateForm("isRK", false);
-                                        if (form.bhk < 1) updateForm("bhk", 1);
-                                      }}
-                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                                        !form.isRK
-                                          ? "bg-violet-600 border-violet-600 text-white"
-                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
-                                      }`}
-                                    >
-                                      BHK
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        updateForm("isRK", true);
-                                        updateForm("bhk", 1);
-                                      }}
-                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                                        form.isRK
-                                          ? "bg-violet-600 border-violet-600 text-white"
-                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
-                                      }`}
-                                    >
-                                      1 RK
-                                    </button>
-                                  </div>
-                                )}
+                                
                               </div>
                             )}
                             <div className="flex flex-wrap gap-4 sm:gap-6">
@@ -1719,51 +1721,20 @@ export default function PropertyListingForm() {
                           </div>
                         )}
 
-                        {/* ── Flat / Apartment ── */}
+                        {/* â”€â”€ Flat / Apartment â”€â”€ */}
                         {isFlat && !isPG && (
                           <div className="space-y-4">
                             {/* BHK with RK Toggle */}
                             {showBHK && (
                               <div className="flex flex-wrap items-center gap-4">
                                 <div className="flex flex-wrap gap-4 sm:gap-6">
-                                  <CounterBox label={form.isRK ? "RK" : "BHK"} value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                                  <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} min={1} max={10} rkEnabled={showRK} isRK={form.isRK} onRKChange={(v) => updateForm("isRK", v)} />
                                 </div>
-                                {showRK && (
-                                  <div className="flex gap-2">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        updateForm("isRK", false);
-                                        if (form.bhk < 1) updateForm("bhk", 1);
-                                      }}
-                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                                        !form.isRK
-                                          ? "bg-violet-600 border-violet-600 text-white"
-                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
-                                      }`}
-                                    >
-                                      BHK
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        updateForm("isRK", true);
-                                        updateForm("bhk", 1);
-                                      }}
-                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                                        form.isRK
-                                          ? "bg-violet-600 border-violet-600 text-white"
-                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
-                                      }`}
-                                    >
-                                      1 RK
-                                    </button>
-                                  </div>
-                                )}
+                                
                               </div>
                             )}
                             <div className="flex flex-wrap gap-4 sm:gap-6">
-                              <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                              {!showBHK && <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />}
                               <CounterBox label="Bathrooms" value={form.bathrooms} onChange={(v) => updateForm("bathrooms", v)} icon={LuBath} min={1} max={10} />
                               <CounterBox label="Balconies" value={form.balconies} onChange={(v) => updateForm("balconies", v)} icon={MdBalcony} min={0} max={10} />
                               <CounterBox label="Current Floor" value={form.floor.current} onChange={(v) => updateForm("floor.current", v)} icon={FiLayers} min={0} max={100} />
@@ -1776,51 +1747,20 @@ export default function PropertyListingForm() {
                           </div>
                         )}
 
-                        {/* ── Villa (only) ── */}
+                        {/* â”€â”€ Villa (only) â”€â”€ */}
                         {isVillaOnly && !isPG && (
                           <div className="space-y-4">
                             {/* BHK with RK Toggle */}
                             {showBHK && (
                               <div className="flex flex-wrap items-center gap-4">
                                 <div className="flex flex-wrap gap-4 sm:gap-6">
-                                  <CounterBox label={form.isRK ? "RK" : "BHK"} value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                                  <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} min={1} max={10} rkEnabled={showRK} isRK={form.isRK} onRKChange={(v) => updateForm("isRK", v)} />
                                 </div>
-                                {showRK && (
-                                  <div className="flex gap-2">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        updateForm("isRK", false);
-                                        if (form.bhk < 1) updateForm("bhk", 1);
-                                      }}
-                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                                        !form.isRK
-                                          ? "bg-violet-600 border-violet-600 text-white"
-                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
-                                      }`}
-                                    >
-                                      BHK
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        updateForm("isRK", true);
-                                        updateForm("bhk", 1);
-                                      }}
-                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                                        form.isRK
-                                          ? "bg-violet-600 border-violet-600 text-white"
-                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
-                                      }`}
-                                    >
-                                      1 RK
-                                    </button>
-                                  </div>
-                                )}
+                                
                               </div>
                             )}
                             <div className="flex flex-wrap gap-4 sm:gap-6">
-                              <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                              {!showBHK && <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />}
                               <CounterBox label="Bathrooms" value={form.bathrooms} onChange={(v) => updateForm("bathrooms", v)} icon={LuBath} min={1} max={10} />
                               <CounterBox label="Balconies" value={form.balconies} onChange={(v) => updateForm("balconies", v)} icon={MdBalcony} min={0} max={10} />
                               <CounterBox label="Total Floors" value={form.villaFloors} onChange={(v) => updateForm("villaFloors", v)} icon={LuBuilding2} min={1} max={5} />
@@ -1836,51 +1776,20 @@ export default function PropertyListingForm() {
                           </div>
                         )}
 
-                        {/* ── Duplex ── */}
+                        {/* â”€â”€ Duplex â”€â”€ */}
                         {isDuplex && !isPG && (
                           <div className="space-y-4">
                             {/* BHK with RK Toggle */}
                             {showBHK && (
                               <div className="flex flex-wrap items-center gap-4">
                                 <div className="flex flex-wrap gap-4 sm:gap-6">
-                                  <CounterBox label={form.isRK ? "RK" : "BHK"} value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                                  <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} min={1} max={10} rkEnabled={showRK} isRK={form.isRK} onRKChange={(v) => updateForm("isRK", v)} />
                                 </div>
-                                {showRK && (
-                                  <div className="flex gap-2">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        updateForm("isRK", false);
-                                        if (form.bhk < 1) updateForm("bhk", 1);
-                                      }}
-                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                                        !form.isRK
-                                          ? "bg-violet-600 border-violet-600 text-white"
-                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
-                                      }`}
-                                    >
-                                      BHK
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        updateForm("isRK", true);
-                                        updateForm("bhk", 1);
-                                      }}
-                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                                        form.isRK
-                                          ? "bg-violet-600 border-violet-600 text-white"
-                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
-                                      }`}
-                                    >
-                                      1 RK
-                                    </button>
-                                  </div>
-                                )}
+                                
                               </div>
                             )}
                             <div className="flex flex-wrap gap-4 sm:gap-6">
-                              <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                              {!showBHK && <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />}
                               <CounterBox label="Bathrooms" value={form.bathrooms} onChange={(v) => updateForm("bathrooms", v)} icon={LuBath} min={1} max={10} />
                               <CounterBox label="Balconies" value={form.balconies} onChange={(v) => updateForm("balconies", v)} icon={MdBalcony} min={0} max={10} />
                               <CounterBox label="Floors in Duplex" value={form.duplexFloors} onChange={(v) => updateForm("duplexFloors", v)} icon={LuBuilding2} min={1} max={3} />
@@ -1892,51 +1801,20 @@ export default function PropertyListingForm() {
                           </div>
                         )}
 
-                        {/* ── Penthouse ── */}
+                        {/* â”€â”€ Penthouse â”€â”€ */}
                         {isPenthouse && !isPG && (
                           <div className="space-y-4">
                             {/* BHK with RK Toggle */}
                             {showBHK && (
                               <div className="flex flex-wrap items-center gap-4">
                                 <div className="flex flex-wrap gap-4 sm:gap-6">
-                                  <CounterBox label={form.isRK ? "RK" : "BHK"} value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                                  <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} min={1} max={10} rkEnabled={showRK} isRK={form.isRK} onRKChange={(v) => updateForm("isRK", v)} />
                                 </div>
-                                {showRK && (
-                                  <div className="flex gap-2">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        updateForm("isRK", false);
-                                        if (form.bhk < 1) updateForm("bhk", 1);
-                                      }}
-                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                                        !form.isRK
-                                          ? "bg-violet-600 border-violet-600 text-white"
-                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
-                                      }`}
-                                    >
-                                      BHK
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        updateForm("isRK", true);
-                                        updateForm("bhk", 1);
-                                      }}
-                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                                        form.isRK
-                                          ? "bg-violet-600 border-violet-600 text-white"
-                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
-                                      }`}
-                                    >
-                                      1 RK
-                                    </button>
-                                  </div>
-                                )}
+                                
                               </div>
                             )}
                             <div className="flex flex-wrap gap-4 sm:gap-6">
-                              <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                              {!showBHK && <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />}
                               <CounterBox label="Bathrooms" value={form.bathrooms} onChange={(v) => updateForm("bathrooms", v)} icon={LuBath} min={1} max={10} />
                               <CounterBox label="Balconies" value={form.balconies} onChange={(v) => updateForm("balconies", v)} icon={MdBalcony} min={0} max={10} />
                               <CounterBox label="Floor Number" value={form.floor.current} onChange={(v) => updateForm("floor.current", v)} icon={FiLayers} min={0} max={100} />
@@ -1950,51 +1828,20 @@ export default function PropertyListingForm() {
                           </div>
                         )}
 
-                        {/* ── Farm House ── */}
+                        {/* â”€â”€ Farm House â”€â”€ */}
                         {isFarmHouse && !isPG && (
                           <div className="space-y-4">
                             {/* BHK with RK Toggle */}
                             {showBHK && (
                               <div className="flex flex-wrap items-center gap-4">
                                 <div className="flex flex-wrap gap-4 sm:gap-6">
-                                  <CounterBox label={form.isRK ? "RK" : "BHK"} value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                                  <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} min={1} max={10} rkEnabled={showRK} isRK={form.isRK} onRKChange={(v) => updateForm("isRK", v)} />
                                 </div>
-                                {showRK && (
-                                  <div className="flex gap-2">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        updateForm("isRK", false);
-                                        if (form.bhk < 1) updateForm("bhk", 1);
-                                      }}
-                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                                        !form.isRK
-                                          ? "bg-violet-600 border-violet-600 text-white"
-                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
-                                      }`}
-                                    >
-                                      BHK
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        updateForm("isRK", true);
-                                        updateForm("bhk", 1);
-                                      }}
-                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                                        form.isRK
-                                          ? "bg-violet-600 border-violet-600 text-white"
-                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
-                                      }`}
-                                    >
-                                      1 RK
-                                    </button>
-                                  </div>
-                                )}
+                                
                               </div>
                             )}
                             <div className="flex flex-wrap gap-4 sm:gap-6">
-                              <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                              {!showBHK && <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />}
                               <CounterBox label="Bathrooms" value={form.bathrooms} onChange={(v) => updateForm("bathrooms", v)} icon={LuBath} min={1} max={10} />
                               <CounterBox label="Balconies" value={form.balconies} onChange={(v) => updateForm("balconies", v)} icon={MdBalcony} min={0} max={10} />
                               <CounterBox label="Open Sides" value={form.farmHouseOpenSides} onChange={(v) => updateForm("farmHouseOpenSides", v)} icon={FiSun} min={0} max={4} />
@@ -2005,51 +1852,20 @@ export default function PropertyListingForm() {
                           </div>
                         )}
 
-                        {/* ── Independent House ── */}
+                        {/* â”€â”€ Independent House â”€â”€ */}
                         {isIndependentHouse && !isPG && (
                           <div className="space-y-4">
                             {/* BHK with RK Toggle */}
                             {showBHK && (
                               <div className="flex flex-wrap items-center gap-4">
                                 <div className="flex flex-wrap gap-4 sm:gap-6">
-                                  <CounterBox label={form.isRK ? "RK" : "BHK"} value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                                  <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} min={1} max={10} rkEnabled={showRK} isRK={form.isRK} onRKChange={(v) => updateForm("isRK", v)} />
                                 </div>
-                                {showRK && (
-                                  <div className="flex gap-2">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        updateForm("isRK", false);
-                                        if (form.bhk < 1) updateForm("bhk", 1);
-                                      }}
-                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                                        !form.isRK
-                                          ? "bg-violet-600 border-violet-600 text-white"
-                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
-                                      }`}
-                                    >
-                                      BHK
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        updateForm("isRK", true);
-                                        updateForm("bhk", 1);
-                                      }}
-                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                                        form.isRK
-                                          ? "bg-violet-600 border-violet-600 text-white"
-                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
-                                      }`}
-                                    >
-                                      1 RK
-                                    </button>
-                                  </div>
-                                )}
+                                
                               </div>
                             )}
                             <div className="flex flex-wrap gap-4 sm:gap-6">
-                              <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                              {!showBHK && <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />}
                               <CounterBox label="Bathrooms" value={form.bathrooms} onChange={(v) => updateForm("bathrooms", v)} icon={LuBath} min={1} max={10} />
                               <CounterBox label="Balconies" value={form.balconies} onChange={(v) => updateForm("balconies", v)} icon={MdBalcony} min={0} max={10} />
                               <CounterBox label="Total Floors" value={form.floor.total} onChange={(v) => updateForm("floor.total", v)} icon={LuBuilding2} min={0} max={20} />
@@ -2061,51 +1877,20 @@ export default function PropertyListingForm() {
                           </div>
                         )}
 
-                        {/* ── Independent Floor / Builder Floor ── */}
+                        {/* â”€â”€ Independent Floor / Builder Floor â”€â”€ */}
                         {(isIndependentFloor || isBuilderFloor) && !isPG && (
                           <div className="space-y-4">
                             {/* BHK with RK Toggle */}
                             {showBHK && (
                               <div className="flex flex-wrap items-center gap-4">
                                 <div className="flex flex-wrap gap-4 sm:gap-6">
-                                  <CounterBox label={form.isRK ? "RK" : "BHK"} value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                                  <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} min={1} max={10} rkEnabled={showRK} isRK={form.isRK} onRKChange={(v) => updateForm("isRK", v)} />
                                 </div>
-                                {showRK && (
-                                  <div className="flex gap-2">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        updateForm("isRK", false);
-                                        if (form.bhk < 1) updateForm("bhk", 1);
-                                      }}
-                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                                        !form.isRK
-                                          ? "bg-violet-600 border-violet-600 text-white"
-                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
-                                      }`}
-                                    >
-                                      BHK
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        updateForm("isRK", true);
-                                        updateForm("bhk", 1);
-                                      }}
-                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                                        form.isRK
-                                          ? "bg-violet-600 border-violet-600 text-white"
-                                          : "bg-white border-gray-300 text-gray-600 hover:border-violet-400"
-                                      }`}
-                                    >
-                                      1 RK
-                                    </button>
-                                  </div>
-                                )}
+                                
                               </div>
                             )}
                             <div className="flex flex-wrap gap-4 sm:gap-6">
-                              <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />
+                              {!showBHK && <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />}
                               <CounterBox label="Bathrooms" value={form.bathrooms} onChange={(v) => updateForm("bathrooms", v)} icon={LuBath} min={1} max={10} />
                               <CounterBox label="Balconies" value={form.balconies} onChange={(v) => updateForm("balconies", v)} icon={MdBalcony} min={0} max={10} />
                               <CounterBox label="Current Floor" value={form.floor.current} onChange={(v) => updateForm("floor.current", v)} icon={FiLayers} min={0} max={100} />
@@ -2117,7 +1902,7 @@ export default function PropertyListingForm() {
                           </div>
                         )}
 
-                        {/* ── Office ── */}
+                        {/* â”€â”€ Office â”€â”€ */}
                         {isOffice && (
                           <div className="space-y-4">
                             <div className="flex flex-wrap gap-4 sm:gap-6">
@@ -2139,7 +1924,7 @@ export default function PropertyListingForm() {
                           </div>
                         )}
 
-                        {/* ── Shop / Showroom ── */}
+                        {/* â”€â”€ Shop / Showroom â”€â”€ */}
                         {isShop && (
                           <div className="space-y-4">
                             <div className="flex flex-wrap gap-4 sm:gap-6">
@@ -2158,7 +1943,7 @@ export default function PropertyListingForm() {
                           </div>
                         )}
 
-                        {/* ── Warehouse ── */}
+                        {/* â”€â”€ Warehouse â”€â”€ */}
                         {isWarehouse && (
                           <div className="space-y-4">
                             <div className="flex flex-wrap gap-4 sm:gap-6">
@@ -2180,7 +1965,7 @@ export default function PropertyListingForm() {
                           </div>
                         )}
 
-                        {/* ── Other ── */}
+                        {/* â”€â”€ Other â”€â”€ */}
                         {form.propertyType === "Other" && !isPG && (
                           <div className="flex flex-wrap gap-4 sm:gap-6">
                             <CounterBox label="Current Floor" value={form.floor.current} onChange={(v) => updateForm("floor.current", v)} icon={FiLayers} min={0} max={100} />
@@ -2253,7 +2038,7 @@ export default function PropertyListingForm() {
                         </h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <InputField
-                            label={isPG ? "Price (₹)" : isSale ? "Sale Price (₹)" : "Monthly Rent (₹)"}
+                            label={isPG ? "Price (â‚¹)" : isSale ? "Sale Price (â‚¹)" : "Monthly Rent (â‚¹)"}
                             required
                             error={errors["price.amount"]}
                           >
@@ -2278,7 +2063,7 @@ export default function PropertyListingForm() {
                           )}
 
                           {!isPG && (
-                            <InputField label="Security Deposit (₹)">
+                            <InputField label="Security Deposit (â‚¹)">
                               <TextInput
                                 type="number"
                                 placeholder="e.g. 50000"
@@ -2290,7 +2075,7 @@ export default function PropertyListingForm() {
 
                           {!isPG && (
                             <>
-                              <InputField label="Maintenance (₹)">
+                              <InputField label="Maintenance (â‚¹)">
                                 <TextInput
                                   type="number"
                                   placeholder="e.g. 2500"
@@ -2334,7 +2119,7 @@ export default function PropertyListingForm() {
 
                           {showInvestment && !isPGSale && (
                             <>
-                              <InputField label="Expected Rental (₹/month)">
+                              <InputField label="Expected Rental (â‚¹/month)">
                                 <TextInput
                                   type="number"
                                   placeholder="e.g. 25000"
@@ -2342,7 +2127,7 @@ export default function PropertyListingForm() {
                                   onChange={(e) => updateForm("price.expectedRental", e.target.value)}
                                 />
                               </InputField>
-                              <InputField label="Annual Dues (₹)">
+                              <InputField label="Annual Dues (â‚¹)">
                                 <TextInput
                                   type="number"
                                   placeholder="e.g. 50000"
@@ -2510,7 +2295,7 @@ export default function PropertyListingForm() {
                   </div>
                 )}
 
-                {/* ── STEP 2: Property Highlights ──────────────────────────── */}
+                {/* â”€â”€ STEP 2: Property Highlights â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
                 {currentStep === 2 && (
                   <div>
                     <h1 className="heading text-xl sm:text-2xl text-gray-900 mb-1">Property Highlights</h1>
@@ -2728,7 +2513,7 @@ export default function PropertyListingForm() {
                   </div>
                 )}
 
-                {/* ── STEP 3: Location ─────────────────────────────────────── */}
+                {/* â”€â”€ STEP 3: Location â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
                 {currentStep === 3 && (
                   <div>
                     <h1 className="heading text-xl sm:text-2xl text-gray-900 mb-1">Address Details</h1>
@@ -2858,7 +2643,7 @@ export default function PropertyListingForm() {
                         </div>
                         {form.location.coordinates.latitude && (
                           <p className="text-xs text-gray-400 mt-2 text-center">
-                            📍 {form.location.coordinates.latitude.toFixed(4)}, {form.location.coordinates.longitude.toFixed(4)}
+                            ðŸ“ {form.location.coordinates.latitude.toFixed(4)}, {form.location.coordinates.longitude.toFixed(4)}
                           </p>
                         )}
                       </div>
@@ -2866,7 +2651,7 @@ export default function PropertyListingForm() {
                   </div>
                 )}
 
-                {/* ── STEP 4: Ownership ────────────────────────────────────── */}
+                {/* â”€â”€ STEP 4: Ownership â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
                 {currentStep === 4 && (
                   <div>
                     <h1 className="heading text-xl sm:text-2xl text-gray-900 mb-1">Ownership & Legal</h1>
@@ -2897,7 +2682,7 @@ export default function PropertyListingForm() {
                                 {["Included in Price", "Excluded - Paid by Buyer", "To be Decided"].map((v) => <option key={v} value={v}>{v}</option>)}
                               </SelectInput>
                             </InputField>
-                            <InputField label="Property Tax/Year (₹)">
+                            <InputField label="Property Tax/Year (â‚¹)">
                               <TextInput type="number" placeholder="e.g. 12000" value={form.ownership.propertyTaxPerYear} onChange={(e) => updateForm("ownership.propertyTaxPerYear", e.target.value)} />
                             </InputField>
                           </div>
@@ -2948,7 +2733,7 @@ export default function PropertyListingForm() {
                             <InputField label="Total Towers"><TextInput type="number" value={form.builder.totalTowers} onChange={(e) => updateForm("builder.totalTowers", e.target.value)} placeholder="3" /></InputField>
                             <InputField label="Total Floors"><TextInput type="number" value={form.builder.totalFloors} onChange={(e) => updateForm("builder.totalFloors", e.target.value)} placeholder="15" /></InputField>
                             <InputField label="Launch Date"><TextInput type="date" value={form.builder.launchDate} onChange={(e) => updateForm("builder.launchDate", e.target.value)} /></InputField>
-                            <InputField label="Token Amount (₹)"><TextInput type="number" value={form.builder.bookingProcess.tokenAmount} onChange={(e) => updateForm("builder.bookingProcess.tokenAmount", e.target.value)} placeholder="100000" /></InputField>
+                            <InputField label="Token Amount (â‚¹)"><TextInput type="number" value={form.builder.bookingProcess.tokenAmount} onChange={(e) => updateForm("builder.bookingProcess.tokenAmount", e.target.value)} placeholder="100000" /></InputField>
                           </div>
                           <div className="mt-3 flex items-center gap-3">
                             <label className="toggle-switch">
@@ -2994,7 +2779,7 @@ export default function PropertyListingForm() {
                   </div>
                 )}
 
-                {/* ── STEP 5: Photos ───────────────────────────────────────── */}
+                {/* â”€â”€ STEP 5: Photos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
                 {currentStep === 5 && (
                   <div>
                     <h1 className="heading text-xl sm:text-2xl text-gray-900 mb-1">Upload Photos</h1>
@@ -3055,7 +2840,7 @@ export default function PropertyListingForm() {
                   </div>
                 )}
 
-                {/* ── STEP 6: Contact ──────────────────────────────────────── */}
+                {/* â”€â”€ STEP 6: Contact â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
                 {currentStep === 6 && (
                   <div>
                     <h1 className="heading text-xl sm:text-2xl text-gray-900 mb-1">Contact Information</h1>
@@ -3170,9 +2955,9 @@ export default function PropertyListingForm() {
                               </InputField>
 
                               {form.brokerage.chargeType === "Custom" && (
-                                <InputField label="Custom Brokerage Value" hint="e.g., 1 Month Rent or ₹25,000">
+                                <InputField label="Custom Brokerage Value" hint="e.g., 1 Month Rent or â‚¹25,000">
                                   <TextInput
-                                    placeholder="e.g., 1 Month Rent or ₹25,000"
+                                    placeholder="e.g., 1 Month Rent or â‚¹25,000"
                                     value={form.brokerage.customValue}
                                     onChange={(e) => updateForm("brokerage.customValue", e.target.value)}
                                   />
@@ -3186,7 +2971,7 @@ export default function PropertyListingForm() {
                   </div>
                 )}
 
-                {/* ── STEP 7: Preview & Submit ─────────────────────────────── */}
+                {/* â”€â”€ STEP 7: Preview & Submit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
                 {currentStep === 7 && (
                   <div>
                     <h1 className="heading text-xl sm:text-2xl text-gray-900 mb-1">Review & Submit</h1>
@@ -3212,7 +2997,7 @@ export default function PropertyListingForm() {
                           {isVillaOnly && <InfoItem label="Floors in Villa" value={form.villaFloors} />}
                           {isDuplex && <InfoItem label="Floors in Duplex" value={form.duplexFloors} />}
                           <InfoItem label={isPlot ? "Plot Area" : "Carpet Area"} value={`${isPlot ? form.area.plotArea : form.area.carpet} ${form.area.unit}`} />
-                          <InfoItem label="Price" value={`₹${Number(form.price.amount || 0).toLocaleString("en-IN")}${isPG ? ` per ${form.price.per}` : ""}`} />
+                          <InfoItem label="Price" value={`â‚¹${Number(form.price.amount || 0).toLocaleString("en-IN")}${isPG ? ` per ${form.price.per}` : ""}`} />
                           {form.propertyAge && <InfoItem label="Property Age" value={form.propertyAge} />}
                         </div>
                       </PreviewSection>
@@ -3279,6 +3064,25 @@ export default function PropertyListingForm() {
               </div>
             </div>
 
+            <div className="border-t border-gray-100 bg-white px-4 sm:px-6 py-3">
+              <div className="max-w-3xl mx-auto flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  disabled={loading}
+                  className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-violet-600 to-violet-700 text-white text-sm font-semibold rounded-xl hover:from-violet-700 hover:to-violet-800 disabled:opacity-70 disabled:cursor-not-allowed transition-all shadow-md shadow-violet-200"
+                >
+                  {loading ? (
+                    <><FiLoader size={14} className="animate-spin" /> Processing...</>
+                  ) : currentStep === 7 ? (
+                    <><FiCheckCircle size={14} /> Submit</>
+                  ) : (
+                    <>Save & Continue <FiChevronRight size={14} /></>
+                  )}
+                </button>
+              </div>
+            </div>
+
             {/* Bottom progress dots for mobile */}
             <div className="lg:hidden flex justify-center gap-1.5 py-2 bg-white border-t border-gray-100">
               {Array.from({ length: 8 }, (_, i) => (
@@ -3294,5 +3098,10 @@ export default function PropertyListingForm() {
     </div>
   );
 }
+
+
+
+
+
 
 
