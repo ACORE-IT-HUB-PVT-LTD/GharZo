@@ -96,6 +96,20 @@ function PropertyDetails() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [sharePropertyId, setSharePropertyId] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [currentUserRole, setCurrentUserRole] = useState("");
+
+  useEffect(() => {
+    const token = localStorage.getItem("usertoken");
+    if (!token) return;
+
+    try {
+      const decoded = jwtDecode(token);
+      const role = (decoded?.role || decoded?.user?.role || "").toString().toLowerCase();
+      setCurrentUserRole(role);
+    } catch (error) {
+      setCurrentUserRole("");
+    }
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -551,7 +565,7 @@ function PropertyDetails() {
             />
 
             {/* Owner/Landlord Info Card */}
-            <OwnerInfoCard property={property} />
+            {currentUserRole !== "admin" && <OwnerInfoCard property={property} />}
           </div>
 
           {/* Right Column - Schedule Tour & Stats */}
@@ -933,12 +947,12 @@ function PropertyTabs({ activeTab, setActiveTab, property, openImageModal, place
       transition={{ delay: 0.2 }}
       className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden font-body"
     >
-      <div className="flex overflow-x-auto border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+      <div className="flex flex-nowrap border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-6 py-4 font-semibold text-sm whitespace-nowrap transition-all flex items-center gap-2 ${
+            className={`flex-1 min-w-0 px-2 py-2 font-semibold text-xs transition-all flex items-center justify-center gap-1 ${
               activeTab === tab.id
                 ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg"
                 : "text-gray-600 hover:bg-gray-100"
@@ -1402,9 +1416,17 @@ function LegalPricingTab({ property }) {
 function OwnerInfoCard({ property }) {
   const ownerName = property.ownerId?.name || property.contactInfo?.name || "Property Manager";
   const ownerEmail = property.ownerId?.email || property.contactInfo?.email || "";
-  const ownerPhone = "9755271778";
+  const ownerPhone = property.contactInfo?.phone || property.ownerId?.phone || "9755271778";
   const alternatePhone = property.contactInfo?.alternatePhone || "";
   const preferredCallTime = property.contactInfo?.preferredCallTime || "";
+  const ownerRole = (property.postedBy || "Owner").toString().trim();
+  const showOwnerRole = !/admin/i.test(ownerRole);
+  const isAdminOwner = /admin/i.test(ownerRole);
+  const displayOwnerName = isAdminOwner ? "Property Manager" : ownerName;
+  const whatsappNumber = String(ownerPhone || "").replace(/\D/g, "");
+  const whatsappMessage = encodeURIComponent(
+    `Hi ${ownerName}, I am interested in your property "${property.title || property.name || "Property"}"${property.location?.city ? ` in ${property.location.city}` : ""}. Link: ${window.location.href}`
+  );
 
   return (
     <motion.div
@@ -1421,15 +1443,15 @@ function OwnerInfoCard({ property }) {
       </h2>
       <div className="space-y-4">
         <div>
-          <p className="text-xl font-bold">{ownerName}</p>
-          <p className="text-indigo-100 text-sm">{property.postedBy || 'Owner'}</p>
+          <p className="text-xl font-bold">{displayOwnerName}</p>
+          {showOwnerRole && <p className="text-indigo-100 text-sm">{ownerRole}</p>}
         </div>
-        {ownerEmail && (
+        {/* {ownerEmail && (
           <div className="flex items-center gap-2 text-indigo-100">
             <FaEnvelope size={16} />
             <span className="text-sm">{ownerEmail}</span>
           </div>
-        )}
+        )} */}
         {alternatePhone && (
           <div className="flex items-center gap-2 text-indigo-100">
             <FaPhone size={16} />
@@ -1455,9 +1477,9 @@ function OwnerInfoCard({ property }) {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-white/20 backdrop-blur-sm text-white rounded-full font-bold hover:bg-white/30 transition-all"
-            onClick={() => window.location.href = `mailto:${ownerEmail}`}
+            onClick={() => window.open(`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`, "_blank")}
           >
-            <FaEnvelope size={16} /> Email
+            <FaWhatsapp size={16} /> WhatsApp
           </motion.button>
         </div>
       </div>
@@ -1951,6 +1973,10 @@ function RatingAndComments({ propertyId }) {
         ) : reviews.length > 0 ? (
           reviews.map((review, index) => {
             const reviewer = getReviewerInfo(review);
+            const reviewerRole = (reviewer.role || "").toString();
+            const isAdminReviewer = /admin/i.test(reviewerRole);
+            const showReviewerRole = reviewerRole && !/admin/i.test(reviewerRole);
+            const displayReviewerName = isAdminReviewer ? "Verified User" : reviewer.name;
             return (
               <motion.div
                 key={review._id || index}
@@ -1962,12 +1988,12 @@ function RatingAndComments({ propertyId }) {
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 flex items-center justify-center text-white font-bold text-lg">
-                      {reviewer.name.charAt(0).toUpperCase()}
+                      {displayReviewerName.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p className="font-bold text-gray-900">{reviewer.name}</p>
+                      <p className="font-bold text-gray-900">{displayReviewerName}</p>
                       <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <span className="capitalize">{reviewer.role}</span>
+                        {showReviewerRole && <span className="capitalize">{reviewerRole}</span>}
                         {reviewer.isVerified && (<span className="flex items-center gap-1 text-emerald-600"><FaCheckCircle size={10} /> Verified</span>)}
                         <span>•</span>
                         <span>{formatDate(review.reviewDate || review.createdAt)}</span>

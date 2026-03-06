@@ -520,7 +520,7 @@ const SaleListingPage = () => {
             className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-all text-sm"
           >
             <Plus size={18} />
-            Add Your Property
+            Post Property
           </motion.button>
         </div>
 

@@ -1461,7 +1461,7 @@ export default function PropertyListingForm() {
 
              
   <h3 className="text-2xl font-semibold text-slate-800 mb-2 font-serif">
-    Add Property Details
+    Post Property Details
   </h3>
   <p className="text-gray-500 text-base">
     Tell us about your property
@@ -2057,7 +2057,7 @@ export default function PropertyListingForm() {
                         </h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <InputField
-                            label={isPG ? "Price (â‚¹)" : isSale ? "Sale Price (â‚¹)" : "Monthly Rent (â‚¹)"}
+                            label={isPG ? "Price " : isSale ? "Sale Price " : "Monthly Rent "}
                             required
                             error={errors["price.amount"]}
                           >
@@ -2082,7 +2082,7 @@ export default function PropertyListingForm() {
                           )}
 
                           {!isPG && (
-                            <InputField label="Security Deposit (â‚¹)">
+                            <InputField label="Security Deposit ">
                               <TextInput
                                 type="number"
                                 placeholder="e.g. 50000"
@@ -2094,7 +2094,7 @@ export default function PropertyListingForm() {
 
                           {!isPG && (
                             <>
-                              <InputField label="Maintenance (â‚¹)">
+                              <InputField label="Maintenance ">
                                 <TextInput
                                   type="number"
                                   placeholder="e.g. 2500"
@@ -2146,7 +2146,7 @@ export default function PropertyListingForm() {
                                   onChange={(e) => updateForm("price.expectedRental", e.target.value)}
                                 />
                               </InputField>
-                              <InputField label="Annual Dues (â‚¹)">
+                              <InputField label="Annual Dues ">
                                 <TextInput
                                   type="number"
                                   placeholder="e.g. 50000"
@@ -2701,7 +2701,7 @@ export default function PropertyListingForm() {
                                 {["Included in Price", "Excluded - Paid by Buyer", "To be Decided"].map((v) => <option key={v} value={v}>{v}</option>)}
                               </SelectInput>
                             </InputField>
-                            <InputField label="Property Tax/Year (â‚¹)">
+                            <InputField label="Property Tax/Year ">
                               <TextInput type="number" placeholder="e.g. 12000" value={form.ownership.propertyTaxPerYear} onChange={(e) => updateForm("ownership.propertyTaxPerYear", e.target.value)} />
                             </InputField>
                           </div>
@@ -2752,7 +2752,7 @@ export default function PropertyListingForm() {
                             <InputField label="Total Towers"><TextInput type="number" value={form.builder.totalTowers} onChange={(e) => updateForm("builder.totalTowers", e.target.value)} placeholder="3" /></InputField>
                             <InputField label="Total Floors"><TextInput type="number" value={form.builder.totalFloors} onChange={(e) => updateForm("builder.totalFloors", e.target.value)} placeholder="15" /></InputField>
                             <InputField label="Launch Date"><TextInput type="date" value={form.builder.launchDate} onChange={(e) => updateForm("builder.launchDate", e.target.value)} /></InputField>
-                            <InputField label="Token Amount (â‚¹)"><TextInput type="number" value={form.builder.bookingProcess.tokenAmount} onChange={(e) => updateForm("builder.bookingProcess.tokenAmount", e.target.value)} placeholder="100000" /></InputField>
+                            <InputField label="Token Amount "><TextInput type="number" value={form.builder.bookingProcess.tokenAmount} onChange={(e) => updateForm("builder.bookingProcess.tokenAmount", e.target.value)} placeholder="100000" /></InputField>
                           </div>
                           <div className="mt-3 flex items-center gap-3">
                             <label className="toggle-switch">

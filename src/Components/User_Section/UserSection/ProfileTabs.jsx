@@ -29,7 +29,8 @@ import {
   FaPhone,
   FaUser,
   FaSpinner,
-  FaChartLine
+  FaChartLine,
+  FaPlus
 } from 'react-icons/fa';
 import Wishlist from './Wishlist';
 
@@ -583,13 +584,15 @@ const ProfileTabs = ({ role }) => {
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
           >
-            <div className="mb-6 flex justify-end">
+            <div className="mb-6 flex items-center justify-between">
+              <h3 className="text-xl font-bold text-gray-800">My Reels</h3>
               <button
                 onClick={() => setUploadModal(true)}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-full font-semibold shadow-md hover:shadow-xl transition-all duration-300"
+                aria-label="Upload reel"
+                title="Upload reel"
+                className="w-11 h-11 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 text-white flex items-center justify-center shadow-md hover:shadow-xl transition-all duration-300"
               >
-                <FaUpload />
-                Upload New Reel
+                <FaPlus />
               </button>
             </div>
 
@@ -630,69 +633,82 @@ const ProfileTabs = ({ role }) => {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {myReels.map((reel) => (
-                  <div
-                    key={reel._id}
-                    onClick={() => setSelectedReel(reel)}
-                    className="bg-white rounded-xl shadow-md overflow-hidden cursor-pointer hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-purple-200"
+              <>
+                <div className="mb-4 flex items-center justify-between">
+                  <p className="text-sm text-gray-500 font-medium">{myReels.length} reels</p>
+                  <button
+                    onClick={() => setUploadModal(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-semibold text-sm hover:shadow-lg transition-all"
                   >
-                    <div className="relative aspect-[9/16]">
-                      {reel.thumbnail?.url ? (
-                        <img 
-                          src={reel.thumbnail.url} 
-                          alt={reel.caption} 
-                          className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 hover:scale-105" 
-                        />
-                      ) : (
-                        <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                          <FaVideo className="text-white text-6xl" />
+                    <FaPlus />
+                    Upload Reel
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {myReels.map((reel) => (
+                    <div
+                      key={reel._id}
+                      onClick={() => setSelectedReel(reel)}
+                      className="bg-white rounded-xl shadow-md overflow-hidden cursor-pointer hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-purple-200"
+                    >
+                      <div className="relative aspect-[9/16]">
+                        {reel.thumbnail?.url ? (
+                          <img 
+                            src={reel.thumbnail.url} 
+                            alt={reel.caption} 
+                            className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 hover:scale-105" 
+                          />
+                        ) : (
+                          <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                            <FaVideo className="text-white text-6xl" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300">
+                          <FaPlay className="text-white text-5xl" />
                         </div>
-                      )}
-                      <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300">
-                        <FaPlay className="text-white text-5xl" />
-                      </div>
-                      <div className="absolute top-3 right-3">
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(reel.status)}`}>
-                          {reel.status}
-                        </span>
-                      </div>
-                      {reel.duration && (
-                        <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs font-semibold">
-                          {reel.duration}s
+                        <div className="absolute top-3 right-3">
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(reel.status)}`}>
+                            {reel.status}
+                          </span>
                         </div>
-                      )}
+                        {reel.duration && (
+                          <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs font-semibold">
+                            {reel.duration}s
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="p-5">
+                        <h3 className="font-bold text-xl text-gray-800 mb-2 line-clamp-2">
+                          {reel.caption || 'Untitled Reel'}
+                        </h3>
+                        {reel.location && (
+                          <div className="flex items-center text-gray-600 text-sm mb-3">
+                            <FaMapMarkerAlt className="mr-1 text-blue-500" />
+                            <span className="line-clamp-1">
+                              {reel.location.locality || reel.location.city || 'Location'}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center text-sm text-gray-600">
+                          <div className="flex gap-4">
+                            <span className="flex items-center gap-1">
+                              <FaEye className="text-green-500" /> {reel.views || 0}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <FaHeart className="text-red-500" /> {reel.likes || 0}
+                            </span>
+                          </div>
+                          <span className="text-xs text-gray-500">
+                            {new Date(reel.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    
-                    <div className="p-5">
-                      <h3 className="font-bold text-xl text-gray-800 mb-2 line-clamp-2">
-                        {reel.caption || 'Untitled Reel'}
-                      </h3>
-                      {reel.location && (
-                        <div className="flex items-center text-gray-600 text-sm mb-3">
-                          <FaMapMarkerAlt className="mr-1 text-blue-500" />
-                          <span className="line-clamp-1">
-                            {reel.location.locality || reel.location.city || 'Location'}
-                          </span>
-                        </div>
-                      )}
-                      <div className="flex justify-between items-center text-sm text-gray-600">
-                        <div className="flex gap-4">
-                          <span className="flex items-center gap-1">
-                            <FaEye className="text-green-500" /> {reel.views || 0}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <FaHeart className="text-red-500" /> {reel.likes || 0}
-                          </span>
-                        </div>
-                        <span className="text-xs text-gray-500">
-                          {new Date(reel.createdAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </>
             )}
           </motion.div>
         )}
@@ -1110,49 +1126,62 @@ const ProfileTabs = ({ role }) => {
 
       {/* Reel Preview Modal */}
       {selectedReel && (
-        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-50 overflow-y-auto" onClick={() => setSelectedReel(null)}>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto" onClick={() => setSelectedReel(null)}>
           <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.2 }}
-            className="bg-white rounded-2xl p-6 max-w-2xl w-full shadow-2xl my-4"
+            initial={{ scale: 0.96, opacity: 0, y: 12 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            transition={{ duration: 0.25 }}
+            className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl my-4 overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-2xl font-bold text-gray-800">{selectedReel.caption || 'Reel'}</h3>
-              <button onClick={() => setSelectedReel(null)} className="text-gray-500 hover:text-gray-700 transition-colors">
-                <FaTimes size={24} />
+            <div className="flex items-start justify-between gap-3 p-4 sm:p-5 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-pink-50">
+              <div className="min-w-0">
+                <h3 className="text-lg sm:text-2xl font-bold text-gray-800 line-clamp-2">{selectedReel.caption || 'Reel'}</h3>
+                <p className="text-xs sm:text-sm text-gray-500 mt-1">
+                  {selectedReel.location?.locality || selectedReel.location?.city || "Location"} • {new Date(selectedReel.createdAt).toLocaleDateString()}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedReel(null)}
+                className="w-9 h-9 rounded-full bg-white text-gray-600 hover:text-gray-800 hover:bg-gray-100 flex items-center justify-center transition-colors flex-shrink-0"
+              >
+                <FaTimes size={18} />
               </button>
             </div>
-            
-            {selectedReel.videoUrl || selectedReel.video?.url ? (
-              <video 
-                src={selectedReel.videoUrl || selectedReel.video?.url} 
-                controls 
-                className="w-full h-96 object-cover rounded-xl mb-4 shadow-md bg-black"
-                autoPlay
-              />
-            ) : selectedReel.thumbnail?.url ? (
-              <img 
-                src={selectedReel.thumbnail.url} 
-                alt={selectedReel.caption} 
-                className="w-full h-96 object-cover rounded-xl mb-4 shadow-md" 
-              />
-            ) : (
-              <div className="w-full h-96 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl mb-4 shadow-md flex items-center justify-center">
-                <FaVideo className="text-white text-8xl" />
+
+            <div className="p-4 sm:p-5">
+              {selectedReel.videoUrl || selectedReel.video?.url ? (
+                <div className="w-full bg-black rounded-xl overflow-hidden">
+                  <video 
+                    src={selectedReel.videoUrl || selectedReel.video?.url} 
+                    controls 
+                    className="w-full max-h-[72vh] object-contain"
+                    autoPlay
+                  />
+                </div>
+              ) : selectedReel.thumbnail?.url ? (
+                <img 
+                  src={selectedReel.thumbnail.url} 
+                  alt={selectedReel.caption} 
+                  className="w-full max-h-[72vh] object-contain rounded-xl bg-gray-100" 
+                />
+              ) : (
+                <div className="w-full h-[50vh] bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+                  <FaVideo className="text-white text-8xl" />
+                </div>
+              )}
+
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-gray-600">
+                <div className="flex flex-wrap gap-4 sm:gap-6 text-sm">
+                  <span className="flex items-center gap-2"><FaHeart className="text-red-500" /> {selectedReel.likes || 0} Likes</span>
+                  <span className="flex items-center gap-2"><FaComment className="text-blue-500" /> {selectedReel.comments || 0} Comments</span>
+                  <span className="flex items-center gap-2"><FaEye className="text-green-500" /> {selectedReel.views || 0} Views</span>
+                </div>
+                <button className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-blue-600 hover:text-blue-700 transition-colors text-sm font-medium">
+                  <FaShare size={16} />
+                  Share
+                </button>
               </div>
-            )}
-            
-            <div className="flex justify-between items-center text-gray-600">
-              <div className="flex gap-6">
-                <span className="flex items-center gap-2"><FaHeart className="text-red-500" /> {selectedReel.likes || 0} Likes</span>
-                <span className="flex items-center gap-2"><FaComment className="text-blue-500" /> {selectedReel.comments || 0} Comments</span>
-                <span className="flex items-center gap-2"><FaEye className="text-green-500" /> {selectedReel.views || 0} Views</span>
-              </div>
-              <button className="text-blue-600 hover:text-blue-700 transition-colors">
-                <FaShare size={20} />
-              </button>
             </div>
           </motion.div>
         </div>

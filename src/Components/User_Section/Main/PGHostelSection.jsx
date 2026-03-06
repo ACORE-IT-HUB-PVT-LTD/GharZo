@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../User_Section/Context/AuthContext.jsx";
 import axios from "axios";
@@ -44,6 +44,7 @@ const PGHostelSection = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(false);
   const [itemsPerView, setItemsPerView] = useState(4);
+  const touchStartXRef = useRef(null);
 
   // Responsive items per view
   useEffect(() => {
@@ -247,6 +248,42 @@ const PGHostelSection = () => {
     setIsAutoPlaying(!isAutoPlaying);
   };
 
+  const handleCarouselKeyDown = (e) => {
+    if (!canNavigate) return;
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      nextSlide();
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      prevSlide();
+    }
+  };
+
+  const handleTouchStart = (e) => {
+    if (!canNavigate) return;
+    touchStartXRef.current = e.touches[0]?.clientX ?? null;
+  };
+
+  const handleTouchEnd = (e) => {
+    if (!canNavigate || touchStartXRef.current === null) return;
+    const touchEndX = e.changedTouches[0]?.clientX;
+    if (typeof touchEndX !== "number") {
+      touchStartXRef.current = null;
+      return;
+    }
+
+    const deltaX = touchStartXRef.current - touchEndX;
+    const swipeThreshold = 40;
+
+    if (deltaX > swipeThreshold) {
+      nextSlide();
+    } else if (deltaX < -swipeThreshold) {
+      prevSlide();
+    }
+
+    touchStartXRef.current = null;
+  };
+
   // Navigation handlers
   const goToRent = () => navigate("/rent");
   const goToSale = () => navigate("/sale");
@@ -265,7 +302,7 @@ const PGHostelSection = () => {
     { label: "Hotel/Banquet", onClick: goToHostels, icon: Briefcase },
     { label: "Services", onClick: goToServices, icon: BadgeIndianRupee },
     { label: "Home Loan", onClick: goToHomeLoan, icon: Landmark },
-    { label: "Project", onClick: goToProjects, icon: ProjectorIcon },
+    { label: "Projects", onClick: goToProjects, icon: ProjectorIcon },
   ];
 
   const totalSlides = Math.max(0, filteredProperties.length - itemsPerView + 1);
@@ -406,7 +443,15 @@ const PGHostelSection = () => {
   </motion.button>
 </div>
           {/* Carousel with Centered Navigation Buttons */}
-          <div className="max-w-7xl mx-auto overflow-hidden relative">
+          <div
+            className="max-w-7xl mx-auto overflow-hidden relative touch-pan-y"
+            tabIndex={0}
+            role="region"
+            aria-label="Hot properties carousel"
+            onKeyDown={handleCarouselKeyDown}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
             {/* Left Navigation Button - Centered vertically */}
             {canNavigate && currentSlide > 0 && (
               <motion.button

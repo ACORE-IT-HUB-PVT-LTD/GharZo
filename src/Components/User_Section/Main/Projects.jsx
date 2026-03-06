@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+﻿import { useState, useEffect, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Search, Star, MapPin, Building2, Calendar, TrendingUp, Award,
@@ -17,7 +17,7 @@ const API_BASE = "https://api.gharzoreality.com/api";
 const getToken = () => localStorage.getItem("usertoken");
 const authH = () => ({ Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" });
 
-// ─── HELPERS ──────────────────────────────────────────────────────────────────
+// --- HELPERS ------------------------------------------------------------------
 const fmtCr = (n) => {
   if (!n && n !== 0) return "—";
   const num = Number(n);
@@ -60,7 +60,7 @@ const NEARBY_ICONS = {
   parks:       <TreePine size={14} />,
 };
 
-// ─── TOAST ────────────────────────────────────────────────────────────────────
+// --- TOAST --------------------------------------------------------------------
 function Toast({ msg, type, onClose }) {
   useEffect(() => {
     if (!msg) return;
@@ -78,7 +78,7 @@ function Toast({ msg, type, onClose }) {
   );
 }
 
-// ─── MODAL ────────────────────────────────────────────────────────────────────
+// --- MODAL --------------------------------------------------------------------
 function Modal({ open, onClose, title, wide, children }) {
   if (!open) return null;
   return (
@@ -99,7 +99,7 @@ function Modal({ open, onClose, title, wide, children }) {
   );
 }
 
-// ─── FIELD ────────────────────────────────────────────────────────────────────
+// --- FIELD --------------------------------------------------------------------
 const InpCls = "w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent bg-slate-50 focus:bg-white transition-all placeholder-slate-300";
 const SelCls = "w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-slate-50 focus:bg-white transition-all text-slate-700";
 
@@ -148,7 +148,7 @@ function Stars({ value = 0, onChange, size = "md" }) {
   );
 }
 
-// ─── LIGHTBOX ─────────────────────────────────────────────────────────────────
+// --- LIGHTBOX -----------------------------------------------------------------
 function Lightbox({ media, index, onClose }) {
   const [idx, setIdx] = useState(index || 0);
   const item = media[idx];
@@ -200,7 +200,7 @@ function Lightbox({ media, index, onClose }) {
   );
 }
 
-// ─── GALLERY TAB ──────────────────────────────────────────────────────────────
+// --- GALLERY TAB --------------------------------------------------------------
 function GalleryTab({ media }) {
   const [lightbox, setLightbox] = useState(null);
   const allMedia = [
@@ -295,7 +295,7 @@ function GalleryTab({ media }) {
   );
 }
 
-// ─── ENQUIRY MODAL ────────────────────────────────────────────────────────────
+// --- ENQUIRY MODAL ------------------------------------------------------------
 function EnquiryModal({ open, onClose, project, toast }) {
   const init = {
     name: "", phone: "", email: "",
@@ -367,7 +367,7 @@ function EnquiryModal({ open, onClose, project, toast }) {
             <div className="min-w-0">
               <p className="font-black text-slate-800 truncate text-sm sm:text-base">{project.projectName}</p>
               <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 flex items-center gap-1"><MapPin size={11} className="sm:size-11" />{project.location?.locality}, {project.location?.city}</p>
-              <p className="text-xs sm:text-sm font-bold text-orange-600 mt-0.5">{fmtCr(project.pricing?.priceRange?.min)} – {fmtCr(project.pricing?.priceRange?.max)}</p>
+              <p className="text-xs sm:text-sm font-bold text-orange-600 mt-0.5">{fmtCr(project.pricing?.priceRange?.min)} — {fmtCr(project.pricing?.priceRange?.max)}</p>
             </div>
           </div>
           <div className="p-3 sm:p-4 bg-slate-50 rounded-xl sm:rounded-2xl border border-slate-100 space-y-3">
@@ -455,7 +455,7 @@ function EnquiryModal({ open, onClose, project, toast }) {
   );
 }
 
-// ─── REVIEW MODAL ─────────────────────────────────────────────────────────────
+// --- REVIEW MODAL -------------------------------------------------------------
 function ReviewModal({ open, onClose, project, toast, onSuccess }) {
   const [form, setForm] = useState({ rating: 0, review: "", pros: "", cons: "", reviewType: "Buyer" });
   const [loading, setLoading] = useState(false);
@@ -521,7 +521,7 @@ function ReviewModal({ open, onClose, project, toast, onSuccess }) {
   );
 }
 
-// ─── MY ENQUIRIES ─────────────────────────────────────────────────────────────
+// --- MY ENQUIRIES -------------------------------------------------------------
 function MyEnquiriesModal({ open, onClose }) {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -592,12 +592,12 @@ function MyEnquiriesModal({ open, onClose }) {
   );
 }
 
-// ─── FULL PAGE DETAIL VIEW ─────────────────────────────────────────────────────
+// --- FULL PAGE DETAIL VIEW -----------------------------------------------------
 function DetailPage({ project, onBack, onEnquire, onReview }) {
   const [tab, setTab] = useState("overview");
   const [imgIdx, setImgIdx] = useState(0);
   const [similar, setSimilar] = useState([]);
-  const [carouselMode, setCarouselMode] = useState("all"); // "all", "images", "videos"
+  const [carouselMode, setCarouselMode] = useState("all");
 
   useEffect(() => {
     setTab("overview"); setImgIdx(0); setSimilar([]); setCarouselMode("all");
@@ -610,7 +610,6 @@ function DetailPage({ project, onBack, onEnquire, onReview }) {
 
   if (!project) return null;
 
-  // Combine images and videos: images first, then videos
   const allMedia = [
     ...(project.media?.images || []).map((img, i) => ({ type: "image", src: img.url, label: img.type || "Photo", isPrimary: img.isPrimary, index: i })),
     ...(project.media?.videos || []).map((vid, i) => ({ type: "video", src: vid.url, label: vid.type || `Video ${i + 1}`, index: i })),
@@ -620,13 +619,12 @@ function DetailPage({ project, onBack, onEnquire, onReview }) {
   const imageCount = images.length;
   const videoCount = videos.length;
 
-  // Filter media based on carousel mode
   const getFilteredMedia = () => {
     if (carouselMode === "images") return images;
     if (carouselMode === "videos") return videos;
     return allMedia;
   };
-  
+
   const filteredMedia = getFilteredMedia();
   const currentImg = filteredMedia[imgIdx];
   const sc = STATUS_COLORS[project.projectStatus?.status] || { bg: "bg-slate-500", text: "text-white", light: "bg-slate-50 text-slate-500 border-slate-200" };
@@ -669,15 +667,14 @@ function DetailPage({ project, onBack, onEnquire, onReview }) {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-        {/* ── HERO SECTION ── */}
-        {/* Full Width Carousel */}
+        {/* -- HERO SECTION -- */}
         <div className="mb-6">
           <div className="relative rounded-3xl overflow-hidden bg-slate-900" style={{ height: 480 }}>
             {filteredMedia.length > 0 ? (
               <>
                 {currentImg?.type === "video" ? (
-                  <video 
-                    src={currentImg?.src} 
+                  <video
+                    src={currentImg?.src}
                     className="w-full h-full object-cover"
                     controls
                     autoPlay={false}
@@ -710,7 +707,7 @@ function DetailPage({ project, onBack, onEnquire, onReview }) {
                 <Building2 size={80} className="text-white/10" />
               </div>
             )}
-            
+
             {/* Badges overlay */}
             <div className="absolute top-4 left-4 flex gap-2 flex-wrap">
               <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${sc.bg} ${sc.text}`}>{project.projectStatus?.status}</span>
@@ -718,24 +715,24 @@ function DetailPage({ project, onBack, onEnquire, onReview }) {
               {project.isTrending && <span className="text-xs bg-red-500 text-white px-2.5 py-1 rounded-full font-bold flex items-center gap-1"><Flame size={10} />Trending</span>}
               {project.isPremium && <span className="text-xs bg-yellow-400 text-slate-900 px-2.5 py-1 rounded-full font-bold flex items-center gap-1"><Crown size={10} />Premium</span>}
             </div>
-            
-            {/* Toggle Buttons - Image and Video */}
+
+            {/* Toggle Buttons */}
             <div className="absolute top-4 right-4 flex gap-2">
-              <button 
-                onClick={() => { setCarouselMode("images"); setImgIdx(0); }} 
+              <button
+                onClick={() => { setCarouselMode("images"); setImgIdx(0); }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors backdrop-blur-sm ${
-                  (carouselMode === "images" || carouselMode === "all") 
-                    ? "bg-orange-500 hover:bg-orange-600 text-white" 
+                  (carouselMode === "images" || carouselMode === "all")
+                    ? "bg-orange-500 hover:bg-orange-600 text-white"
                     : "bg-black/50 hover:bg-black/70 text-white"
                 }`}>
                 <Image size={12} /> {imageCount} Photo{imageCount !== 1 ? "s" : ""}
               </button>
               {videoCount > 0 && (
-                <button 
-                  onClick={() => { setCarouselMode("videos"); setImgIdx(0); }} 
+                <button
+                  onClick={() => { setCarouselMode("videos"); setImgIdx(0); }}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors backdrop-blur-sm ${
-                    carouselMode === "videos" 
-                      ? "bg-orange-500 hover:bg-orange-600 text-white" 
+                    carouselMode === "videos"
+                      ? "bg-orange-500 hover:bg-orange-600 text-white"
                       : "bg-black/50 hover:bg-black/70 text-white"
                   }`}>
                   <Play size={12} /> {videoCount} Video{videoCount !== 1 ? "s" : ""}
@@ -760,8 +757,8 @@ function DetailPage({ project, onBack, onEnquire, onReview }) {
           {filteredMedia.length > 1 && (
             <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-hide pb-1 px-1">
               {filteredMedia.map((media, i) => (
-                <button 
-                  key={i} 
+                <button
+                  key={i}
                   onClick={() => setImgIdx(i)}
                   className={`flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 transition-all relative ${
                     i === imgIdx ? "border-orange-500 ring-2 ring-orange-200" : "border-transparent hover:border-slate-300"
@@ -784,7 +781,7 @@ function DetailPage({ project, onBack, onEnquire, onReview }) {
           )}
         </div>
 
-        {/* ── PROJECT INFO CARD (Below Carousel) ── */}
+        {/* -- PROJECT INFO CARD -- */}
         <div className="space-y-4">
           <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
             <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
@@ -813,7 +810,7 @@ function DetailPage({ project, onBack, onEnquire, onReview }) {
                     <p className="text-sm text-slate-500">Up to {fmtCr(project.pricing.priceRange.max)}</p>
                   )}
                   {project.pricing?.pricePerSqFt?.min && (
-                    <p className="text-xs text-slate-400 mt-1">{fmtCr(project.pricing.pricePerSqFt.min)} – {fmtCr(project.pricing.pricePerSqFt.max)} per sq.ft</p>
+                    <p className="text-xs text-slate-400 mt-1">{fmtCr(project.pricing.pricePerSqFt.min)} — {fmtCr(project.pricing.pricePerSqFt.max)} per sq.ft</p>
                   )}
                 </div>
               </div>
@@ -907,7 +904,7 @@ function DetailPage({ project, onBack, onEnquire, onReview }) {
           )}
         </div>
 
-        {/* ── TABS ── */}
+        {/* -- TABS -- */}
         <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="flex border-b border-slate-100 overflow-x-auto scrollbar-hide">
             {TABS.map((t) => (
@@ -919,7 +916,7 @@ function DetailPage({ project, onBack, onEnquire, onReview }) {
           </div>
 
           <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-            {/* ── OVERVIEW ── */}
+            {/* -- OVERVIEW -- */}
             {tab === "overview" && (
               <>
                 {project.description && (
@@ -992,8 +989,8 @@ function DetailPage({ project, onBack, onEnquire, onReview }) {
                     <div className="p-5 space-y-4">
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         {[
-                          ["Price Range",    `${fmtCr(project.pricing.priceRange?.min)} – ${fmtCr(project.pricing.priceRange?.max)}`],
-                          ["Price / Sq.Ft",  `${fmtCr(project.pricing.pricePerSqFt?.min)} – ${fmtCr(project.pricing.pricePerSqFt?.max)}`],
+                          ["Price Range",    `${fmtCr(project.pricing.priceRange?.min)} — ${fmtCr(project.pricing.priceRange?.max)}`],
+                          ["Price / Sq.Ft",  `${fmtCr(project.pricing.pricePerSqFt?.min)} — ${fmtCr(project.pricing.pricePerSqFt?.max)}`],
                           ["Booking Amount", fmtCr(project.pricing.bookingAmount)],
                           ["EMI Starts",     project.pricing.emiStarts || "On Request"],
                         ].map(([l, v]) => (
@@ -1122,10 +1119,10 @@ function DetailPage({ project, onBack, onEnquire, onReview }) {
               </>
             )}
 
-            {/* ── GALLERY ── */}
+            {/* -- GALLERY -- */}
             {tab === "gallery" && <GalleryTab media={project.media} />}
 
-            {/* ── AMENITIES ── */}
+            {/* -- AMENITIES -- */}
             {tab === "amenities" && (
               <div className="space-y-6">
                 {Object.entries(project.amenities || {}).map(([cat, items]) =>
@@ -1148,7 +1145,7 @@ function DetailPage({ project, onBack, onEnquire, onReview }) {
               </div>
             )}
 
-            {/* ── SPECS ── */}
+            {/* -- SPECS -- */}
             {tab === "specs" && (
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -1184,12 +1181,12 @@ function DetailPage({ project, onBack, onEnquire, onReview }) {
               </div>
             )}
 
-            {/* ── LOCATION ── */}
+            {/* -- LOCATION -- */}
             {tab === "location" && (
               <div className="space-y-5">
                 <div className="p-5 bg-blue-50 border border-blue-100 rounded-2xl">
                   <p className="font-black text-slate-800 flex items-center gap-2"><MapPin size={18} className="text-blue-500" />{project.location?.address}</p>
-                  <p className="text-sm text-slate-500 mt-1 ml-7">{project.location?.locality}, {project.location?.city}, {project.location?.state} – {project.location?.pincode}</p>
+                  <p className="text-sm text-slate-500 mt-1 ml-7">{project.location?.locality}, {project.location?.city}, {project.location?.state} — {project.location?.pincode}</p>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                   {[
@@ -1234,7 +1231,7 @@ function DetailPage({ project, onBack, onEnquire, onReview }) {
               </div>
             )}
 
-            {/* ── REVIEWS ── */}
+            {/* -- REVIEWS -- */}
             {tab === "reviews" && (
               <div className="space-y-5">
                 <div className="p-6 rounded-2xl border border-orange-100 flex items-center gap-6" style={{ background: "linear-gradient(135deg,#fff7ed,#fffbeb)" }}>
@@ -1322,7 +1319,7 @@ function DetailPage({ project, onBack, onEnquire, onReview }) {
   );
 }
 
-// ─── PROJECT CARD ─────────────────────────────────────────────────────────────
+// --- PROJECT CARD -------------------------------------------------------------
 function ProjectCard({ project, onClick, onEnquire }) {
   const img = primaryImg(project);
   const sc = STATUS_COLORS[project.projectStatus?.status] || { bg: "bg-slate-500", text: "text-white" };
@@ -1438,7 +1435,7 @@ function Skeleton() {
   );
 }
 
-// ─── MAIN ─────────────────────────────────────────────────────────────────────
+// --- MAIN ---------------------------------------------------------------------
 export default function Projects() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -1452,7 +1449,17 @@ export default function Projects() {
   const [loadFeat,  setLoadFeat]  = useState(true);
   const [loadTrend, setLoadTrend] = useState(true);
 
-  const [filters, setFilters] = useState({ search: "", city: "", projectType: "", status: "", featured: false });
+  const [filters, setFilters] = useState({
+    search: "",
+    city: "",
+    projectType: "",
+    status: "",
+    bhk: "",
+    budget: "",
+    featured: false,
+    intent: "Buy",
+  });
+  const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [tab, setTab] = useState("all");
 
   const [detailP,   setDetailP]   = useState(null);
@@ -1521,15 +1528,61 @@ export default function Projects() {
     }
   }, [location.state, location.pathname, navigate, detailP, projects, featured, trending]);
 
-  const displayList = tab === "featured" ? featured : tab === "trending" ? trending : projects;
+  const displayBaseList = tab === "featured" ? featured : tab === "trending" ? trending : projects;
   const isLoading   = tab === "featured" ? loadFeat  : tab === "trending" ? loadTrend  : loading;
-  const hasFilter   = !!(filters.search || filters.city || filters.projectType || filters.status || filters.featured);
+  const hasFilter = !!(
+    filters.search ||
+    filters.city ||
+    filters.projectType ||
+    filters.status ||
+    filters.bhk ||
+    filters.budget ||
+    filters.featured
+  );
 
   const handleEnquire = (p) => { setDetailP(null); setEnquireP(p); };
   const handleReview  = (p) => { setDetailP(null); setReviewP(p); };
 
-  const PROJ_TYPES = ["Residential","Commercial","Mixed Use","Plotted Development","Villa Project","Row Houses","Industrial"];
-  const STATUSES   = ["New Launch","Under Construction","Ready to Move","Nearing Completion","Booking Open","Sold Out"];
+  const projectTypeOptions = filterOpts.projectTypes?.map((i) => i?._id).filter(Boolean) || [];
+  const statusOptions = filterOpts.statuses?.map((i) => i?._id).filter(Boolean) || [];
+  const cityOptions = filterOpts.cities || [];
+
+  const bhkOptions = Array.from(
+    new Set(
+      (projects || []).flatMap((p) => [
+        ...(p?.propertyTypes || []),
+        ...(p?.configurations?.map((c) => c?.type).filter(Boolean) || []),
+      ])
+    )
+  )
+    .filter((t) => /(\d+(\.\d+)?\s*BHK|\d+\s*RK)/i.test(t))
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+  const budgetOptions = [
+    { key: "lt50l", label: "Under 50L", min: 0, max: 5000000 },
+    { key: "50l-1cr", label: "50L - 1Cr", min: 5000000, max: 10000000 },
+    { key: "1cr-2cr", label: "1Cr - 2Cr", min: 10000000, max: 20000000 },
+    { key: "gt2cr", label: "2Cr+", min: 20000000, max: Infinity },
+  ];
+
+  const budgetMatch = (project) => {
+    if (!filters.budget) return true;
+    const picked = budgetOptions.find((b) => b.key === filters.budget);
+    if (!picked) return true;
+    const price = Number(project?.pricing?.priceRange?.min || 0);
+    return price >= picked.min && price < picked.max;
+  };
+
+  const bhkMatch = (project) => {
+    if (!filters.bhk) return true;
+    const pool = [
+      ...(project?.propertyTypes || []),
+      ...(project?.configurations?.map((c) => c?.type).filter(Boolean) || []),
+    ];
+    return pool.some((t) => String(t).toLowerCase() === String(filters.bhk).toLowerCase());
+  };
+
+  const displayList = displayBaseList.filter((p) => budgetMatch(p) && bhkMatch(p));
 
   // If detail page is open, render it full page
   if (detailP) {
@@ -1568,90 +1621,168 @@ export default function Projects() {
 
       <Toast msg={toast.msg} type={toast.type} onClose={() => setToast({ msg: "", type: "success" })} />
 
-      {/* ── HERO HEADER ── */}
-      <div className="relative overflow-hidden" style={{ background: "linear-gradient(135deg,#0f172a 0%,#1e3a5f 60%,#0f172a 100%)" }}>
-        <div className="absolute top-0 left-0 right-0 h-1" style={{ background: "linear-gradient(to right,#f97316,#ea580c,#f97316)" }} />
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-20 -left-20 w-80 h-80 rounded-full opacity-5" style={{ background: "#f97316", filter: "blur(60px)" }} />
-          <div className="absolute -bottom-10 right-10 w-96 h-96 rounded-full opacity-5" style={{ background: "#3b82f6", filter: "blur(80px)" }} />
+      {/* -- FILTER BAR -- */}
+      <div className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 space-y-3">
+          <div className="flex flex-wrap lg:flex-nowrap items-center gap-2">
+
+            {/* Search */}
+            <div className="relative flex-1 min-w-[220px]">
+              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                value={filters.search}
+                onChange={(e) => setFilters((p) => ({ ...p, search: e.target.value }))}
+                placeholder="Search by name, city or location..."
+                className={`${InpCls} pl-10`}
+              />
+            </div>
+
+            {/* City */}
+            <select
+              value={filters.city}
+              onChange={(e) => setFilters((p) => ({ ...p, city: e.target.value }))}
+              className={`${SelCls} w-[130px]`}
+            >
+              <option value="">City</option>
+              {cityOptions.map((c) => (
+                <option key={c._id} value={c._id}>
+                  {c._id} ({c.count})
+                </option>
+              ))}
+            </select>
+
+            {/* Budget */}
+            <select
+              value={filters.budget}
+              onChange={(e) => setFilters((p) => ({ ...p, budget: e.target.value }))}
+              className={`${SelCls} w-[140px]`}
+            >
+              <option value="">Budget</option>
+              {budgetOptions.map((b) => (
+                <option key={b.key} value={b.key}>
+                  {b.label}
+                </option>
+              ))}
+            </select>
+
+            {/* BHK */}
+            <select
+              value={filters.bhk}
+              onChange={(e) => setFilters((p) => ({ ...p, bhk: e.target.value }))}
+              className={`${SelCls} w-[110px]`}
+            >
+              <option value="">BHK</option>
+              {bhkOptions.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
+            </select>
+
+            {/* More Filters */}
+            <button
+              type="button"
+              onClick={() => setShowMoreFilters((p) => !p)}
+              className="px-4 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 text-sm font-bold hover:bg-slate-200 transition-colors flex items-center gap-2 flex-shrink-0"
+            >
+              <SlidersHorizontal size={14} /> More Filters
+            </button>
+
+            {/* Reset */}
+            <button
+              type="button"
+              onClick={() =>
+                setFilters({
+                  search: "",
+                  city: "",
+                  projectType: "",
+                  status: "",
+                  bhk: "",
+                  budget: "",
+                  featured: false,
+                  intent: "Buy",
+                })
+              }
+              className="px-4 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-200 transition-colors flex items-center gap-2 flex-shrink-0"
+            >
+              <RotateCcw size={14} /> Reset
+            </button>
+          </div>
+
+          {/* More Filters Expanded */}
+          {showMoreFilters && (
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <select
+                value={filters.projectType}
+                onChange={(e) => setFilters((p) => ({ ...p, projectType: e.target.value }))}
+                className={`${SelCls} min-w-[170px]`}
+              >
+                <option value="">Project Type</option>
+                {projectTypeOptions.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={filters.status}
+                onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value }))}
+                className={`${SelCls} min-w-[190px]`}
+              >
+                <option value="">Status</option>
+                {statusOptions.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+
+              <button
+                onClick={() => setFilters((p) => ({ ...p, featured: !p.featured }))}
+                className={`px-4 py-2.5 rounded-xl text-sm font-bold border transition-all flex items-center gap-2 ${
+                  filters.featured
+                    ? "text-white border-orange-500 shadow-sm"
+                    : "bg-white text-slate-500 border-slate-200 hover:border-orange-300"
+                }`}
+                style={
+                  filters.featured
+                    ? { background: "linear-gradient(135deg,#f97316,#ea580c)" }
+                    : {}
+                }
+              >
+                <Star size={14} fill={filters.featured ? "white" : "none"} /> Featured
+              </button>
+
+              <button
+                onClick={() => setMyEnqOpen(true)}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-bold hover:bg-slate-50 transition-colors flex items-center gap-2"
+              >
+                <List size={14} /> My Enquiries
+              </button>
+            </div>
+          )}
         </div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 relative">
-          {/* Back Button */}
+      </div>
+
+      {/* -- HERO HEADER -- */}
+      <div className="relative overflow-hidden" style={{ background: "linear-gradient(135deg,#083b78 0%,#0b2f63 100%)" }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-7 sm:py-6  relative">
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center gap-2 px-4 py-2 mb-4 bg-white/10 border border-white/20 text-white rounded-lg hover:bg-white/20 transition-colors text-sm w-fit backdrop-blur-sm"
+            className="inline-flex items-center gap-2 px-4 py-2 mb-8 bg-white text-slate-700 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors text-sm font-medium"
           >
-            ← Back
+            <ChevronLeft size={16} /> Back
           </button>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
-            <div>
-              
-              <h1 className="text-3xl sm:text-4xl font-black text-white leading-tight">
-                Find Your <span style={{ color: "#f97316" }}>Dream</span> Project
-              </h1>
-              <p className="text-slate-400 text-sm mt-2 max-w-md">Browse curated real estate projects — featured launches, trending properties, and premium developments</p>
-            </div>
-            <button onClick={() => setMyEnqOpen(true)}
-              className="flex items-center gap-2 text-white font-bold px-5 py-3 rounded-2xl border border-white/15 transition-all text-sm backdrop-blur-sm flex-shrink-0 hover:bg-white/15"
-              style={{ background: "rgba(255,255,255,0.08)" }}>
-              <List size={16} /> My Enquiries
-            </button>
-          </div>
-          <div className="flex gap-3 mt-6 flex-wrap">
-            {[
-              { v: projects.length, l: "Total Projects" },
-              { v: featured.length, l: "Featured" },
-              { v: trending.length, l: "Trending" },
-            ].map((s) => (
-              <div key={s.l} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10"
-                style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(8px)" }}>
-                <span className="font-black text-orange-400 text-base">{s.v}</span>
-                <span className="text-slate-400 text-xs">{s.l}</span>
-              </div>
-            ))}
+          <div className="text-center pb-4 sm:pb-6">
+            <h1 className="text-2xl sm:text-5xl font-black text-white leading-tight">Discover <span className="text-orange-400"> Premium</span>  Real Estate Projects
+</h1>
+            <p className="text-blue-100 text-lg mt-2">Discover premium real estate projects with featured launches, trending properties, and handpicked developments in top locations.</p>
           </div>
         </div>
       </div>
 
-      {/* ── FILTER BAR ── */}
-      <div className="sticky top-0 z-40 bg-white border-b border-slate-100 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
-          <div className="flex gap-2.5 overflow-x-auto scrollbar-hide items-center">
-            <div className="relative flex-shrink-0 flex-1 min-w-[170px] max-w-xs">
-              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input value={filters.search} onChange={(e) => setFilters((p) => ({ ...p, search: e.target.value }))}
-                placeholder="Search project, city..." className={`${InpCls} pl-9`} />
-            </div>
-            {filterOpts.cities?.length > 0 && (
-              <select value={filters.city} onChange={(e) => setFilters((p) => ({ ...p, city: e.target.value }))} className={`${SelCls} flex-shrink-0 min-w-[100px]`}>
-                <option value="">All Cities</option>
-                {filterOpts.cities.map((c) => <option key={c._id} value={c._id}>{c._id} ({c.count})</option>)}
-              </select>
-            )}
-            <select value={filters.projectType} onChange={(e) => setFilters((p) => ({ ...p, projectType: e.target.value }))} className={`${SelCls} flex-shrink-0 min-w-[120px]`}>
-              <option value="">All Types</option>
-              {PROJ_TYPES.map((t) => <option key={t}>{t}</option>)}
-            </select>
-            <select value={filters.status} onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value }))} className={`${SelCls} flex-shrink-0 min-w-[155px]`}>
-              <option value="">All Status</option>
-              {STATUSES.map((s) => <option key={s}>{s}</option>)}
-            </select>
-            <button onClick={() => setFilters((p) => ({ ...p, featured: !p.featured }))}
-              className={`flex-shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold border transition-all flex items-center gap-2 ${filters.featured ? "text-white border-orange-500 shadow-sm" : "bg-white text-slate-500 border-slate-200 hover:border-orange-300"}`}
-              style={filters.featured ? { background: "linear-gradient(135deg,#f97316,#ea580c)" } : {}}>
-              <Star size={14} fill={filters.featured ? "white" : "none"} /> Featured
-            </button>
-            {hasFilter && (
-              <button onClick={() => setFilters({ search: "", city: "", projectType: "", status: "", featured: false })}
-                className="flex-shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold text-red-500 border border-red-200 hover:bg-red-50 bg-white transition-colors flex items-center gap-1.5">
-                <RotateCcw size={13} /> Clear
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ── MAIN ── */}
+      {/* -- MAIN -- */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         {/* Tab Switcher */}
         <div className="flex gap-1.5 mb-6 bg-white rounded-2xl p-1.5 border border-slate-100 shadow-sm w-fit">
@@ -1707,7 +1838,7 @@ export default function Projects() {
               <p className="font-black text-slate-700 text-xl">No Projects Found</p>
               <p className="text-slate-400 mt-2 text-sm">{hasFilter ? "Try adjusting your search filters" : "No projects available right now"}</p>
               {hasFilter && (
-                <button onClick={() => setFilters({ search: "", city: "", projectType: "", status: "", featured: false })}
+                <button onClick={() => setFilters({ search: "", city: "", projectType: "", status: "", bhk: "", budget: "", featured: false, intent: "Buy" })}
                   className="mt-5 text-white font-bold px-7 py-3 rounded-2xl text-sm transition shadow-md flex items-center gap-2 mx-auto"
                   style={{ background: "linear-gradient(135deg,#f97316,#ea580c)" }}>
                   <RotateCcw size={15} /> Clear All Filters
@@ -1728,5 +1859,3 @@ export default function Projects() {
     </div>
   );
 }
-
-

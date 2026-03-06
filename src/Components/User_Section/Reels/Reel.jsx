@@ -80,9 +80,23 @@ function ReelsPage() {
   const [showCommentsFor, setShowCommentsFor] = useState(null);
   const [showLandlordModal, setShowLandlordModal] = useState(null);
   const [showSearch, setShowSearch]         = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   const containerRef = useRef(null);
   const navigate     = useNavigate();
+
+  // ── Upload modal states ──
+  const [properties, setProperties] = useState([]);
+  const [uploadForm, setUploadForm] = useState({
+    propertyId: '',
+    caption: '',
+    tags: '',
+    duration: '',
+    city: '',
+    locality: '',
+    file: null
+  });
+  const [uploadingReel, setUploadingReel] = useState(false);
 
   /* ── fetch feed ── */
   const fetchFeed = useCallback(async () => {
@@ -108,7 +122,7 @@ function ReelsPage() {
           userInitial:   (item.uploadedBy?.name || "U").charAt(0).toUpperCase(),
           avatar:        item.uploadedBy?.profileImage
                            ? `https://api.gharzoreality.com${item.uploadedBy.profileImage}`
-                           : null, // Will show initial instead
+                           : null,
           hasAvatar:     !!item.uploadedBy?.profileImage,
           likes:         item.likes || 0,
           comments:      item.comments || 0,
@@ -145,10 +159,10 @@ function ReelsPage() {
         // Hotel & Banquet Reels - fetch both and combine
         const [hotelRes, banquetRes] = await Promise.all([
           fetch(`${SERVICE_REELS_BASE}?entityType=Hotel&page=1&limit=20`, {
-            headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+            headers: { ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}) },
           }),
           fetch(`${SERVICE_REELS_BASE}?entityType=BanquetHall&page=1&limit=20`, {
-            headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+            headers: { ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}) },
           }),
         ]);
 
@@ -188,7 +202,7 @@ function ReelsPage() {
       }
 
       const res = await fetch(url, {
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
       });
       if (!res.ok) throw new Error("Feed fetch failed");
       const json = await res.json();
@@ -205,6 +219,30 @@ function ReelsPage() {
   }, [category]);
 
   useEffect(() => { fetchFeed(); }, [fetchFeed]);
+
+  // ── fetch properties for upload modal ──
+  const fetchProperties = useCallback(async () => {
+    try {
+      const token = getToken();
+      if (!token) return;
+      const res = await fetch(`${BASE}/v2/properties/my-properties`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Properties fetch failed");
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setProperties(json.data);
+      }
+    } catch (e) {
+      console.error("Fetch properties error:", e);
+    }
+  }, []);
+
+  // ── open upload modal and fetch properties ──
+  const handleUploadClick = () => {
+    fetchProperties();
+    setShowUploadModal(true);
+  };
 
   /* ── autoplay first reel when reels load ── */
   useEffect(() => {
@@ -260,7 +298,7 @@ function ReelsPage() {
   useEffect(() => {
     const onKey = (e) => {
       if (e.target?.tagName === "INPUT" || e.target?.tagName === "TEXTAREA") return;
-      if (showSearch || showCommentsFor) return; // don't scroll when overlays open
+      if (showSearch || showCommentsFor) return;
       if (["ArrowDown", "PageDown", "j"].includes(e.key)) { e.preventDefault(); snapTo(activeIndex + 1); }
       else if (["ArrowUp", "PageUp", "k"].includes(e.key)) { e.preventDefault(); snapTo(activeIndex - 1); }
     };
@@ -281,12 +319,10 @@ function ReelsPage() {
       const token = getToken();
       if (!token) { alert("Please log in."); return; }
       
-      // Use different endpoints based on entity type
       let url = "";
       if (entityType === "Property") {
         url = `${BASE}/reels/${id}/like`;
       } else {
-        // Service, Hotel, Banquet reels use service-reels endpoint
         url = `${SERVICE_REELS_BASE}/${id}/like`;
       }
       
@@ -295,7 +331,7 @@ function ReelsPage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("Like failed");
-      const data = await res.json();                          // { success, liked, likes }
+      const data = await res.json();
       setReels((prev) =>
         prev.map((r) => (r.id === id ? { ...r, liked: data.liked, likes: data.likes || (data.liked ? r.likes + 1 : r.likes - 1) } : r))
       );
@@ -343,18 +379,61 @@ function ReelsPage() {
 
   /* ── after search returns results, swap into reels list ── */
   const handleSearchResults = (results) => {
-    // results already mapped from SearchOverlay
     setReels(results);
     setActiveIndex(0);
     setShowSearch(false);
     if (containerRef.current) containerRef.current.scrollTop = 0;
   };
 
+  /* ── handle reel upload ── */
+  const handleReelUpload = async (e) => {
+    e.preventDefault();
+    const token = getToken();
+    if (!token) { alert("Please login to upload reels"); return; }
+    if (!uploadForm.file) { alert("Please select a video file"); return; }
+
+    setUploadingReel(true);
+    try {
+      const formData = new FormData();
+      formData.append("video", uploadForm.file);
+      formData.append("propertyId", uploadForm.propertyId);
+      formData.append("caption", uploadForm.caption);
+      
+      if (uploadForm.tags) {
+        const tagsArray = uploadForm.tags.split(",").map(tag => tag.trim()).filter(tag => tag);
+        tagsArray.forEach(tag => formData.append("tags[]", tag));
+      }
+      if (uploadForm.duration) formData.append("duration", uploadForm.duration);
+      if (uploadForm.city) formData.append("location[city]", uploadForm.city);
+      if (uploadForm.locality) formData.append("location[locality]", uploadForm.locality);
+
+      const res = await fetch(`${BASE}/reels`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (!res.ok) throw new Error("Upload failed");
+      const data = await res.json();
+      
+      if (data.success) {
+        alert("Reel uploaded successfully!");
+        setShowUploadModal(false);
+        setUploadForm({ propertyId: "", caption: "", tags: "", duration: "", city: "", locality: "", file: null });
+        fetchFeed();
+      }
+    } catch (e) {
+      console.error("Upload error:", e);
+      alert("Failed to upload reel. Please try again.");
+    } finally {
+      setUploadingReel(false);
+    }
+  };
+
   /* ──────── RENDER ──────── */
   return (
     <div className="min-h-screen w-full overflow-hidden relative bg-black text-white">
 
-      {/* ── top header bar: category tabs + search icon ── */}
+      {/* ── top header bar: category tabs + search icon + upload ── */}
       <header className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-3 pt-safe-top"
               style={{ paddingTop: "env(safe-area-inset-top, 8px)" }}>
         {/* Back Button */}
@@ -386,17 +465,20 @@ function ReelsPage() {
           ))}
         </div>
 
-        {/* Search icon */}
-        <button
-          onClick={() => setShowSearch(true)}
-          className="p-2 rounded-full bg-black/50 backdrop-blur border border-white/15 hover:bg-black/70 transition"
-          aria-label="Search reels"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-        </button>
+        {/* Right side: Search only */}
+        <div className="flex items-center gap-2">
+          {/* Search icon */}
+          <button
+            onClick={() => setShowSearch(true)}
+            className="p-2 rounded-full bg-black/50 backdrop-blur border border-white/15 hover:bg-black/70 transition"
+            aria-label="Search reels"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+          </button>
+        </div>
       </header>
 
       {/* ── scrollable reel feed ── */}
@@ -480,6 +562,21 @@ function ReelsPage() {
                   </div>
                 )}
 
+                {/* ── BOTTOM CENTER UPLOAD BUTTON on reel ── */}
+                <div className="absolute bottom-6 left-0 right-0 flex justify-center z-10">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleUploadClick(); }}
+                    className="p-3 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 shadow-2xl border border-white/20 hover:from-purple-500 hover:to-pink-500 transition-all duration-200 hover:scale-110 active:scale-95"
+                    aria-label="Upload reel"
+                  >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="17 8 12 3 7 8" />
+                      <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                  </button>
+                </div>
+
                 {/* ── Bottom-left info: username row + caption + tags ── */}
                 <div className="absolute left-4 bottom-20 pr-14 z-5 space-y-1.5">
 
@@ -529,18 +626,6 @@ function ReelsPage() {
                       </svg>
                     )}
                   />
-
-                  {/* Comment */}
-                  {/* <ActionBtn
-                    label="Comment"
-                    count={reel.comments}
-                    onClick={() => setShowCommentsFor(showCommentsFor === reel.id ? null : reel.id)}
-                    icon={() => (
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                      </svg>
-                    )}
-                  /> */}
 
                   {/* Share */}
                   <ActionBtn
@@ -625,7 +710,6 @@ function ReelsPage() {
                     totalComments={reel.comments}
                     onClose={() => setShowCommentsFor(null)}
                     onCommentAdded={() => {
-                      // optimistic +1
                       setReels((prev) => prev.map((r) => (r.id === reel.id ? { ...r, comments: r.comments + 1 } : r)));
                     }}
                   />
@@ -654,6 +738,188 @@ function ReelsPage() {
           onResults={handleSearchResults}
         />
       )}
+
+      {/* ══════ UPLOAD MODAL ══════ */}
+      {showUploadModal && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 overflow-y-auto backdrop-blur-sm"
+          onClick={() => setShowUploadModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl w-full max-w-md shadow-2xl my-4 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-5 pb-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-xl font-bold text-white">Upload Reel</h3>
+                  <p className="text-purple-100 text-xs mt-1">Share your property video</p>
+                </div>
+                <button 
+                  onClick={() => setShowUploadModal(false)} 
+                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-colors"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Video Preview */}
+            {uploadForm.file && (
+              <div className="px-5 py-3 bg-gray-50 border-b border-gray-200">
+                <div className="relative aspect-video bg-black rounded-lg overflow-hidden">
+                  <video 
+                    src={URL.createObjectURL(uploadForm.file)} 
+                    className="w-full h-full object-contain"
+                    controls
+                  />
+                  <button
+                    onClick={() => setUploadForm({...uploadForm, file: null})}
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 transition-colors"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                </div>
+                <p className="text-sm text-gray-700 mt-2 truncate">
+                  <span className="font-medium">Selected:</span> {uploadForm.file.name}
+                </p>
+              </div>
+            )}
+
+            <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto bg-white">
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5">Property</label>
+                <select
+                  value={uploadForm.propertyId}
+                  onChange={(e) => setUploadForm({...uploadForm, propertyId: e.target.value})}
+                  className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none transition-colors bg-white text-gray-800 text-sm"
+                  required
+                >
+                  <option value="">Select a property</option>
+                  {properties.map((property) => (
+                    <option key={property._id} value={property._id}>
+                      {property.propertyTitle || property.title || property.name || 'Untitled Property'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5">Caption</label>
+                <textarea
+                  value={uploadForm.caption}
+                  onChange={(e) => setUploadForm({...uploadForm, caption: e.target.value})}
+                  rows="2"
+                  className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none transition-colors resize-none bg-white text-gray-800 text-sm placeholder-gray-400"
+                  placeholder="Describe your reel"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5">Tags (comma-separated)</label>
+                <input
+                  type="text"
+                  value={uploadForm.tags}
+                  onChange={(e) => setUploadForm({...uploadForm, tags: e.target.value})}
+                  className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none transition-colors bg-white text-gray-800 text-sm placeholder-gray-400"
+                  placeholder="e.g. indore, 2bhk, palasia, luxury"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-1.5">Duration (sec)</label>
+                  <input
+                    type="number"
+                    value={uploadForm.duration}
+                    onChange={(e) => setUploadForm({...uploadForm, duration: e.target.value})}
+                    className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none transition-colors bg-white text-gray-800 text-sm placeholder-gray-400"
+                    placeholder="e.g. 40"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-1.5">City</label>
+                  <input
+                    type="text"
+                    value={uploadForm.city}
+                    onChange={(e) => setUploadForm({...uploadForm, city: e.target.value})}
+                    className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none transition-colors bg-white text-gray-800 text-sm placeholder-gray-400"
+                    placeholder="e.g. Indore"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5">Locality</label>
+                <input
+                  type="text"
+                  value={uploadForm.locality}
+                  onChange={(e) => setUploadForm({...uploadForm, locality: e.target.value})}
+                  className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none transition-colors bg-white text-gray-800 text-sm placeholder-gray-400"
+                  placeholder="e.g. Sukhliya"
+                />
+              </div>
+
+              {!uploadForm.file && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-1.5">Video File</label>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-purple-500 transition-colors cursor-pointer relative">
+                    <input
+                      type="file"
+                      accept="video/*"
+                      onChange={(e) => setUploadForm({...uploadForm, file: e.target.files[0]})}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      required
+                    />
+                    <div className="text-purple-600 mb-2">
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mx-auto">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
+                      </svg>
+                    </div>
+                    <p className="text-gray-700 font-medium text-sm">Click to upload video</p>
+                    <p className="text-gray-500 text-xs mt-1">MP4, MOV, AVI (Max 50MB)</p>
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={handleReelUpload}
+                disabled={uploadingReel}
+                className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4"
+              >
+                {uploadingReel ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="17 8 12 3 7 8" />
+                      <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                    Upload Reel
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -679,16 +945,15 @@ function ActionBtn({ label, count, icon, onClick, active }) {
 }
 
 /* ══════════════════════════════════════════════
-   COMMENTS SHEET  (fetches its own data, supports threaded replies)
+   COMMENTS SHEET
    ════════════════════════════════════════════== */
 function CommentsSheet({ reelId, totalComments, onClose, onCommentAdded }) {
-  const [comments, setComments]     = useState([]);   // top-level comments
+  const [comments, setComments]     = useState([]);
   const [loading, setLoading]       = useState(true);
   const [text, setText]             = useState("");
-  const [replyTo, setReplyTo]       = useState(null); // { id, username }
-  const [expandedReplies, setExpandedReplies] = useState({}); // commentId → [replies]
+  const [replyTo, setReplyTo]       = useState(null);
+  const [expandedReplies, setExpandedReplies] = useState({});
 
-  /* fetch top-level comments */
   useEffect(() => {
     async function load() {
       try {
@@ -699,7 +964,6 @@ function CommentsSheet({ reelId, totalComments, onClose, onCommentAdded }) {
         });
         if (!res.ok) throw new Error("comments fetch failed");
         const json = await res.json();
-        // top-level = parentId is null
         const top = (json.data || []).filter((c) => !c.parentId);
         setComments(top);
       } catch (e) {
@@ -711,10 +975,8 @@ function CommentsSheet({ reelId, totalComments, onClose, onCommentAdded }) {
     load();
   }, [reelId]);
 
-  /* fetch replies for a given parent */
   const fetchReplies = async (parentId) => {
     if (expandedReplies[parentId]) {
-      // toggle off
       setExpandedReplies((prev) => { const n = { ...prev }; delete n[parentId]; return n; });
       return;
     }
@@ -729,7 +991,6 @@ function CommentsSheet({ reelId, totalComments, onClose, onCommentAdded }) {
     } catch (e) { console.error(e); }
   };
 
-  /* post comment or reply */
   const postComment = async () => {
     if (!text.trim()) return;
     try {
@@ -748,14 +1009,12 @@ function CommentsSheet({ reelId, totalComments, onClose, onCommentAdded }) {
       const newComment = json.data;
 
       if (replyTo) {
-        // append reply into expanded replies
         setExpandedReplies((prev) => ({
           ...prev,
           [replyTo.id]: [...(prev[replyTo.id] || []), newComment],
         }));
         setReplyTo(null);
       } else {
-        // prepend as new top-level comment
         setComments((prev) => [newComment, ...prev]);
         onCommentAdded?.();
       }
@@ -768,12 +1027,8 @@ function CommentsSheet({ reelId, totalComments, onClose, onCommentAdded }) {
 
   return (
     <div className="absolute inset-0 z-20 flex flex-col">
-      {/* semi-transparent backdrop (top portion) */}
       <div className="flex-1 bg-black/40" onClick={onClose} />
-
-      {/* actual sheet */}
       <div className="bg-neutral-950/97 backdrop-blur-sm border-t border-white/10 rounded-t-2xl max-h-[65%] flex flex-col">
-        {/* header */}
         <div className="flex items-center justify-between px-4 pt-3 pb-2">
           <span className="text-sm font-semibold text-white">
             Comments · <span className="text-white/50">{totalComments}</span>
@@ -784,8 +1039,6 @@ function CommentsSheet({ reelId, totalComments, onClose, onCommentAdded }) {
             </svg>
           </button>
         </div>
-
-        {/* comment list */}
         <div className="flex-1 overflow-y-auto no-scrollbar px-4 pb-2 space-y-3">
           {loading && (
             <div className="flex justify-center py-6">
@@ -805,16 +1058,12 @@ function CommentsSheet({ reelId, totalComments, onClose, onCommentAdded }) {
             />
           ))}
         </div>
-
-        {/* reply-to indicator */}
         {replyTo && (
           <div className="mx-4 mt-1 flex items-center justify-between bg-white/8 rounded-lg px-3 py-1.5">
             <span className="text-[11px] text-white/60">Replying to <strong className="text-white/90">@{replyTo.username}</strong></span>
             <button onClick={() => setReplyTo(null)} className="text-white/40 hover:text-white text-xs">✕</button>
           </div>
         )}
-
-        {/* input row */}
         <div className="flex items-center gap-2 px-4 py-3 border-t border-white/8">
           <img src={`https://i.pravatar.cc/40?u=me`} alt="" className="w-7 h-7 rounded-full border border-white/15 object-cover" />
           <input
@@ -854,8 +1103,6 @@ function CommentItem({ comment, replies, onExpandReplies, onReply }) {
             <span className="text-[10px] text-white/35">{timeAgo(comment.createdAt)}</span>
           </div>
           <p className="text-sm text-white/85 mt-0.5 leading-snug">{comment.text}</p>
-
-          {/* reply link */}
           <div className="flex items-center gap-3 mt-1">
             <button onClick={onReply} className="text-[11px] text-white/45 hover:text-white/80 transition">Reply</button>
             {(hasReplies || (replies && replies.length > 0)) && (
@@ -866,35 +1113,34 @@ function CommentItem({ comment, replies, onExpandReplies, onReply }) {
           </div>
         </div>
       </div>
-
-      {/* expanded replies */}
       {replies && replies.length > 0 && (
         <div className="ml-10 mt-2 space-y-2 border-l border-white/10 pl-3">
           {replies.map((r) => {
             const replyInitial = r.userId?.name ? r.userId.name.charAt(0).toUpperCase() : "U";
             const hasReplyAvatar = !!r.userId?.profileImage;
             return (
-            <div key={r._id} className="flex items-start gap-2">
-              {hasReplyAvatar ? (
-                <img
-                  src={`https://api.gharzoreality.com${r.userId.profileImage}`}
-                  alt=""
-                  className="w-5 h-5 rounded-full border border-white/15 object-cover mt-0.5"
-                />
-              ) : (
-                <div className="w-5 h-5 rounded-full border border-white/15 bg-violet-600 flex items-center justify-center text-white font-semibold text-[10px] mt-0.5">
-                  {replyInitial}
+              <div key={r._id} className="flex items-start gap-2">
+                {hasReplyAvatar ? (
+                  <img
+                    src={`https://api.gharzoreality.com${r.userId.profileImage}`}
+                    alt=""
+                    className="w-5 h-5 rounded-full border border-white/15 object-cover mt-0.5"
+                  />
+                ) : (
+                  <div className="w-5 h-5 rounded-full border border-white/15 bg-violet-600 flex items-center justify-center text-white font-semibold text-[10px] mt-0.5">
+                    {replyInitial}
+                  </div>
+                )}
+                <div>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-[12px] font-semibold text-white">{r.userId?.name || "Anonymous"}</span>
+                    <span className="text-[10px] text-white/35">{timeAgo(r.createdAt)}</span>
+                  </div>
+                  <p className="text-[12px] text-white/80 leading-snug">{r.text}</p>
                 </div>
-              )}
-              <div>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-[12px] font-semibold text-white">{r.userId?.name || "Anonymous"}</span>
-                  <span className="text-[10px] text-white/35">{timeAgo(r.createdAt)}</span>
-                </div>
-                <p className="text-[12px] text-white/80 leading-snug">{r.text}</p>
               </div>
-            </div>
-          );})}
+            );
+          })}
         </div>
       )}
     </div>
@@ -908,21 +1154,16 @@ function LandlordModal({ data, onClose, navigate }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4" onClick={onClose}>
       <div className="relative w-full max-w-sm bg-neutral-900 rounded-2xl p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        {/* close */}
         <button onClick={onClose} className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-white/10">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
             <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         </button>
-
         <div className="flex flex-col items-center gap-3">
-          {/* avatar - always show first letter */}
           <div className="w-20 h-20 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold text-3xl border-2 border-white/20">
             {data.name ? data.name.charAt(0).toUpperCase() : "U"}
           </div>
           <h2 className="text-lg font-bold text-white">{data.name}</h2>
-
-          {/* contact info */}
           <div className="w-full space-y-2 text-sm text-white/75 mt-1">
             {data.mobile && (
               <div className="flex justify-between">
@@ -937,8 +1178,6 @@ function LandlordModal({ data, onClose, navigate }) {
               </div>
             )}
           </div>
-
-          {/* property preview card */}
           {data.propertyTitle && (
             <div className="w-full mt-2 bg-white/5 border border-white/10 rounded-xl p-3">
               <p className="text-[11px] text-white/40 uppercase tracking-wide mb-0.5">Property</p>
@@ -951,8 +1190,6 @@ function LandlordModal({ data, onClose, navigate }) {
               )}
             </div>
           )}
-
-          {/* CTA */}
           {data.propertyId && (
             <button
               onClick={() => { onClose(); navigate(`/property/${data.propertyId}`); }}
@@ -974,7 +1211,7 @@ function SearchOverlay({ onClose, onResults }) {
   const [query, setQuery]           = useState("");
   const [city, setCity]             = useState("Indore");
   const [tags, setTags]             = useState("");
-  const [results, setResults]       = useState(null);   // null = not searched yet
+  const [results, setResults]       = useState(null);
   const [loading, setLoading]       = useState(false);
   const [searchedOnce, setSearchedOnce] = useState(false);
   const [isNearbySearch, setIsNearbySearch] = useState(false);
@@ -1043,7 +1280,6 @@ function SearchOverlay({ onClose, onResults }) {
       const token = getToken();
       if (!token) { alert("Please log in."); setLoading(false); return; }
 
-      // Try browser geolocation first, fallback to Indore coords
       let lat = 22.7196, lng = 75.8762;
       try {
         const pos = await new Promise((resolve, reject) => {
@@ -1091,21 +1327,18 @@ function SearchOverlay({ onClose, onResults }) {
     }
   };
 
-  /* user clicks "Use in feed" on a result → load into main feed */
   const useInFeed = () => {
     if (results && results.length > 0) onResults(results);
   };
 
   return (
     <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm flex flex-col">
-      {/* header */}
       <div className="flex items-center gap-2 px-4 pt-safe-top pb-2" style={{ paddingTop: "env(safe-area-inset-top, 12px)" }}>
         <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
             <line x1="19" y1="12" x2="5" y2="12" /><polyline points="12,19 5,12 12,5" />
           </svg>
         </button>
-
         <div className="flex-1 relative">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"
                className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40">
@@ -1121,8 +1354,6 @@ function SearchOverlay({ onClose, onResults }) {
           />
         </div>
       </div>
-
-      {/* filters row */}
       <div className="px-4 pb-3 flex flex-wrap items-center gap-2">
         <input
           value={city}
@@ -1142,8 +1373,6 @@ function SearchOverlay({ onClose, onResults }) {
         >
           Search
         </button>
-
-        {/* nearby btn */}
         <button
           onClick={doNearbySearch}
           className="flex items-center gap-1.5 px-3 py-1.5 border border-white/20 rounded-full text-[12px] text-white/80 hover:bg-white/8 transition"
@@ -1154,19 +1383,15 @@ function SearchOverlay({ onClose, onResults }) {
           Nearby
         </button>
       </div>
-
-      {/* results */}
       <div className="flex-1 overflow-y-auto no-scrollbar px-4 pb-safe-bottom" style={{ paddingBottom: "env(safe-area-inset-bottom, 16px)" }}>
         {loading && (
           <div className="flex justify-center py-12">
             <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
           </div>
         )}
-
         {!loading && searchedOnce && results && results.length === 0 && (
           <p className="text-center text-white/35 text-sm py-10">No results found. Try different keywords.</p>
         )}
-
         {!loading && results && results.length > 0 && (
           <>
             <div className="flex items-center justify-between mb-3">
@@ -1178,27 +1403,17 @@ function SearchOverlay({ onClose, onResults }) {
                 Load in feed →
               </button>
             </div>
-
             <div className="space-y-3">
               {results.map((reel) => (
                 <SearchResultCard 
                   key={reel.id} 
                   reel={reel} 
-                  onSelectResult={() => {
-                    if (isNearbySearch) {
-                      // For nearby search: click loads just that reel into feed
-                      onResults([reel]);
-                    } else {
-                      // For regular search: click also loads into feed
-                      onResults([reel]);
-                    }
-                  }}
+                  onSelectResult={() => { onResults([reel]); }}
                 />
               ))}
             </div>
           </>
         )}
-
         {!loading && !searchedOnce && (
           <div className="flex flex-col items-center justify-center h-full text-white/25 text-sm py-16">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" className="mb-3 opacity-50">
@@ -1219,7 +1434,6 @@ function SearchResultCard({ reel, onSelectResult }) {
       className="flex gap-3 bg-white/5 border border-white/8 rounded-xl p-3 cursor-pointer hover:bg-white/8 hover:border-white/15 transition"
       onClick={onSelectResult}
     >
-      {/* thumbnail / poster */}
       <div className="w-24 h-16 rounded-lg overflow-hidden bg-neutral-800 flex-shrink-0">
         {reel.poster ? (
           <img src={reel.poster} alt="" className="w-full h-full object-cover" />
@@ -1231,29 +1445,24 @@ function SearchResultCard({ reel, onSelectResult }) {
           </div>
         )}
       </div>
-
-      {/* info */}
       <div className="flex-1 min-w-0 flex flex-col justify-between">
         <div>
           <p className="text-sm text-white font-medium line-clamp-2 leading-snug">{reel.caption || "Untitled"}</p>
           <p className="text-[11px] text-white/40 mt-0.5">@{reel.username}</p>
         </div>
         <div className="flex items-center gap-3 mt-1">
-          {/* likes */}
           <span className="flex items-center gap-1 text-[11px] text-white/45">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
             </svg>
             {reel.likes}
           </span>
-          {/* comments */}
           <span className="flex items-center gap-1 text-[11px] text-white/45">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
             {reel.comments}
           </span>
-          {/* tags */}
           {reel.tags.length > 0 && (
             <span className="text-[10px] text-sky-400/70">#{reel.tags[0]}</span>
           )}

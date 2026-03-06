@@ -499,7 +499,7 @@ const HeroSection = () => {
               className="relative bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-700 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full border border-white/30 transition-all shadow-lg hover:shadow-xl w-full sm:w-auto"
             >
               <span className="text-xs sm:text-sm font-bold text-white uppercase tracking-wide">
-                Add Property
+                Post Property
               </span>
               <motion.span
                 animate={{ scale: [1, 1.15, 1], opacity: [0.8, 1, 0.8] }}
