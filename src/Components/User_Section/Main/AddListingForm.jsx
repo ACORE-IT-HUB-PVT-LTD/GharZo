@@ -52,33 +52,39 @@ function Toast({ toasts, removeToast }) {
   );
 }
 
-// â”€â”€â”€ Counter Box â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
 function CounterBox({ label, value, onChange, min = 0, max = 20, rkEnabled = false, isRK = false, onRKChange }) {
-  const getPresetOptions = () => {
-    if (label === "BHK") return [1, 2, 3, 4, 5];
-    if (label === "Bathrooms") return [1, 2, 3, 4, 5];
-    if (label === "Balconies") return [0, 1, 2, 3, 4];
-    if (label === "Current Floor") return [0, 1, 2, 3, 4, 5];
-    if (label === "Total Floors") return [1, 2, 3, 4, 5, 10];
-    return null;
+  const expandableConfig = {
+    BHK: { baseOptions: [1, 2, 3, 4, 5], cap: 5 },
+    Bathrooms: { baseOptions: [1, 2, 3, 4, 5], cap: 5 },
+    Balconies: { baseOptions: [0, 1, 2, 3, 4], cap: 4 },
+    "Current Floor": { baseOptions: [0, -1, -2, 1, 2, 3, 4, 5], cap: 5 },
+    "Total Floors": { baseOptions: [1, 2, 3, 4, 5, 10], cap: 10 },
   };
 
-  const presetOptions = getPresetOptions();
+  const presetConfig = expandableConfig[label] || null;
   const normalizedValue = Number(value);
+  const [expandSteps, setExpandSteps] = useState(0);
 
-  const formatOptionLabel = (option) => {
-    if (label === "RK") return "1 RK";
-    if (label === "BHK") return option === 5 ? "5+ BHK" : `${option} BHK`;
-    if (label === "Bathrooms") return option === 5 ? "5+" : `${option}`;
-    if (label === "Balconies") return option === 4 ? "4+" : `${option}`;
-    if (label === "Current Floor") return option === 5 ? "5+" : `${option}`;
-    if (label === "Total Floors") return option === 10 ? "10+" : `${option}`;
-    return `${option}`;
+  const formatOptionLabel = (option, cap) => {
+    const showCapAsPlus = expandSteps === 0 && option === cap;
+    if (label === "BHK") return showCapAsPlus ? `${cap}+ BHK` : `${option} BHK`;
+    return showCapAsPlus ? `${cap}+` : `${option}`;
   };
 
-  if (presetOptions) {
-    const options =
-      presetOptions.includes(normalizedValue) ? presetOptions : [...presetOptions, normalizedValue].sort((a, b) => a - b);
+  if (presetConfig) {
+    const { baseOptions, cap } = presetConfig;
+    const options = [...baseOptions];
+
+    if (expandSteps > 0) {
+      const start = cap + 1;
+      const end = cap + expandSteps * 3;
+      for (let n = start; n <= end; n += 1) options.push(n);
+    }
+
+    if (Number.isFinite(normalizedValue) && !options.includes(normalizedValue)) {
+      options.push(normalizedValue);
+    }
 
     return (
       <div className="w-full">
@@ -89,7 +95,7 @@ function CounterBox({ label, value, onChange, min = 0, max = 20, rkEnabled = fal
               type="button"
               onClick={() => {
                 onRKChange?.(true);
-                onChange(Math.max(min, Math.min(max, 1)));
+                onChange(1);
               }}
               className={`min-w-[84px] px-4 py-3 rounded-xl border text-sm font-medium transition-all
                 ${isRK
@@ -107,17 +113,24 @@ function CounterBox({ label, value, onChange, min = 0, max = 20, rkEnabled = fal
                 type="button"
                 onClick={() => {
                   if (label === "BHK" && rkEnabled) onRKChange?.(false);
-                  onChange(Math.max(min, Math.min(max, option)));
+                  onChange(option);
                 }}
                 className={`min-w-[84px] px-4 py-3 rounded-xl border text-sm font-medium transition-all
                   ${isSelected
                     ? "border-violet-500 bg-violet-50 text-violet-700"
                     : "border-gray-200 bg-white text-gray-700 hover:border-violet-300"}`}
               >
-                {formatOptionLabel(option)}
+                {formatOptionLabel(option, cap)}
               </button>
             );
           })}
+          <button
+            type="button"
+            onClick={() => setExpandSteps((prev) => prev + 1)}
+            className="min-w-[84px] px-4 py-3 rounded-xl border border-dashed border-violet-300 text-sm font-semibold text-violet-700 bg-violet-50 hover:bg-violet-100 transition-all"
+          >
+            + More
+          </button>
         </div>
       </div>
     );
@@ -880,6 +893,10 @@ export default function PropertyListingForm() {
     }
 
     try {
+      const serializeFloorValue = (rawValue) => {
+        return String(rawValue ?? "");
+      };
+
       const payload = {
         listingType: form.listingType,
         category: form.category,
@@ -928,8 +945,8 @@ export default function PropertyListingForm() {
         if (showBathrooms) payload.bathrooms = form.bathrooms;
         if (showBalconies) payload.balconies = form.balconies;
         payload.floor = {
-          current: form.floor.current,
-          total: form.floor.total < 1 ? 1 : form.floor.total
+          current: serializeFloorValue(form.floor.current),
+          total: serializeFloorValue(form.floor.total < 1 ? 1 : form.floor.total),
         };
       }
 
@@ -1763,6 +1780,7 @@ export default function PropertyListingForm() {
                               {!showBHK && <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />}
                               <CounterBox label="Bathrooms" value={form.bathrooms} onChange={(v) => updateForm("bathrooms", v)} icon={LuBath} min={1} max={10} />
                               <CounterBox label="Balconies" value={form.balconies} onChange={(v) => updateForm("balconies", v)} icon={MdBalcony} min={0} max={10} />
+                              <CounterBox label="Current Floor" value={form.floor.current} onChange={(v) => updateForm("floor.current", v)} icon={FiLayers} min={-2} max={100} />
                               <CounterBox label="Total Floors" value={form.villaFloors} onChange={(v) => updateForm("villaFloors", v)} icon={LuBuilding2} min={1} max={5} />
                               <CounterBox label="Car Parking" value={form.villaCarParking} onChange={(v) => updateForm("villaCarParking", v)} icon={RiParkingBoxLine} min={0} max={10} />
                             </div>
@@ -1817,7 +1835,7 @@ export default function PropertyListingForm() {
                               {!showBHK && <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />}
                               <CounterBox label="Bathrooms" value={form.bathrooms} onChange={(v) => updateForm("bathrooms", v)} icon={LuBath} min={1} max={10} />
                               <CounterBox label="Balconies" value={form.balconies} onChange={(v) => updateForm("balconies", v)} icon={MdBalcony} min={0} max={10} />
-                              <CounterBox label="Floor Number" value={form.floor.current} onChange={(v) => updateForm("floor.current", v)} icon={FiLayers} min={0} max={100} />
+                              <CounterBox label="Current Floor" value={form.floor.current} onChange={(v) => updateForm("floor.current", v)} icon={FiLayers} min={-2} max={100} />
                             </div>
                             <InputField label="Terrace Area (sqft)">
                               <TextInput type="number" placeholder="e.g. 600" value={form.penthouseTerraceArea} onChange={(e) => updateForm("penthouseTerraceArea", e.target.value)} />
@@ -1868,6 +1886,7 @@ export default function PropertyListingForm() {
                               {!showBHK && <CounterBox label="BHK" value={form.bhk} onChange={(v) => updateForm("bhk", v)} icon={RiHotelBedLine} min={1} max={10} />}
                               <CounterBox label="Bathrooms" value={form.bathrooms} onChange={(v) => updateForm("bathrooms", v)} icon={LuBath} min={1} max={10} />
                               <CounterBox label="Balconies" value={form.balconies} onChange={(v) => updateForm("balconies", v)} icon={MdBalcony} min={0} max={10} />
+                              <CounterBox label="Current Floor" value={form.floor.current} onChange={(v) => updateForm("floor.current", v)} icon={FiLayers} min={-2} max={100} />
                               <CounterBox label="Total Floors" value={form.floor.total} onChange={(v) => updateForm("floor.total", v)} icon={LuBuilding2} min={0} max={20} />
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
