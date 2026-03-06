@@ -278,7 +278,7 @@ function PropertyDetails() {
   const placeholderImage = "https://via.placeholder.com/400x250?text=No+Image";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="property-details-page min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <ToastContainer
         position="top-right"
         autoClose={3000}
@@ -375,6 +375,39 @@ function PropertyDetails() {
             height: 100%;
             object-fit: cover;
           }
+
+          /* Responsive tune-ups for all devices */
+          @media (max-width: 1024px) {
+            .property-details-page .thumbnail-swiper .swiper-slide {
+              width: 68px !important;
+              height: 68px !important;
+            }
+          }
+          @media (max-width: 768px) {
+            .property-details-page .hero-controls-left,
+            .property-details-page .hero-controls-right {
+              top: 14px !important;
+            }
+            .property-details-page .hero-status-badge {
+              top: 14px !important;
+              padding: 6px 12px !important;
+              font-size: 11px !important;
+            }
+            .property-details-page .hero-availability-badge {
+              left: 12px !important;
+              bottom: 12px !important;
+              padding: 6px 10px !important;
+              font-size: 11px !important;
+            }
+            .property-details-page .tabs-scroll {
+              overflow-x: auto;
+              -ms-overflow-style: none;
+              scrollbar-width: none;
+            }
+            .property-details-page .tabs-scroll::-webkit-scrollbar {
+              display: none;
+            }
+          }
         `}
       </style>
 
@@ -384,7 +417,7 @@ function PropertyDetails() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6 }}
-          className="relative h-[60vh] lg:h-[70vh] overflow-hidden"
+          className="property-hero relative h-[42vh] sm:h-[50vh] md:h-[60vh] lg:h-[70vh] overflow-hidden"
         >
           <Swiper
             onSwiper={setMainSwiper}
@@ -464,12 +497,12 @@ function PropertyDetails() {
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => navigate(-1)}
-            className="absolute top-6 left-6 z-20 bg-white/95 backdrop-blur-md rounded-full p-3 shadow-2xl hover:shadow-3xl transition-all"
+            className="hero-controls-left absolute top-6 left-6 z-20 bg-white/95 backdrop-blur-md rounded-full p-2.5 sm:p-3 shadow-2xl hover:shadow-3xl transition-all"
           >
             <FaArrowLeft size={20} className="text-gray-800" />
           </motion.button>
 
-          <div className="absolute top-6 right-6 z-20 flex gap-3">
+          <div className="hero-controls-right absolute top-6 right-6 z-20 flex gap-2 sm:gap-3">
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
@@ -527,16 +560,9 @@ function PropertyDetails() {
             </motion.button>
           </div>
 
-          {/* Property Status Badge */}
-          {property.status && (
-            <div className="absolute top-6 left-1/2 transform -translate-x-1/2 z-20 bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-6 py-2 rounded-full font-bold text-sm shadow-2xl">
-              {property.status}
-            </div>
-          )}
-
           {/* Availability Badge for PG/Rental */}
           {(property.listingType === "PG" || property.isRentalManagement) && property.roomStats && (
-            <div className="absolute bottom-6 left-6 z-20 bg-emerald-500 text-white px-5 py-2.5 rounded-full font-bold text-sm shadow-2xl flex items-center gap-2">
+            <div className="hero-availability-badge absolute bottom-6 left-6 z-20 bg-emerald-500 text-white px-5 py-2.5 rounded-full font-bold text-sm shadow-2xl flex items-center gap-2">
               <CheckCircle2 size={18} />
               {property.roomStats.availableRooms} Rooms Available
             </div>
@@ -545,8 +571,8 @@ function PropertyDetails() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-6 sm:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-8">
           {/* Left Column - Property Details */}
           <div className="lg:col-span-2 space-y-6">
             {/* Property Header Card */}
@@ -704,19 +730,25 @@ function PropertyHeaderCard({ property, postedDays }) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-3xl shadow-2xl p-8 border border-gray-100 font-body"
+      className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 lg:p-8 border border-gray-100 font-body"
     >
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex flex-col sm:flex-row items-start justify-between mb-5 sm:mb-6 gap-4">
         <div className="flex-1">
-          <h1 className="text-4xl font-display font-bold text-gray-900 mb-3">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-display font-bold text-gray-900 mb-3">
             {property.title || property.name}
           </h1>
           <div className="flex items-center gap-2 text-gray-600 mb-4">
             <FaMapMarkerAlt className="text-indigo-600" />
-            <span className="text-base">
+            <span className="text-sm sm:text-base">
               {property.location?.address}, {property.location?.locality}, {property.location?.city}, {property.location?.state} - {property.location?.pincode}
             </span>
           </div>
+          {property.status && (
+            <div className="mb-3 inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold shadow-md">
+              <FaCheckCircle size={14} />
+              {property.status}
+            </div>
+          )}
           {property.location?.landmark && (
             <p className="text-sm text-gray-500 flex items-center gap-2">
               <FaMapMarkedAlt className="text-indigo-400" />
@@ -724,7 +756,7 @@ function PropertyHeaderCard({ property, postedDays }) {
             </p>
           )}
         </div>
-        <div className="bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-5 py-2.5 rounded-full text-sm font-bold shadow-lg">
+        <div className="bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-4 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-bold shadow-lg self-start">
           {property.category} • {property.propertyType}
         </div>
       </div>
@@ -744,16 +776,16 @@ function PropertyHeaderCard({ property, postedDays }) {
 /* ====================== Price Section Component ====================== */
 function PriceSection({ property }) {
   return (
-    <div className="bg-gradient-to-r from-indigo-50 to-violet-50 rounded-2xl p-6 mb-6">
+    <div className="bg-gradient-to-r from-indigo-50 to-violet-50 rounded-2xl p-4 sm:p-6 mb-6">
       <div className="flex items-baseline justify-between flex-wrap gap-4">
         <div>
           <div className="flex items-baseline gap-2">
-            <FaRupeeSign className="text-2xl text-indigo-600" />
-            <span className="text-4xl font-display font-bold text-gray-900">
+            <FaRupeeSign className="text-xl sm:text-2xl text-indigo-600" />
+            <span className="text-2xl sm:text-3xl lg:text-4xl font-display font-bold text-gray-900">
               {property.price?.amount?.toLocaleString('en-IN')}
             </span>
             {property.price?.per && property.price.per !== "Property" && (
-              <span className="text-lg text-gray-600">/ {property.price.per}</span>
+              <span className="text-sm sm:text-lg text-gray-600">/ {property.price.per}</span>
             )}
           </div>
           {property.listingType && (
@@ -799,7 +831,7 @@ function QuickStatsGrid({ property, postedDays }) {
     stats.push({ icon: <FaBath size={24} />, label: "Bathrooms", value: property.bathrooms, color: "cyan" });
   }
   if (property.balconies) {
-    stats.push({ icon: <FaDoorOpen size={24} />, label: "Balconies", value: property.balconies, color: "green" });
+    stats.push({ icon: <FaBuilding size={24} />, label: "Balconies", value: property.balconies, color: "green" });
   }
   if (property.area?.carpet) {
     stats.push({ icon: <FaRulerCombined size={24} />, label: "Carpet Area", value: `${property.area.carpet} ${property.area.unit || 'sqft'}`, color: "purple" });
@@ -945,14 +977,14 @@ function PropertyTabs({ activeTab, setActiveTab, property, openImageModal, place
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2 }}
-      className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden font-body"
+      className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-100 overflow-hidden font-body"
     >
-      <div className="flex flex-nowrap border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+      <div className="tabs-scroll flex border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 min-w-0 px-2 py-2 font-semibold text-xs transition-all flex items-center justify-center gap-1 ${
+            className={`flex-none min-w-[105px] sm:min-w-0 sm:flex-1 px-2.5 sm:px-2 py-2.5 sm:py-2 font-semibold text-[11px] sm:text-xs transition-all flex items-center justify-center gap-1 ${
               activeTab === tab.id
                 ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg"
                 : "text-gray-600 hover:bg-gray-100"
@@ -964,7 +996,7 @@ function PropertyTabs({ activeTab, setActiveTab, property, openImageModal, place
         ))}
       </div>
 
-      <div className="p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
         {activeTab === "overview" && <OverviewTab property={property} />}
         {activeTab === "details" && <DetailsTab property={property} />}
         {activeTab === "amenities" && <AmenitiesTab property={property} />}

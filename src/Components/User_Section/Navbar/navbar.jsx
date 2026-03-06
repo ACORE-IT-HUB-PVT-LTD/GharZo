@@ -137,7 +137,7 @@ function Navbar() {
   return (
     <>
       <nav className="fixed top-0 left-0 right-0 z-50 bg-blue-100 shadow-xl border-b-2 border-gradient-to-r from-blue-400 via-purple-400 to-orange-400">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-4">
           <div className="flex items-center justify-between h-16 sm:h-20">
             {/* Logo */}
             <div className="flex-shrink-0">

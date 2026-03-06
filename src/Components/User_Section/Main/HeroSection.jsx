@@ -435,7 +435,37 @@ const HeroSection = () => {
     if (maxPrice) params.set("maxPrice", maxPrice);
 
     const query = params.toString();
-    navigate(query ? `/properties?${query}` : "/properties");
+
+    const commercialTypes = new Set(["Shop", "Office", "Warehouse", "Showroom"]);
+    const saleTypes = new Set([
+      "Flat/Apartment", "Villa", "Plot", "Studio", "Independent House",
+      "Independent Floor", "Agricultural Land", "Builder Floor", "Duplex",
+      "Penthouse", "Farm House",
+    ]);
+
+    let targetPath = "/properties";
+
+    if (selectedType === "Other") {
+      targetPath = "/properties";
+    } else if (selectedType === "PG/Co-living") {
+      targetPath = "/pg-hostel";
+    } else if (selectedType === "Room") {
+      targetPath = "/rooms";
+    } else if (commercialTypes.has(selectedType)) {
+      targetPath = "/commercial";
+    } else if (saleTypes.has(selectedType)) {
+      targetPath = "/sale";
+    } else if (selectedCategory === "Rent") {
+      targetPath = "/rent";
+    } else if (selectedCategory === "Buy") {
+      targetPath = "/sale";
+    } else if (selectedCategory === "Commercial") {
+      targetPath = "/commercial";
+    } else if (selectedCategory === "PG") {
+      targetPath = "/pg-hostel";
+    }
+
+    navigate(query ? `${targetPath}?${query}` : targetPath);
   };
 
   return (
