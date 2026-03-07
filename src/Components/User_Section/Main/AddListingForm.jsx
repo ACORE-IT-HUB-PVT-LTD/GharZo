@@ -1264,7 +1264,7 @@ export default function PropertyListingForm() {
 
   // â”€â”€â”€ WhatsApp redirect â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleWhatsApp = () => {
-    const phoneNumber = "9755271778";
+    const phoneNumber = "+919755271778";
     const imageUrl = "https://gharzoreality.com/assets/stigar.png";
     const message = `Hi! I'm interested to list my property on Gharzo Realty website.\n\nPlease find the attached reference: ${imageUrl}\n\nLooking forward to listing my property with Gharzo Realtyâ„¢`;
     const msg = encodeURIComponent(message);
