@@ -80,7 +80,7 @@ const TenantLayoutContent = () => {
               </motion.button>
 
               {/* Notifications */}
-              <motion.button
+              {/* <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setIsNotificationModalOpen(true)}
@@ -92,7 +92,7 @@ const TenantLayoutContent = () => {
                     {notificationCount > 99 ? "99+" : notificationCount}
                   </span>
                 )}
-              </motion.button>
+              </motion.button> */}
 
               {/* Profile */}
               <motion.button

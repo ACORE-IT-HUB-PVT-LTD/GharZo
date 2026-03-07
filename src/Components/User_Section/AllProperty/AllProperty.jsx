@@ -53,7 +53,7 @@ function FilterBar({
   return (
     <div
       ref={dropdownRef}
-      className="w-full bg-white shadow-md border-b sticky top-0 z-50 font-sans"
+      className="w-full bg-white shadow-md border-b sticky top-16 sm:top-20 z-40 font-sans"
     >
       <div className="max-w-7xl mx-auto px-4 py-3">
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">

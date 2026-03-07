@@ -1,758 +1,929 @@
 import React, { useState, useEffect, useRef } from "react";
-import { FaEye,FaFileAlt,FaUpload,FaFileSignature,FaFileUpload ,FaInfoCircle ,FaUser ,FaFile ,FaBuilding ,FaDownload ,FaArrowRight ,FaCalendarAlt ,FaClock , FaTrash } from "react-icons/fa";
+import {
+  FaEye, FaFileAlt, FaUpload, FaFileSignature, FaFileUpload,
+  FaInfoCircle, FaUser, FaFile, FaBuilding, FaDownload,
+  FaArrowRight, FaCalendarAlt, FaClock, FaTrash, FaTimes,
+  FaFilePdf, FaCheckCircle, FaTimesCircle, FaShieldAlt,
+  FaTag, FaHashtag, FaEyeSlash, FaExclamationTriangle, FaPlus
+} from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-// Helper function to convert file to Base64
-const getBase64 = (file) =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+// ─── Auth Helper ──────────────────────────────────────────────────────────────
+const getToken = () => {
+  const token = localStorage.getItem("usertoken");
+  if (!token) throw new Error("Authentication token not found. Please login again.");
+  return token;
+};
 
-// Helper function to get authentication token and tenant ID
-const getAuthDetails = () => {
-  const token = localStorage.getItem("tenanttoken");
-  if (!token) throw new Error("No authentication token found");
+// ─── Get TenantId from JWT ────────────────────────────────────────────────────
+const getTenantIdFromToken = () => {
   try {
+    const token = localStorage.getItem("usertoken");
+    if (!token) return null;
     const payload = JSON.parse(atob(token.split(".")[1]));
-    const tenantId = payload.id; // e.g., TENANT-quiokbc77
-    return { token, tenantId };
-  } catch (error) {
-    throw new Error("Invalid authentication token");
+    return payload.id || payload._id || payload.userId || null;
+  } catch {
+    return null;
   }
 };
 
+// ─── Generate Document Number ─────────────────────────────────────────────────
+const generateDocNumber = () => {
+  const now = new Date();
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  const rand2 = Math.floor(1000 + Math.random() * 9000);
+  const rand3 = Math.floor(1000 + Math.random() * 9000);
+  return `${rand}-${rand2}-${rand3}`;
+};
+
+// ─── Document Type Options (from schema enum) ─────────────────────────────────
+const DOC_TYPES = [
+  "ID Proof", "Rental Agreement", "Police Verification", "Income Proof",
+  "Employment Letter", "Bank Statement", "Previous Rental History",
+  "Character Reference", "Passport", "Driving License", "Voter ID",
+  "PAN Card", "Aadhaar Card", "Other"
+];
+
+const DOC_SUB_TYPES = {
+  "ID Proof": ["Aadhaar Card", "Passport", "Driving License", "Voter ID", "PAN Card"],
+  "Income Proof": ["Salary Slip", "Bank Statement", "ITR", "Form 16"],
+  "Other": []
+};
+
+const VISIBILITY_OPTIONS = ["Private", "Landlord Only", "Public"];
+
+// ─── File Size Formatter ───────────────────────────────────────────────────────
+const formatFileSize = (bytes) => {
+  if (!bytes) return "Unknown";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+};
+
+// ─── Date Formatter ───────────────────────────────────────────────────────────
+const formatDate = (dateStr) => {
+  if (!dateStr) return "—";
+  return new Date(dateStr).toLocaleDateString("en-IN", {
+    day: "2-digit", month: "short", year: "numeric"
+  });
+};
+
+// ─── Image/PDF Preview ────────────────────────────────────────────────────────
+const DocPreview = ({ url, fileType, name, className = "" }) => {
+  const isPdf = fileType === "pdf";
+  if (isPdf) {
+    return (
+      <div className={`flex flex-col items-center justify-center bg-gradient-to-br from-red-50 to-rose-100 ${className}`}>
+        <FaFilePdf className="text-red-400 text-5xl mb-2" />
+        <span className="text-xs font-bold text-red-500 uppercase tracking-wider">PDF</span>
+      </div>
+    );
+  }
+  return (
+    <img
+      src={url}
+      alt={name}
+      className={`object-cover ${className}`}
+      onError={(e) => {
+        e.target.onerror = null;
+        e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23f3f4f6'/%3E%3Ctext x='50' y='55' text-anchor='middle' fill='%239ca3af' font-size='12'%3ENo Preview%3C/text%3E%3C/svg%3E";
+      }}
+    />
+  );
+};
+
+// ─── Main Component ────────────────────────────────────────────────────────────
 export default function DocumentManager() {
+  // Documents State
   const [tenantDocs, setTenantDocs] = useState([]);
-  const [landlordDocs, setLandlordDocs] = useState([]);
-  const [selectedDoc, setSelectedDoc] = useState(null);
-  const [docName, setDocName] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  // Tenancy State (for upload IDs)
+  const [tenancies, setTenancies] = useState([]);
+  const [selectedTenancy, setSelectedTenancy] = useState(null);
+
+  // Upload Form State
+  const [showUploadForm, setShowUploadForm] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [form, setForm] = useState({
+    documentType: "",
+    documentSubType: "",
+    title: "",
+    description: "",
+    visibility: "Landlord Only",
+    tags: "",
+  });
   const fileInputRef = useRef(null);
 
-  // Fetch documents
+  // View Modal
+  const [selectedDoc, setSelectedDoc] = useState(null);
+  const [downloading, setDownloading] = useState(false);
+
+  // Filter State
+  const [activeFilter, setActiveFilter] = useState("All");
+
+  // ─── Fetch Tenancies ─────────────────────────────────────────────────────────
   useEffect(() => {
-    const fetchDocuments = async (url, setDocs, source, filterVisible = false) => {
+    const fetchTenancies = async () => {
       try {
-        const { token, tenantId } = getAuthDetails();
-        const response = await fetch(url.replace("{tenantId}", tenantId), {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
+        const token = getToken();
+        const res = await fetch("https://api.gharzoreality.com/api/tenancies/tenant/my-tenancies", {
+          headers: { Authorization: `Bearer ${token}` },
         });
-
-        if (!response.headers.get("content-type")?.includes("application/json")) {
-          throw new Error("Received non-JSON response from server");
+        const data = await res.json();
+        if (data.success && data.data?.length > 0) {
+          setTenancies(data.data);
+          setSelectedTenancy(data.data[0]); // default to first active tenancy
         }
-
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-          throw new Error(result.message || `Failed to fetch ${source} documents`);
-        }
-
-        const docs = result.documents
-          .filter((doc) => !filterVisible || doc.isVisibleToTenants)
-          .map((doc) => ({
-            id: doc._id,
-            url: doc.filePath ? `https://api.gharzoreality.com${doc.filePath}` : doc.fileUrl,
-            name: doc.documentType,
-            uploadedAt: doc.uploadedAt,
-            source,
-          }));
-
-        setDocs(docs);
-        localStorage.setItem(`${source}Docs`, JSON.stringify(docs));
-      } catch (error) {
-        toast.error(error.message || `Error fetching ${source} documents`, {
-          position: "top-center",
-          autoClose: 3000,
-        });
-        console.error(`Error fetching ${source} documents:`, error);
+      } catch (err) {
+        console.error("Tenancy fetch error:", err);
       }
     };
-
-    fetchDocuments(
-      "https://api.gharzoreality.com/api/tenant-documents/tenant/{tenantId}",
-      setTenantDocs,
-      "tenant"
-    );
-    fetchDocuments(
-      "https://api.gharzoreality.com/api/documents/tenant/{tenantId}/documents",
-      setLandlordDocs,
-      "landlord",
-      true
-    );
+    fetchTenancies();
   }, []);
 
-  // Handle upload
-  const handleUpload = async () => {
-    if (!docName.trim() || !selectedFile) {
-      toast.error(!docName.trim() ? "Please enter a document name" : "Please select a file", {
-        position: "top-center",
-        autoClose: 3000,
-      });
-      return;
-    }
-
-    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "application/pdf"];
-    if (!allowedTypes.includes(selectedFile.type)) {
-      toast.error("Only images (JPEG, PNG, GIF) and PDFs are allowed", {
-        position: "top-center",
-        autoClose: 3000,
-      });
-      return;
-    }
-
-    if (selectedFile.size > 5 * 1024 * 1024) {
-      toast.error(`File ${selectedFile.name} exceeds 5MB limit`, {
-        position: "top-center",
-        autoClose: 3000,
-      });
-      return;
-    }
-
+  // ─── Fetch My Documents ───────────────────────────────────────────────────────
+  const fetchDocuments = async () => {
+    setLoading(true);
     try {
-      const { token } = getAuthDetails();
+      const token = getToken();
+      const res = await fetch("https://api.gharzoreality.com/api/tenant-documents/my-documents", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTenantDocs(data.data || []);
+      } else {
+        throw new Error(data.message || "Failed to fetch documents");
+      }
+    } catch (err) {
+      toast.error(err.message || "Error fetching documents");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchDocuments(); }, []);
+
+  // ─── Upload Document ──────────────────────────────────────────────────────────
+  const handleUpload = async () => {
+    if (!form.documentType) return toast.error("Please select Document Type");
+    if (!form.title.trim()) return toast.error("Please enter Document Title");
+    if (!selectedFile) return toast.error("Please select a file");
+    if (!selectedTenancy) return toast.error("No active tenancy found");
+
+    const allowed = ["image/jpeg", "image/jpg", "image/png", "application/pdf",
+      "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+    if (!allowed.includes(selectedFile.type)) {
+      return toast.error("Only JPG, PNG, PDF, DOC, DOCX files are allowed");
+    }
+    if (selectedFile.size > 10 * 1024 * 1024) {
+      return toast.error("File size must be under 10MB");
+    }
+
+    setUploading(true);
+    try {
+      const token = getToken();
+      const tenantId = getTenantIdFromToken();
+      const docNumber = generateDocNumber();
+
       const formData = new FormData();
+
+      // ── Exact fields as per API screenshot ──
+      if (tenantId) formData.append("tenantId", tenantId);
+      formData.append("tenancyId", selectedTenancy._id);
+      formData.append("landlordId", selectedTenancy.landlordId._id);
+      formData.append("propertyId", selectedTenancy.propertyId._id);
+      formData.append("documentType", form.documentType);
+      if (form.documentSubType) formData.append("documentSubType", form.documentSubType);
+      formData.append("title", form.title.trim());
+      if (form.description) formData.append("description", form.description.trim());
+      formData.append("documentNumber", docNumber);
+      formData.append("visibility", form.visibility);
+
+      // tags as JSON string array: ["ID", "Aadhaar", "Government"]
+      if (form.tags.trim()) {
+        const tagsArray = form.tags.split(",").map(t => t.trim()).filter(Boolean);
+        formData.append("tags", JSON.stringify(tagsArray));
+      }
+
+      // file field name = "document" as per API
       formData.append("document", selectedFile);
-      formData.append("documentType", docName.trim());
-formData.append("isVisibleToLandlord", true);
-      const response = await fetch("https://api.gharzoreality.com/api/tenant-documents/upload", {
+
+      const res = await fetch("https://api.gharzoreality.com/api/tenant-documents/upload", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || "Upload failed");
 
-      if (!response.headers.get("content-type")?.includes("application/json")) {
-        throw new Error("Received non-JSON response from server");
-      }
-
-      const result = await response.json();
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || `Upload failed`);
-      }
-
-      const newDoc = {
-        id: result.document?._id,
-        url: result.document?.filePath ? `https://api.gharzoreality.com${result.document.filePath}` : await getBase64(selectedFile),
-        name: result.document?.documentType,
-        uploadedAt: result.document?.uploadedAt,
-        source: "tenant",
-      };
-
-      const updatedDocs = [...tenantDocs, newDoc];
-      setTenantDocs(updatedDocs);
-      localStorage.setItem("tenantDocs", JSON.stringify(updatedDocs));
-      toast.success(result.message || `Uploaded ${docName.trim()}`, {
-        position: "top-center",
-        autoClose: 3000,
-      });
-
-      setDocName("");
+      toast.success("Document uploaded successfully! 🎉");
+      setShowUploadForm(false);
       setSelectedFile(null);
+      setForm({ documentType: "", documentSubType: "", title: "", description: "", visibility: "Landlord Only", tags: "" });
       if (fileInputRef.current) fileInputRef.current.value = "";
-    } catch (error) {
-      toast.error(error.message || "Error uploading document", {
-        position: "top-center",
-        autoClose: 3000,
-      });
-      console.error("Error uploading document:", error);
+      await fetchDocuments();
+    } catch (err) {
+      toast.error(err.message || "Upload failed");
+    } finally {
+      setUploading(false);
     }
   };
 
-  // Handle delete
-  const handleDelete = async (id) => {
+  // ─── Download Document ────────────────────────────────────────────────────────
+  const handleDownload = async (doc) => {
+    setDownloading(true);
     try {
-      const { token } = getAuthDetails();
-      const response = await fetch(`https://api.gharzoreality.com/api/tenant-documents/${id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+      const token = getToken();
+      const res = await fetch(`https://api.gharzoreality.com/api/tenant-documents/${doc._id}/download`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || "Download failed");
 
-      if (!response.headers.get("content-type")?.includes("application/json")) {
-        throw new Error("Received non-JSON response from server");
-      }
+      const link = document.createElement("a");
+      link.href = data.data.fileUrl;
+      link.download = data.data.title || doc.title;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success("Download started!");
 
-      const result = await response.json();
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || `Failed to delete document`);
-      }
-
-      const updatedDocs = tenantDocs.filter((doc) => doc.id !== id);
-      setTenantDocs(updatedDocs);
-      localStorage.setItem("tenantDocs", JSON.stringify(updatedDocs));
-      setSelectedDoc(null);
-      toast.success(result.message || "Document deleted successfully", {
-        position: "top-center",
-        autoClose: 3000,
-        className: "bg-green-600 text-white font-semibold",
-      });
-    } catch (error) {
-      toast.error(error.message || "Error deleting document", {
-        position: "top-center",
-        autoClose: 3000,
-      });
-      console.error("Error deleting document:", error);
+      // Update download count in state
+      setTenantDocs(prev => prev.map(d =>
+        d._id === doc._id ? { ...d, downloadCount: data.data.downloadCount } : d
+      ));
+    } catch (err) {
+      toast.error(err.message || "Download failed");
+    } finally {
+      setDownloading(false);
     }
   };
 
-  const handleCloseModal = () => setSelectedDoc(null);
-  const handleModalClick = (e) => e.stopPropagation();
-  const handleViewDocument = (doc) => setSelectedDoc(doc);
+  // ─── Delete Document ──────────────────────────────────────────────────────────
+  const handleDelete = async (docId) => {
+    if (!window.confirm("Are you sure you want to delete this document? This cannot be undone.")) return;
+    try {
+      const token = getToken();
+      const res = await fetch(`https://api.gharzoreality.com/api/tenant-documents/${docId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || "Delete failed");
 
-return (
-  <div className="max-w-7xl mx-auto px-4 bg-white sm:px-6 lg:px-8 py-8">
-    {/* Enhanced Header */}
-    <div className="mb-12">
-      <div className="flex items-center shadow px-5 py-3 rounded justify-between mb-5">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-            <FaFileAlt className="text-2xl text-white" />
-          </div>
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-700 via-indigo-700 py-1 to-blue-800 bg-clip-text text-transparent">
-              Document Manager
-            </h1>
-            <p className="text-gray-600 mt-2">Upload, view, and manage all your important documents</p>
-          </div>
-        </div>
-      </div>
-    </div>
+      toast.success("Document deleted successfully");
+      setTenantDocs(prev => prev.filter(d => d._id !== docId));
+      setSelectedDoc(null);
+    } catch (err) {
+      toast.error(err.message || "Delete failed");
+    }
+  };
 
-    {/* Enhanced Upload Section */}
-    <div className="mb-12">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden  rounded-3xl bg-gradient-to-br from-white to-blue-50 shadow-2xl border border-blue-100 p-8"
-      >
-        {/* Background decorative elements */}
-        <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-blue-200/30 to-indigo-200/20 rounded-full -translate-y-20 translate-x-10"></div>
-        <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-blue-100/20 to-indigo-100/10 rounded-full translate-y-10 -translate-x-10"></div>
-        
-        <div className="relative z-10">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center shadow-md">
-              <FaUpload className="text-white text-xl" />
+  // ─── Filtered Docs ─────────────────────────────────────────────────────────────
+  const docTypes = ["All", ...new Set(tenantDocs.map(d => d.documentType))];
+  const filteredDocs = activeFilter === "All"
+    ? tenantDocs
+    : tenantDocs.filter(d => d.documentType === activeFilter);
+
+  // ─── Render ───────────────────────────────────────────────────────────────────
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40">
+      {/* ── Header ── */}
+      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-gray-100 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-md">
+              <FaFileAlt className="text-white text-lg" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Upload New Document</h2>
-              <p className="text-gray-600">Add important files to your collection</p>
+              <h1 className="text-xl font-extrabold text-gray-900 tracking-tight">Document Manager</h1>
+              <p className="text-xs text-gray-500 hidden sm:block">Manage your important documents securely</p>
             </div>
           </div>
+          <motion.button
+            onClick={() => setShowUploadForm(true)}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
+            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold text-sm shadow-md hover:shadow-lg transition-all"
+          >
+            <FaPlus className="text-xs" />
+            <span>Upload Doc</span>
+          </motion.button>
+        </div>
+      </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <div className="space-y-3">
-              <label className="block text-sm font-semibold text-gray-700">
-                <span className="flex items-center gap-2">
-                  <FaFileSignature className="text-blue-500" />
-                  Document Name
-                </span>
-              </label>
-              <div className="relative group">
-                <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl blur opacity-0 group-focus-within:opacity-20 transition duration-500"></div>
-                <input
-                  type="text"
-                  placeholder="Enter a descriptive name..."
-                  value={docName}
-                  onChange={(e) => setDocName(e.target.value)}
-                  className="relative w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
-                />
-              </div>
-            </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
-            <div className="space-y-3">
-              <label className="block text-sm font-semibold text-gray-700">
-                <span className="flex items-center gap-2">
-                  <FaFileUpload className="text-purple-500" />
-                  Select File
-                </span>
-              </label>
-              <div className="relative group">
-                <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl blur opacity-0 group-focus-within:opacity-20 transition duration-500"></div>
-                <div className="relative">
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx"
-                    onChange={(e) => setSelectedFile(e.target.files[0] || null)}
-                    className="w-full p-3 bg-white border-2 border-dashed border-gray-300 rounded-xl hover:border-blue-400 transition-colors cursor-pointer file:mr-4 file:py-3 file:px-5 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 file:transition-colors"
-                  />
-                </div>
-              </div>
-            </div>
+        {/* ── Tenancy Selector ── */}
+        {tenancies.length > 1 && (
+          <div className="flex flex-wrap gap-3">
+            <span className="text-sm font-semibold text-gray-600 self-center">Active Tenancy:</span>
+            {tenancies.map(t => (
+              <button
+                key={t._id}
+                onClick={() => setSelectedTenancy(t)}
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all border ${
+                  selectedTenancy?._id === t._id
+                    ? "bg-blue-600 text-white border-blue-600 shadow"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-blue-300"
+                }`}
+              >
+                Room {t.roomId?.roomNumber} • {t.status}
+              </button>
+            ))}
           </div>
+        )}
 
-          {selectedFile && (
+        {/* ── Stats Bar ── */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[
+            { label: "Total Docs", value: tenantDocs.length, color: "from-blue-500 to-indigo-500", icon: <FaFileAlt /> },
+            { label: "Verified", value: tenantDocs.filter(d => d.verification?.isVerified).length, color: "from-green-500 to-emerald-500", icon: <FaCheckCircle /> },
+            { label: "Pending", value: tenantDocs.filter(d => !d.verification?.isVerified).length, color: "from-amber-500 to-orange-500", icon: <FaClock /> },
+            { label: "Downloads", value: tenantDocs.reduce((sum, d) => sum + (d.downloadCount || 0), 0), color: "from-purple-500 to-pink-500", icon: <FaDownload /> },
+          ].map((s, i) => (
             <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200"
+              key={i}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.07 }}
+              className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-4"
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm">
-                    <FaFile className="text-blue-500" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">{selectedFile.name}</p>
-                    <p className="text-sm text-gray-500">
-                      {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB • {selectedFile.type}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setSelectedFile(null)}
-                  className="p-2 hover:bg-white rounded-lg transition-colors"
-                >
-                  <FaTimes className="text-gray-400 hover:text-red-500" />
-                </button>
+              <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${s.color} flex items-center justify-center text-white text-lg shadow`}>
+                {s.icon}
+              </div>
+              <div>
+                <p className="text-2xl font-black text-gray-900">{s.value}</p>
+                <p className="text-xs text-gray-500 font-medium">{s.label}</p>
               </div>
             </motion.div>
+          ))}
+        </div>
+
+        {/* ── Filter Tabs ── */}
+        {tenantDocs.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {docTypes.map(type => (
+              <button
+                key={type}
+                onClick={() => setActiveFilter(type)}
+                className={`px-4 py-2 rounded-full text-xs font-semibold transition-all border ${
+                  activeFilter === type
+                    ? "bg-blue-600 text-white border-blue-600 shadow-md"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600"
+                }`}
+              >
+                {type}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* ── Documents Grid ── */}
+        <section>
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow">
+              <FaUser className="text-white text-sm" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">My Documents</h2>
+              <p className="text-xs text-gray-500">{filteredDocs.length} document{filteredDocs.length !== 1 ? "s" : ""} found</p>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-pulse">
+                  <div className="h-44 bg-gradient-to-br from-gray-100 to-gray-200" />
+                  <div className="p-4 space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-3/4" />
+                    <div className="h-3 bg-gray-100 rounded w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filteredDocs.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              <AnimatePresence>
+                {filteredDocs.map((doc, idx) => (
+                  <motion.div
+                    key={doc._id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ delay: idx * 0.05 }}
+                    whileHover={{ y: -4 }}
+                    className="group relative bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-300 overflow-hidden cursor-pointer"
+                    onClick={() => setSelectedDoc(doc)}
+                  >
+                    {/* Preview */}
+                    <div className="relative h-44 overflow-hidden bg-gradient-to-br from-indigo-50 to-purple-50">
+                      <DocPreview
+                        url={doc.file?.url}
+                        fileType={doc.file?.fileType}
+                        name={doc.title}
+                        className="w-full h-full"
+                      />
+
+                      {/* Hover overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center gap-2">
+                        <motion.button
+                          whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                          onClick={e => { e.stopPropagation(); setSelectedDoc(doc); }}
+                          className="p-2.5 bg-white rounded-full shadow hover:shadow-lg"
+                        >
+                          <FaEye className="text-indigo-600 text-sm" />
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                          onClick={e => { e.stopPropagation(); handleDownload(doc); }}
+                          className="p-2.5 bg-white rounded-full shadow hover:shadow-lg"
+                        >
+                          <FaDownload className="text-green-600 text-sm" />
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                          onClick={e => { e.stopPropagation(); handleDelete(doc._id); }}
+                          className="p-2.5 bg-white rounded-full shadow hover:shadow-lg"
+                        >
+                          <FaTrash className="text-red-500 text-sm" />
+                        </motion.button>
+                      </div>
+
+                      {/* Badges */}
+                      <div className="absolute top-2 left-2 flex gap-1.5 flex-wrap">
+                        <span className="px-2 py-0.5 bg-white/90 backdrop-blur rounded-full text-xs font-bold text-gray-700 uppercase">
+                          {doc.file?.fileType || "doc"}
+                        </span>
+                      </div>
+                      <div className="absolute top-2 right-2">
+                        {doc.verification?.isVerified ? (
+                          <span className="px-2 py-0.5 bg-green-500 text-white rounded-full text-xs font-bold flex items-center gap-1">
+                            <FaCheckCircle className="text-xs" /> Verified
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 bg-amber-400 text-white rounded-full text-xs font-bold flex items-center gap-1">
+                            <FaClock className="text-xs" /> Pending
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Card Info */}
+                    <div className="p-4">
+                      <h3 className="font-bold text-gray-900 text-sm line-clamp-1 mb-0.5">{doc.title}</h3>
+                      <p className="text-xs text-indigo-600 font-semibold mb-2">{doc.documentType}</p>
+                      <div className="flex items-center justify-between text-xs text-gray-400">
+                        <span className="flex items-center gap-1">
+                          <FaCalendarAlt /> {formatDate(doc.createdAt)}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <FaDownload /> {doc.downloadCount || 0}
+                        </span>
+                      </div>
+                      {doc.tags?.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {doc.tags.slice(0, 3).map(tag => (
+                            <span key={tag} className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-xs font-medium">
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Bottom accent */}
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-indigo-400 to-purple-400 scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          ) : (
+            <div className="text-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-200">
+              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-indigo-50 to-purple-100 flex items-center justify-center">
+                <FaFile className="text-3xl text-indigo-300" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-700 mb-2">No Documents Yet</h3>
+              <p className="text-gray-400 text-sm mb-5">Upload your first document to get started</p>
+              <button
+                onClick={() => setShowUploadForm(true)}
+                className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold text-sm shadow hover:shadow-lg transition-all"
+              >
+                Upload Now
+              </button>
+            </div>
           )}
-
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-500 flex items-center gap-2">
-              <FaInfoCircle className="text-blue-400" />
-              Supports JPG, PNG, PDF, DOC, XLS (Max 10MB)
-            </div>
-            <motion.button
-              onClick={handleUpload}
-              disabled={!docName.trim() || !selectedFile}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className={`px-8 py-3 rounded-xl font-semibold shadow-lg transition-all duration-300 ${
-                !docName.trim() || !selectedFile
-                  ? "bg-gradient-to-r from-gray-300 to-gray-400 cursor-not-allowed text-gray-700"
-                  : "bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-white hover:shadow-xl"
-              }`}
-            >
-              <span className="flex items-center gap-2">
-                <FaUpload className="text-white" />
-                Upload Document
-              </span>
-            </motion.button>
-          </div>
-        </div>
-      </motion.div>
-    </div>
-
-    {/* Enhanced Tenant Documents Section */}
-    <div className="mb-12">
-      <div className="flex items-center shadow py-3 px-5 rounded  justify-between mb-5">
-        <div className="space-y-2">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center shadow-md">
-              <FaUser className="text-white text-xl" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-700 via-purple-700 to-pink-700 bg-clip-text text-transparent">
-                My Documents
-              </h2>
-              <p className="text-gray-600">Documents you have uploaded</p>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="px-4 py-2 bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-700 rounded-full text-sm font-semibold shadow-sm">
-            {tenantDocs.length} documents
-          </span>
-        </div>
+        </section>
       </div>
 
-      {tenantDocs.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          <AnimatePresence>
-            {tenantDocs.map((doc) => (
-              <motion.div
-                key={doc.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.3 }}
-                whileHover={{ y: -6 }}
-                className="group relative"
-              >
-                {/* Card Background Effect */}
-                <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl blur opacity-0 group-hover:opacity-20 transition duration-500"></div>
-                
-                {/* Main Card */}
-                <div className="relative bg-gradient-to-b from-white to-gray-50 rounded-2xl shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 overflow-hidden">
-                  {/* Document Preview */}
-                  <div className="relative h-48 overflow-hidden bg-gradient-to-br from-indigo-50 to-purple-50">
-                    {doc.type === 'application/pdf' ? (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="text-center">
-                          <FaFilePdf className="w-16 h-16 text-red-500 opacity-50" />
-                          <span className="text-sm font-medium text-red-600 mt-2">PDF Document</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <img
-                        src={doc.url}
-                        alt={doc.name}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                        onError={(e) => (e.target.src = "/placeholder-image.jpg")}
-                      />
-                    )}
-                    
-                    {/* Overlay Actions */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3">
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => handleViewDocument(doc)}
-                        className="p-3 bg-white rounded-full shadow-lg hover:shadow-xl transition-all"
-                        aria-label={`View ${doc.name}`}
-                      >
-                        <FaEye className="text-indigo-600" />
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => handleDownload(doc)}
-                        className="p-3 bg-white rounded-full shadow-lg hover:shadow-xl transition-all"
-                        aria-label={`Download ${doc.name}`}
-                      >
-                        <FaDownload className="text-green-600" />
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => handleDelete(doc.id)}
-                        className="p-3 bg-white rounded-full shadow-lg hover:shadow-xl transition-all"
-                        aria-label={`Delete ${doc.name}`}
-                      >
-                        <FaTrash className="text-red-600" />
-                      </motion.button>
-                    </div>
-                    
-                    {/* Type Badge */}
-                    <div className="absolute top-3 left-3">
-                      <span className="px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-full text-xs font-semibold text-gray-700 shadow-sm">
-                        {doc.type?.split('/')[1]?.toUpperCase() || 'DOC'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Document Info */}
-                  <div className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="font-bold text-gray-900 line-clamp-1 group-hover:text-indigo-600 transition-colors">
-                        {doc.name}
-                      </h3>
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        <FaArrowRight className="text-gray-400 group-hover:text-indigo-500" />
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <FaCalendarAlt className="text-gray-400" />
-                        <span>Uploaded {new Date(doc.uploadedAt).toLocaleDateString()}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <FaClock className="text-gray-400" />
-                        <span>{new Date(doc.uploadedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Bottom Indicator */}
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-400 to-purple-400 scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></div>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-      ) : (
-        <div className="text-center py-16 bg-gradient-to-br from-indigo-50/50 to-purple-50/50 rounded-2xl border-2 border-dashed border-indigo-200">
-          <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 flex items-center justify-center">
-            <FaFile className="w-12 h-12 text-indigo-300" />
-          </div>
-          <h3 className="text-2xl font-bold text-gray-800 mb-3">No Documents Yet</h3>
-          <p className="text-gray-600 max-w-md mx-auto mb-5">
-            Upload your first document to get started. Your uploaded files will appear here.
-          </p>
-        </div>
-      )}
-    </div>
-
-    {/* Enhanced Landlord Documents Section */}
-    <div className="mb-12">
-      <div className="flex items-center justify-between mb-5">
-        <div className="space-y-2">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 flex items-center justify-center shadow-md">
-              <FaBuilding className="text-white text-xl" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-teal-700 via-emerald-700 to-green-700 bg-clip-text text-transparent">
-                Landlord Documents
-              </h2>
-              <p className="text-gray-600">Important documents shared by your landlord</p>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="px-4 py-2 bg-gradient-to-r from-teal-100 to-emerald-100 text-teal-700 rounded-full text-sm font-semibold shadow-sm">
-            {landlordDocs.length} documents
-          </span>
-        </div>
-      </div>
-
-      {landlordDocs.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          <AnimatePresence>
-            {landlordDocs.map((doc) => (
-              <motion.div
-                key={doc.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.3 }}
-                whileHover={{ y: -6 }}
-                className="group relative"
-              >
-                {/* Card Background Effect */}
-                <div className="absolute -inset-0.5 bg-gradient-to-r from-teal-500 to-emerald-500 rounded-2xl blur opacity-0 group-hover:opacity-20 transition duration-500"></div>
-                
-                {/* Main Card */}
-                <div className="relative bg-gradient-to-b from-white to-gray-50 rounded-2xl shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 overflow-hidden">
-                  {/* Document Preview */}
-                  <div className="relative h-48 overflow-hidden bg-gradient-to-br from-teal-50 to-emerald-50">
-                    {doc.type === 'application/pdf' ? (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="text-center">
-                          <FaFilePdf className="w-16 h-16 text-red-500 opacity-50" />
-                          <span className="text-sm font-medium text-red-600 mt-2">PDF Document</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <img
-                        src={doc.url}
-                        alt={doc.name}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                        onError={(e) => (e.target.src = "/placeholder-image.jpg")}
-                      />
-                    )}
-                    
-                    {/* Overlay Actions */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3">
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => handleViewDocument(doc)}
-                        className="p-3 bg-white rounded-full shadow-lg hover:shadow-xl transition-all"
-                        aria-label={`View ${doc.name}`}
-                      >
-                        <FaEye className="text-teal-600" />
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => handleDownload(doc)}
-                        className="p-3 bg-white rounded-full shadow-lg hover:shadow-xl transition-all"
-                        aria-label={`Download ${doc.name}`}
-                      >
-                        <FaDownload className="text-green-600" />
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => handleShare(doc)}
-                        className="p-3 bg-white rounded-full shadow-lg hover:shadow-xl transition-all"
-                        aria-label={`Share ${doc.name}`}
-                      >
-                        <FaShareAlt className="text-blue-600" />
-                      </motion.button>
-                    </div>
-                    
-                    {/* Type Badge */}
-                    <div className="absolute top-3 left-3">
-                      <span className="px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-full text-xs font-semibold text-gray-700 shadow-sm">
-                        {doc.type?.split('/')[1]?.toUpperCase() || 'DOC'}
-                      </span>
-                    </div>
-                    
-                    {/* Official Badge */}
-                    <div className="absolute top-3 right-3">
-                      <span className="px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-full text-xs font-semibold shadow-lg">
-                        OFFICIAL
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Document Info */}
-                  <div className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="font-bold text-gray-900 line-clamp-1 group-hover:text-teal-600 transition-colors">
-                        {doc.name}
-                      </h3>
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        <FaArrowRight className="text-gray-400 group-hover:text-teal-500" />
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <FaCalendarAlt className="text-gray-400" />
-                        <span>Uploaded {new Date(doc.uploadedAt).toLocaleDateString()}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <FaUserTie className="text-gray-400" />
-                        <span>Shared by Landlord</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Bottom Indicator */}
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-400 to-emerald-400 scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></div>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-      ) : (
-        <div className="text-center py-16 bg-gradient-to-br from-teal-50/50 to-emerald-50/50 rounded-2xl border-2 border-dashed border-teal-200">
-          <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-r from-teal-100 to-emerald-100 flex items-center justify-center">
-            <FaFileAlt className="w-12 h-12 text-teal-300" />
-          </div>
-          <h3 className="text-2xl font-bold text-gray-800 mb-3">No Landlord Documents</h3>
-          <p className="text-gray-600 max-w-md mx-auto mb-5">
-            Your landlord hasn't shared any documents yet. Check back later for important updates.
-          </p>
-        </div>
-      )}
-    </div>
-
-    {/* Enhanced Document Preview Modal */}
-    <AnimatePresence>
-      {selectedDoc && (
-        <>
+      {/* ══════════════════════════════════════════════════════════════════════════
+          UPLOAD MODAL
+      ══════════════════════════════════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {showUploadForm && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={handleCloseModal}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowUploadForm(false)}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative bg-white rounded-3xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden"
+              initial={{ opacity: 0, y: 60 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 60 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-white w-full sm:max-w-2xl sm:rounded-3xl rounded-t-3xl shadow-2xl max-h-[95vh] overflow-y-auto"
             >
               {/* Modal Header */}
-              <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-                <div className="flex items-center gap-4">
-                  <div className={`p-3 rounded-xl ${selectedDoc.source === 'tenant' ? 'bg-gradient-to-r from-indigo-500 to-purple-500' : 'bg-gradient-to-r from-teal-500 to-emerald-500'} shadow-md`}>
-                    <FaFile className="text-white text-xl" />
+              <div className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-3xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow">
+                    <FaUpload className="text-white text-sm" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900">{selectedDoc.name}</h3>
-                    <div className="flex items-center gap-4 mt-1">
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        selectedDoc.source === 'tenant' 
-                          ? 'bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-700'
-                          : 'bg-gradient-to-r from-teal-100 to-emerald-100 text-teal-700'
-                      }`}>
-                        {selectedDoc.source === 'tenant' ? 'My Document' : 'Landlord Document'}
-                      </span>
-                      <span className="text-sm text-gray-500">
-                        Uploaded {new Date(selectedDoc.uploadedAt).toLocaleDateString()}
-                      </span>
-                    </div>
+                    <h2 className="text-lg font-bold text-gray-900">Upload Document</h2>
+                    <p className="text-xs text-gray-500">Fill details and attach your file</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <button onClick={() => setShowUploadForm(false)} className="p-2 rounded-xl hover:bg-gray-100 transition">
+                  <FaTimes className="text-gray-500" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-5">
+
+                {/* Tenancy Selector */}
+                {tenancies.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <span className="flex items-center gap-2"><FaBuilding className="text-blue-500" /> Select Tenancy</span>
+                    </label>
+                    <select
+                      value={selectedTenancy?._id || ""}
+                      onChange={e => setSelectedTenancy(tenancies.find(t => t._id === e.target.value))}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none text-sm bg-white"
+                    >
+                      {tenancies.map(t => (
+                        <option key={t._id} value={t._id}>
+                          Room {t.roomId?.roomNumber} ({t.roomId?.roomType}) • {t.status} • {t.landlordId?.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Document Type */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <span className="flex items-center gap-2"><FaFileAlt className="text-indigo-500" /> Document Type *</span>
+                    </label>
+                    <select
+                      value={form.documentType}
+                      onChange={e => setForm(f => ({ ...f, documentType: e.target.value, documentSubType: "" }))}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none text-sm bg-white"
+                    >
+                      <option value="">Select type...</option>
+                      {DOC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+
+                  {DOC_SUB_TYPES[form.documentType]?.length > 0 && (
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Sub Type</label>
+                      <select
+                        value={form.documentSubType}
+                        onChange={e => setForm(f => ({ ...f, documentSubType: e.target.value }))}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none text-sm bg-white"
+                      >
+                        <option value="">Select sub type...</option>
+                        {DOC_SUB_TYPES[form.documentType].map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                  )}
+                </div>
+
+                {/* Title */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <span className="flex items-center gap-2"><FaFileSignature className="text-purple-500" /> Document Title *</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Aadhaar Card - Front & Back"
+                    value={form.title}
+                    onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none text-sm"
+                  />
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
+                  <textarea
+                    rows={2}
+                    placeholder="Optional description..."
+                    value={form.description}
+                    onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none text-sm resize-none"
+                  />
+                </div>
+
+                {/* Visibility & Tags */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <span className="flex items-center gap-2"><FaShieldAlt className="text-teal-500" /> Visibility</span>
+                    </label>
+                    <select
+                      value={form.visibility}
+                      onChange={e => setForm(f => ({ ...f, visibility: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none text-sm bg-white"
+                    >
+                      {VISIBILITY_OPTIONS.map(v => <option key={v} value={v}>{v}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <span className="flex items-center gap-2"><FaTag className="text-pink-500" /> Tags (comma separated)</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="ID, Aadhaar, Government"
+                      value={form.tags}
+                      onChange={e => setForm(f => ({ ...f, tags: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* File Upload */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <span className="flex items-center gap-2"><FaFileUpload className="text-orange-500" /> Select File *</span>
+                  </label>
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="relative border-2 border-dashed border-gray-200 rounded-xl p-6 text-center hover:border-blue-400 hover:bg-blue-50/30 transition-all cursor-pointer group"
+                  >
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      accept="image/*,application/pdf,.doc,.docx"
+                      onChange={e => setSelectedFile(e.target.files[0] || null)}
+                      className="hidden"
+                    />
+                    {selectedFile ? (
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+                          {selectedFile.type === "application/pdf" ? (
+                            <FaFilePdf className="text-red-500 text-xl" />
+                          ) : (
+                            <FaFile className="text-blue-500 text-xl" />
+                          )}
+                        </div>
+                        <div className="text-left flex-1 min-w-0">
+                          <p className="font-semibold text-gray-800 text-sm truncate">{selectedFile.name}</p>
+                          <p className="text-xs text-gray-500">{formatFileSize(selectedFile.size)} • {selectedFile.type}</p>
+                        </div>
+                        <button
+                          onClick={e => { e.stopPropagation(); setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                          className="p-1.5 rounded-lg hover:bg-red-50 transition"
+                        >
+                          <FaTimes className="text-red-400 text-sm" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="w-12 h-12 rounded-xl bg-gray-50 group-hover:bg-blue-100 flex items-center justify-center mx-auto mb-3 transition">
+                          <FaUpload className="text-gray-400 group-hover:text-blue-500 text-xl transition" />
+                        </div>
+                        <p className="text-sm font-semibold text-gray-600">Click to browse files</p>
+                        <p className="text-xs text-gray-400 mt-1">JPG, PNG, PDF, DOC up to 10MB</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Submit */}
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setShowUploadForm(false)}
+                    className="flex-1 px-5 py-3 border border-gray-200 text-gray-600 rounded-xl font-semibold text-sm hover:bg-gray-50 transition"
+                  >
+                    Cancel
+                  </button>
                   <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
+                    onClick={handleUpload}
+                    disabled={uploading || !form.documentType || !form.title || !selectedFile}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className={`flex-1 px-5 py-3 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
+                      uploading || !form.documentType || !form.title || !selectedFile
+                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                        : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md hover:shadow-lg"
+                    }`}
+                  >
+                    {uploading ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        Uploading...
+                      </>
+                    ) : (
+                      <><FaUpload /> Upload Document</>
+                    )}
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ══════════════════════════════════════════════════════════════════════════
+          VIEW / DETAIL MODAL
+      ══════════════════════════════════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {selectedDoc && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSelectedDoc(null)}
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 60 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 60 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-white w-full sm:max-w-3xl sm:rounded-3xl rounded-t-3xl shadow-2xl overflow-hidden max-h-[95vh] flex flex-col"
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-purple-50">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow flex-shrink-0">
+                    <FaFile className="text-white" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-gray-900 truncate">{selectedDoc.title}</h3>
+                    <p className="text-xs text-indigo-600 font-semibold">{selectedDoc.documentType}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <motion.button
+                    whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
                     onClick={() => handleDownload(selectedDoc)}
-                    className="p-3 bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 rounded-xl hover:from-green-100 hover:to-emerald-100 transition-all shadow-sm"
-                    aria-label="Download document"
+                    disabled={downloading}
+                    className="p-2.5 bg-green-50 text-green-600 rounded-xl hover:bg-green-100 transition"
+                    title="Download"
                   >
                     <FaDownload />
                   </motion.button>
                   <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={handleCloseModal}
-                    className="p-3 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-xl hover:from-gray-200 hover:to-gray-300 transition-all shadow-sm"
-                    aria-label="Close preview"
+                    whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                    onClick={() => setSelectedDoc(null)}
+                    className="p-2.5 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition"
                   >
                     <FaTimes />
                   </motion.button>
                 </div>
               </div>
 
-              {/* Document Content */}
-              <div className="p-8 overflow-y-auto max-h-[calc(90vh-140px)]">
-                {selectedDoc.type === 'application/pdf' ? (
-                  <div className="flex flex-col items-center justify-center py-12">
-                    <div className="w-32 h-32 mb-6 rounded-2xl bg-gradient-to-r from-red-50 to-red-100 flex items-center justify-center">
-                      <FaFilePdf className="w-20 h-20 text-red-400" />
-                    </div>
-                    <p className="text-lg font-medium text-gray-700 mb-5">This PDF document needs to be downloaded to view</p>
-                    <button
-                      onClick={() => handleDownload(selectedDoc)}
-                      className="px-8 py-3 bg-gradient-to-r from-red-500 to-rose-500 text-white rounded-xl hover:shadow-xl transition-all font-semibold flex items-center gap-3"
-                    >
-                      <FaDownload />
-                      Download PDF
-                    </button>
-                  </div>
-                ) : (
-                  <img
-                    src={selectedDoc.url}
-                    alt={selectedDoc.name}
-                    className="w-full h-auto rounded-xl shadow-lg max-h-[60vh] object-contain mx-auto"
-                    onError={(e) => (e.target.src = "/placeholder-image.jpg")}
+              {/* Content */}
+              <div className="overflow-y-auto flex-1">
+                {/* Image/PDF Preview */}
+                <div className="bg-gradient-to-br from-slate-100 to-indigo-50 p-4 flex items-center justify-center min-h-52">
+                  <DocPreview
+                    url={selectedDoc.file?.url}
+                    fileType={selectedDoc.file?.fileType}
+                    name={selectedDoc.title}
+                    className="max-h-72 w-auto rounded-xl shadow-lg object-contain"
                   />
-                )}
-              </div>
+                </div>
 
-              {/* Modal Footer */}
-              {selectedDoc.source === "tenant" && (
-                <div className="p-6 border-t border-gray-200 bg-gradient-to-r from-red-50/50 to-rose-50/50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-r from-red-100 to-rose-100 flex items-center justify-center">
-                        <FaExclamationTriangle className="text-red-500" />
+                {/* Document Details */}
+                <div className="p-6 space-y-5">
+                  {/* Info Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {[
+                      { label: "Document #", value: selectedDoc.documentNumber, icon: <FaHashtag /> },
+                      { label: "Type", value: selectedDoc.documentType, icon: <FaFileAlt /> },
+                      { label: "Sub Type", value: selectedDoc.documentSubType || "—", icon: <FaFile /> },
+                      { label: "Status", value: selectedDoc.status, icon: <FaCheckCircle /> },
+                      { label: "Visibility", value: selectedDoc.visibility, icon: <FaEye /> },
+                      { label: "Downloads", value: selectedDoc.downloadCount || 0, icon: <FaDownload /> },
+                    ].map((item, i) => (
+                      <div key={i} className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                        <div className="flex items-center gap-1.5 text-gray-400 text-xs mb-1">
+                          {item.icon} {item.label}
+                        </div>
+                        <p className="font-semibold text-gray-800 text-sm">{item.value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Description */}
+                  {selectedDoc.description && (
+                    <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+                      <p className="text-xs font-semibold text-blue-600 mb-1">Description</p>
+                      <p className="text-sm text-gray-700">{selectedDoc.description}</p>
+                    </div>
+                  )}
+
+                  {/* Verification */}
+                  <div className={`rounded-xl p-4 border flex items-center gap-3 ${
+                    selectedDoc.verification?.isVerified
+                      ? "bg-green-50 border-green-200"
+                      : "bg-amber-50 border-amber-200"
+                  }`}>
+                    {selectedDoc.verification?.isVerified ? (
+                      <FaCheckCircle className="text-green-500 text-xl flex-shrink-0" />
+                    ) : (
+                      <FaClock className="text-amber-500 text-xl flex-shrink-0" />
+                    )}
+                    <div>
+                      <p className={`font-semibold text-sm ${selectedDoc.verification?.isVerified ? "text-green-700" : "text-amber-700"}`}>
+                        {selectedDoc.verification?.isVerified ? "Verified by Landlord" : "Verification Pending"}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {selectedDoc.verification?.isVerified
+                          ? `Verified on ${formatDate(selectedDoc.verification.verifiedAt)}`
+                          : "Awaiting landlord review"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* File Info */}
+                  <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                    <p className="text-xs font-semibold text-gray-500 mb-2">File Information</p>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <span className="text-gray-400 text-xs">Size</span>
+                        <p className="font-medium text-gray-700">{formatFileSize(selectedDoc.file?.fileSize)}</p>
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">Delete this document</p>
-                        <p className="text-sm text-gray-600">This action cannot be undone</p>
+                        <span className="text-gray-400 text-xs">Type</span>
+                        <p className="font-medium text-gray-700 uppercase">{selectedDoc.file?.fileType}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-400 text-xs">Uploaded</span>
+                        <p className="font-medium text-gray-700">{formatDate(selectedDoc.createdAt)}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-400 text-xs">Uploaded By</span>
+                        <p className="font-medium text-gray-700">{selectedDoc.uploadedBy?.name}</p>
                       </div>
                     </div>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => handleDelete(selectedDoc.id)}
-                      className="px-6 py-3 bg-gradient-to-r from-red-500 to-rose-500 text-white rounded-xl hover:shadow-xl transition-all font-semibold flex items-center gap-2"
-                    >
-                      <FaTrash />
-                      Delete Document
-                    </motion.button>
                   </div>
+
+                  {/* Tags */}
+                  {selectedDoc.tags?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 mb-2">Tags</p>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedDoc.tags.map(tag => (
+                          <span key={tag} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-xs font-semibold border border-indigo-100">
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
+
+              {/* Footer - Delete */}
+              <div className="px-6 py-4 border-t border-gray-100 bg-red-50/50 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FaExclamationTriangle className="text-red-400 text-sm" />
+                  <p className="text-xs text-gray-500 font-medium">Permanently delete this document</p>
+                </div>
+                <motion.button
+                  whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
+                  onClick={() => handleDelete(selectedDoc._id)}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-red-500 to-rose-500 text-white rounded-xl font-semibold text-sm shadow hover:shadow-lg transition"
+                >
+                  <FaTrash /> Delete
+                </motion.button>
+              </div>
             </motion.div>
           </motion.div>
-        </>
-      )}
-    </AnimatePresence>
-  </div>
-);
+        )}
+      </AnimatePresence>
+    </div>
+  );
 }

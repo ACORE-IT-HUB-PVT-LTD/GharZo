@@ -225,6 +225,7 @@ const Sidebar = ({ propertyId, setSidebarWidth }) => {
           <NavItem to="/landlord/allComplaints" icon={FaComments} label="All Complaints" onClick={closeSidebar} isExpanded={isExpanded} />
           <NavItem to="/landlord/payments" icon={FaMoneyBill} label="Payments" onClick={closeSidebar} isExpanded={isExpanded} />
           <NavItem to="/landlord/announcement" icon={FaDiagnoses} label="Announcements" onClick={closeSidebar} isExpanded={isExpanded} />
+          <NavItem to="/landlord/review" icon={FaDiagnoses} label="Reviews" onClick={closeSidebar} isExpanded={isExpanded} />
 
           <SectionDivider label="Content" isExpanded={isExpanded} />
           <NavItem to="/landlord/landlord_reels" icon={FaVideo} label="Reels" onClick={closeSidebar} isExpanded={isExpanded} />
